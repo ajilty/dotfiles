@@ -5,3 +5,4 @@ plugins=( zsh-autosuggestions zsh-syntax-highlighting zsh-completions git docker
 source $ZSH/oh-my-zsh.sh
 source $ZSH_CUSTOM/themes/powerlevel10k/powerlevel10k.zsh-theme
 source $ZSH_CUSTOM/themes/powerlevel10k/config/p10k-pure.zsh
+alias config='/usr/bin/git --git-dir=$HOME/.dotfiles --work-tree=$HOME'
