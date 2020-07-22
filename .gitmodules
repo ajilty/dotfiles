@@ -1,0 +1,3 @@
+[submodule "/home/vagrant/.oh-my-zsh"]
+	path = /home/vagrant/.oh-my-zsh
+	url = https://github.com/ohmyzsh/ohmyzsh.git
