@@ -117,3 +117,4 @@ if ! shopt -oq posix; then
 fi
 export SHELL=/bin/zsh
 exec /bin/zsh -l
+alias config='/usr/bin/git --git-dir=/home/vagrant/.cfg/ --work-tree=/home/vagrant'
