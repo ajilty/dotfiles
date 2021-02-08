@@ -116,6 +116,7 @@ if ! shopt -oq posix; then
     . /etc/bash_completion
   fi
 fi
+export PATH=$PATH:~/.local/bin
 export SHELL=/bin/zsh
 exec /bin/zsh -l
 
