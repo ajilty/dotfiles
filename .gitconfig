@@ -1,0 +1,29 @@
+[include]
+    path = ~/.gitconfig.local
+	
+[init]
+	defaultBranch = master
+
+[push]
+	default = simple # only push current branch
+
+[pull]
+	# A rebase more or less takes all your changes, sets them aside, fetches in the changes, then re-applies your changes as if you had made the changes from the newest version.
+	# Rebasing is similar to asking Git, “Can you just add my new stuff on top of the stuff that has already been done?”
+	rebase = true
+	# A fast-forward works the other way. It computes the difference and between the parent and current state, then applies that at the end.
+[fetch]
+	# This configuration will automatically clean Git objects in your repository locally whenever you fetch changes from remote
+	prune = true
+
+[core]
+  editor = code --wait
+  excludesfile = ~/.config/git/ignore
+[diff]
+  tool = vscode
+[difftool "vscode"]
+  cmd = code --wait --diff $LOCAL $REMOTE
+[merge]
+  tool = vscode
+[mergetool "vscode"]
+  cmd = code --wait $MERGED

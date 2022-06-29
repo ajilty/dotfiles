@@ -1,0 +1,40 @@
+#!/bin/bash
+
+function git() {
+    # override default clone behavior
+    # clone git repositories into a directory path that matches source URL
+
+    if [[ "$1" == "clone" ]]; then
+        # if empty clone source, run default
+        if [[ $2 == https://* ]] || [[ $2 == git://* ]] || [[ $2 == ssh://* ]] || [[ $2 == git@* ]] ; then
+            git_src=$2;
+            front_trimmed_protocl=${git_src/#*\/\/};
+            front_trimed_ssh_user=${front_trimmed_protocl/#*@};
+            end_trimmed=${front_trimed_ssh_user%.*};
+            replace_colon=${end_trimmed/:/\/};
+            git_clone_destination=~/gits/$replace_colon;
+            
+            echo "Where should git clone to? [$git_clone_destination]?"
+            read -r response
+            if [[ -z $response ]]; then
+                response=$git_clone_destination
+            else
+                git_clone_destination=$response
+            fi
+
+            echo $git_clone_destination;
+            command git clone $2 $git_clone_destination;
+        else
+            # handle unknown repo source types directly
+            command git "$@";
+        fi
+    else
+        # handle other sub commands directly 
+        command git "$@";
+    fi
+}
+
+# Okta AWS CLI https://github.com/oktadev/okta-aws-cli-assume-role
+if [[ -f "$HOME/.okta/bash_functions" ]]; then
+    . "$HOME/.okta/bash_functions"
+fi
