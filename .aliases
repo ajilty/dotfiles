@@ -5,3 +5,6 @@
 
 # Sane dotfitl management inspired by https://www.atlassian.com/git/tutorials/dotfiles
 alias config='/usr/bin/git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME'
+
+# Add dates and times to history view 
+alias history='history -i'
