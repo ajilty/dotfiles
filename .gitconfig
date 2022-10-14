@@ -6,6 +6,7 @@
 
 [push]
 	default = current # only push current branch
+	autoSetupRemote = true
 
 [pull]
 	# A rebase more or less takes all your changes, sets them aside, fetches in the changes, then re-applies your changes as if you had made the changes from the newest version.
