@@ -19,7 +19,7 @@ zstyle :bracketed-paste-magic paste-finish pastefinish
 # Set location of plug-ins and themes
 export ZSH_CUSTOM=$HOME/.zsh_custom
 # Enable plug-ins and themes
-plugins=(history zsh-autosuggestions zsh-syntax-highlighting history-substring-search git docker kubectl aws gcloud pip pipenv)
+plugins=(history zsh-autosuggestions zsh-syntax-highlighting history-substring-search git git-auto-fetch urltools terraform docker kubectl aws gcloud pip pipenv)
 source $ZSH/oh-my-zsh.sh
 source $ZSH_CUSTOM/themes/powerlevel10k/powerlevel10k.zsh-theme
 source $ZSH_CUSTOM/themes/powerlevel10k/config/p10k-pure.zsh
