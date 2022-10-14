@@ -8,3 +8,6 @@ alias config='/usr/bin/git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME'
 
 # Add dates and times to history view 
 alias history='history -i'
+
+# List git reports
+alias lsg='tree -d -x -C -L 3 ~/gits'
