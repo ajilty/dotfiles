@@ -28,3 +28,5 @@
   tool = vscode
 [mergetool "vscode"]
   cmd = code --wait $MERGED
+[rebase]
+	autoStash = true

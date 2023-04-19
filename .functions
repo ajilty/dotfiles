@@ -28,13 +28,38 @@ function git() {
             # handle unknown repo source types directly
             command git "$@";
         fi
+
+        # change to new directory
+        cd $git_clone_destination;
     else
         # handle other sub commands directly 
         command git "$@";
     fi
 }
 
-# Okta AWS CLI https://github.com/oktadev/okta-aws-cli-assume-role
-if [[ -f "$HOME/.okta/bash_functions" ]]; then
-    . "$HOME/.okta/bash_functions"
-fi
+# HashiCorp Vault CLI
+function vault-login() {
+    # check if VAULT_ADDR and OKTA_USERNAME are set
+    if [[ -z $VAULT_ADDR ]]; then
+        echo "VAULT_ADDR is not set"
+        return 1
+    fi
+    if [[ -z $OKTA_USERNAME ]]; then
+        echo "OKTA_USERNAME is not set"
+        return 1
+    fi
+    VAULT_TOKEN=$(vault login -token-only --address ${VAULT_ADDR} -method okta username=${OKTA_USERNAME})
+    export VAULT_TOKEN
+}
+
+function curl-time() {
+    curl -so /dev/null -w "\
+   namelookup:  %{time_namelookup}s\n\
+      connect:  %{time_connect}s\n\
+   appconnect:  %{time_appconnect}s\n\
+  pretransfer:  %{time_pretransfer}s\n\
+     redirect:  %{time_redirect}s\n\
+starttransfer:  %{time_starttransfer}s\n\
+-------------------------\n\
+        total:  %{time_total}s\n" "$@"
+}
