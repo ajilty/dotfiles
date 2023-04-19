@@ -32,6 +32,12 @@ git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME fetch --all
 git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME reset --merge
 git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME submodule update --force --recursive --init --remote
 ```
+
+## View tracked files
+```
+git  --git-dir=$HOME/.dotfiles/ --work-tree=$HOME ls-tree -r master --name-only
+```
+
 ## Add
 
 By default, files are not tracked. To add more files to be tracked or to add changes of existing tracked files:
