@@ -1,2 +1,3 @@
+# Ignores for the dotfiles repository. To modify global ignore configuration, eidt ~/.config/git/ignore
 .dotfiles
 *
