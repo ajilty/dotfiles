@@ -2,6 +2,12 @@
 # Oh My Zsh!
 # Configure plug-ins and preferences
 #######################################################
+
+# dotfile debug
+if [ -n "$DOTFILE_DEBUG" ]; then
+    echo "Loading ~/.zshrc"
+fi
+
 # Enable Oh My Zsh
 export ZSH=$HOME/.oh-my-zsh
 
