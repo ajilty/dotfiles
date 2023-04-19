@@ -9,5 +9,8 @@ alias config='/usr/bin/git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME'
 # Add dates and times to history view 
 alias history='history -i'
 
-# List git reports
-alias lsg='tree -d -x -C -L 3 ~/gits'
+# Get into gits and list them
+alias gits='cd ~/gits; tree -d -x -C -L 3 ~/gits'
+
+# Better local copies
+alias cp='rsync --archive --partial --progress'
