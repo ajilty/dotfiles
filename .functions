@@ -1,4 +1,9 @@
 #!/bin/bash
+# dotfile debug
+if [ -n "$DOTFILE_DEBUG" ]; then
+    echo "Loading ~/.functions"
+fi
+
 
 function git() {
     # override default clone behavior
