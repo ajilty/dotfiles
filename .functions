@@ -42,6 +42,23 @@ function git() {
     fi
 }
 
+function config-update-omz(){
+    # update oh-my-zsh and plugins
+    cd ~
+    config submodule update --force --recursive --init --remote
+    config add -f $(config submodule status | awk '{print $2}')
+    config status
+    echo 'Oh My Zsh and plug-in updates staged for commit'
+    echo 'Push? [y/N]'
+    read -r response
+
+    if [[ $response =~ ^([yY][eE][sS]|[yY])$ ]]; then
+        config commit -m "Update Oh My Zsh and plug-ins"
+        config push
+    fi
+
+}
+
 # HashiCorp Vault CLI
 function vault-login() {
     # check if VAULT_ADDR and OKTA_USERNAME are set
