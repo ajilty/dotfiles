@@ -3,12 +3,18 @@
 # Configure plug-ins and preferences
 #######################################################
 
-# dotfile debug
-if [ -n "$DOTFILE_DEBUG" ]; then
-    echo "Loading ~/.zshrc"
-fi
+# echo "file: .zshrc"
 
-# If we have homebrew, add site functions BEFORE oh-my-zsh which runs compinit
+# Set common env variables
+source ~/.env
+
+# Set common aliases
+source ~/.aliases
+
+# Set common shell functions
+source ~/.functions
+
+# Set zsh site functions if Homebrew is installed
 if type brew &>/dev/null
 then
   export FPATH="$(brew --prefix)/share/zsh/site-functions:${FPATH}"
@@ -30,7 +36,9 @@ zstyle :bracketed-paste-magic paste-finish pastefinish
 
 # Set location of plug-ins and themes
 export ZSH_CUSTOM=$HOME/.zsh_custom
-# Enable plug-ins and themes
+
+# Enable oh-my-zsh plug-ins and themes
+# Paths to binaries needs to be set before this in order for the plug-in to load
 plugins=(history
   zsh-autosuggestions
   zsh-syntax-highlighting
@@ -45,12 +53,18 @@ plugins=(history
   aws
   gcloud
   pip
-  pipenv
+  # pipenv
   poetry
   nmap
   gh
   1password
  )
+
+# Conditionally load pipenv plugin to avoid activation issues
+if [ "$TERM_PROGRAM" != "vscode" ]; then
+  plugins+=(pipenv)
+fi
+
 source $ZSH/oh-my-zsh.sh
 source $ZSH_CUSTOM/themes/powerlevel10k/powerlevel10k.zsh-theme
 source $ZSH_CUSTOM/themes/powerlevel10k/config/p10k-pure.zsh
@@ -62,12 +76,3 @@ HIST_FIND_NO_DUPS="true"
 HIST_IGNORE_SPACE="true"
 INC_APPEND_HISTORY="true"
 SHARE_HISTORY="true"
-
-# Set coomon env variables
-source ~/.env
-
-# Set common aliases
-source ~/.aliases
-
-# Set common shell functions
-source ~/.functions
