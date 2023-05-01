@@ -1,17 +1,12 @@
 #######################################################
 # DEFAULTS
 # From Ubuntu initial set-up
-#######################################################
-
 # ~/.bashrc: executed by bash(1) for non-login shells.
 # see chsh (in the package bash-doc)
 # for examples
+#######################################################
 
-# dotfile debug
-if [ -n "$DOTFILE_DEBUG" ]; then
-    echo "Loading ~/.bashrc"
-fi
-
+echo "Loading ~/.bashrc"
 
 # If not running interactively, don't do anything
 case $- in
