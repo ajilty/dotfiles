@@ -27,4 +27,14 @@ then
     eval "$(github-copilot-cli alias -- "$0")"
 fi
 
+# if pip3 is installed, use it
+if command -v pip3 &> /dev/null
+then
+    alias pip=pip3
+fi
 
+# if python3 is installed, use it
+if command -v python3 &> /dev/null
+then
+    alias python=python3
+fi
