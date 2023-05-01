@@ -2,9 +2,16 @@
 # SHELL
 #######################################################
 
-# dotfile debug
-if [ -n "$DOTFILE_DEBUG" ]; then
-    echo "Loading ~/.profile"
+# echo "file: .profile"
+
+# Set common aliases
+if [ -f ~/.aliases ]; then
+. ~/.aliases
+fi
+
+# Set common env variables
+if [ -f ~/.env ]; then
+. ~/.env
 fi
 
 # Use Zsh if it is installed
