@@ -77,3 +77,5 @@ HIST_FIND_NO_DUPS="true"
 HIST_IGNORE_SPACE="true"
 INC_APPEND_HISTORY="true"
 SHARE_HISTORY="true"
+ZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=60 # don't suggest large pastes
+ZSH_AUTOSUGGEST_STRATEGY=(match_prev_cmd completion) # suggest recent match whose preceding history item matches, otherwise use completion
