@@ -52,6 +52,7 @@ plugins=(history
   helm
   aws
   gcloud
+  azure
   pip
   # pipenv
   poetry
