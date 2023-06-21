@@ -12,6 +12,9 @@ alias ls='ls --color=auto'
 # Better grep
 alias grep='grep --color=auto'
 
+# Better history
+alias history='history -i -D'
+
 # Add dates and times to history view 
 alias history='history -i'
 
