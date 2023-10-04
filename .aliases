@@ -9,14 +9,11 @@ alias config='/usr/bin/git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME'
 # Better ls
 alias ls='ls --color=auto'
 
-# Better grep
+# Better grep - with color
 alias grep='grep --color=auto'
 
-# Better history
+# Better history - add dates and process elapse times
 alias history='history -i -D'
-
-# Add dates and times to history view 
-alias history='history -i'
 
 # Get into gits and list them
 alias gits='cd ~/gits; tree -d -x -C -L 3 ~/gits'
