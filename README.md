@@ -38,7 +38,7 @@ git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME submodule update --force --recu
 git  --git-dir=$HOME/.dotfiles/ --work-tree=$HOME ls-tree -r master --name-only
 ```
 
-## Add
+## Add tracked files
 
 By default, files are not tracked. To add more files to be tracked or to add changes of existing tracked files:
 ```bash
@@ -48,7 +48,16 @@ config commit <msg>
 config push
 ```
 
-## Update 
+## Add submodules
+```bash
+cd ~
+config submodule add <git url> .zsh_custom/plugins/<plug-in name>
+config commit <msg>
+config push
+???
+```
+
+## Update submodules
 
 To pull updates from sub modules (like zsh plug-ins and themes)
 ```
