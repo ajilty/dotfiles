@@ -22,7 +22,7 @@ fi
 
 # Enable Oh My Zsh
 export ZSH=$HOME/.oh-my-zsh
-
+ 
 ### Fix slowness of pastes with zsh-syntax-highlighting.zsh
 pasteinit() {
   OLD_SELF_INSERT=${${(s.:.)widgets[self-insert]}[2,3]}
@@ -41,6 +41,7 @@ export ZSH_CUSTOM=$HOME/.zsh_custom
 # Paths to binaries needs to be set before this in order for the plug-in to load
 plugins=(history
   zsh-autosuggestions
+  zsh-autocomplete
   zsh-syntax-highlighting
   history-substring-search
   git

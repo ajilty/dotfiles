@@ -4,6 +4,9 @@
 [submodule ".zsh_custom/plugins/zsh-completions"]
 	path = .zsh_custom/plugins/zsh-completions
 	url = https://github.com/zsh-users/zsh-completions
+[submodule ".zsh_custom/plugins/zsh-autocomplete"]
+	path = .zsh_custom/plugins/zsh-autocomplete
+	url = https://github.com/marlonrichert/zsh-autocomplete
 [submodule ".zsh_custom/plugins/zsh-syntax-highlighting"]
 	path = .zsh_custom/plugins/zsh-syntax-highlighting
 	url = https://github.com/zsh-users/zsh-syntax-highlighting
