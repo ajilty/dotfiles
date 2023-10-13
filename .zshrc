@@ -43,7 +43,7 @@ plugins=(history
   zsh-autosuggestions
   zsh-autocomplete
   zsh-syntax-highlighting
-  history-substring-search
+  # history-substring-search
   git
   git-auto-fetch
   urltools
