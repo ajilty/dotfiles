@@ -85,3 +85,48 @@ starttransfer:  %{time_starttransfer}s\n\
 -------------------------\n\
         total:  %{time_total}s\n" "$@"
 }
+
+
+function pip() {
+    if command -v brew >/dev/null 2>&1; then
+        if [[ "$1" == "install" && -z "$VIRTUAL_ENV" && -z "$CONDA_PREFIX" ]]; then
+            local pkgname="${2}"
+            local brewpkg=$(brew search "$pkgname" | grep -w "$pkgname")
+
+            if [ -n "$brewpkg" ]; then
+                echo "Package '$pkgname' is available in Homebrew."
+            else
+                echo "Package '$pkgname' is not found in Homebrew."
+            fi
+
+            echo "Choose the installation method:"
+            echo "  [p] Install with pip"
+            echo "  [b] Install with Homebrew (if available)"
+            echo "  Any other key to cancel"
+            read -n 1 -r user_choice
+            echo
+
+            case $user_choice in
+                [Pp])
+                    command pip "$@"
+                    ;;
+                [Bb])
+                    if [ -n "$brewpkg" ]; then
+                        brew install "$pkgname"
+                    else
+                        echo "Package '$pkgname' is not available in Homebrew. Cannot proceed with Homebrew installation."
+                    fi
+                    ;;
+                *)
+                    echo "Installation cancelled."
+                    return 1
+                    ;;
+            esac
+        else
+            command pip "$@"
+        fi
+    else
+        command pip "$@"
+    fi
+}
+
