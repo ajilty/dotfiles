@@ -60,6 +60,7 @@ plugins=(history
   nmap
   gh
   1password
+  brew
  )
 
 # Conditionally load pipenv plugin to avoid activation issues
@@ -80,3 +81,9 @@ INC_APPEND_HISTORY="true"
 SHARE_HISTORY="true"
 ZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=60 # don't suggest large pastes
 ZSH_AUTOSUGGEST_STRATEGY=(match_prev_cmd completion) # suggest recent match whose preceding history item matches, otherwise use completion
+
+# Customize auto-complete
+bindkey -M menuselect '\r' .accept-line
+
+# added by Snowflake SnowSQL installer v1.2
+export PATH=/Applications/SnowSQL.app/Contents/MacOS:$PATH
