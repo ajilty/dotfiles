@@ -21,10 +21,10 @@ alias gits='cd ~/gits; tree -d -x -C -L 3 ~/gits'
 # Better local copies
 alias cp='rsync --archive --partial --progress'
 
-#  GitHub Copilot CLI with ??, git?, and gh? aliases
-if command -v github-copilot-cli &> /dev/null
+# #  GitHub Copilot CLI 
+if command -v "gh" &> /dev/null
 then
-    eval "$(github-copilot-cli alias -- "$0")"
+    alias '??'='gh copilot suggest -t shell'
 fi
 
 # if pip3 is installed, use it
