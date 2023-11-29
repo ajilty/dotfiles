@@ -83,7 +83,9 @@ ZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=60 # don't suggest large pastes
 ZSH_AUTOSUGGEST_STRATEGY=(match_prev_cmd completion) # suggest recent match whose preceding history item matches, otherwise use completion
 
 # Customize auto-complete
-bindkey -M menuselect '\r' .accept-line
+bindkey -M menuselect "^[OD" .backward-char # auto-complete: ← exits menu select
+bindkey -M menuselect "^[OC" .forward-char  # auto-complete: → exits menu select
+# bindkey -M menuselect '\r' .accept-line     # auto-complete: enter should accept a selection in menu select
+# bindkey '^[v' .describe-key-briefly # Helper to find key bindings
 
-# added by Snowflake SnowSQL installer v1.2
-export PATH=/Applications/SnowSQL.app/Contents/MacOS:$PATH
+
