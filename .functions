@@ -130,3 +130,119 @@ function pip() {
     fi
 }
 
+# Quick git update: add changed tracked files to a new branch (ask for name), commit (message is same as branch name), and push
+
+function git-quick-branch() {
+    # Determine current and default branches
+    current_branch=$(git rev-parse --abbrev-ref HEAD)
+    default_branch=$(git remote show origin | grep "HEAD branch" | cut -d ":" -f 2 | sed -e 's/^[[:space:]]*//')
+
+    if [ "$current_branch" = "$default_branch" ]; then
+        # Logic for when on the default branch
+        echo "\nSwitching to default branch and pulling latest changes"
+        git pull || return
+
+        echo "\nCreating new branch. Enter branch name:"
+        read -r new_branch
+        new_branch=${new_branch:-$current_branch}
+
+        # Remove spaces in branch name, replace with dashes and lowercase
+        new_branch=$(echo $new_branch | tr '[:upper:]' '[:lower:]' | tr ' ' '-')
+
+        echo "\nCreating new branch: $new_branch"
+        git checkout -b $new_branch || return
+    else
+        # Logic for when on an existing branch
+        echo "\nYou are on branch '$current_branch'."
+        echo "Would you like to rebase or merge the default branch ('$default_branch') into it? (r/m/n)"
+        read -r action
+        case $action in
+            r)
+                git rebase origin/$default_branch || return
+                ;;
+            m)
+                git merge origin/$default_branch || return
+                ;;
+            *)
+                echo "Skipping rebase/merge."
+                ;;
+        esac
+    fi
+
+    # Add changes that are already staged or tracked
+    echo "\nAdding changes that are already staged or tracked"
+    git add -u
+
+    # Show updates and new files that are already staged
+    echo "\nCurrent status of tracked and staged files:"
+    git status --untracked-files=no --short
+
+    # Commit changes
+    echo "\nEnter commit message:"
+    read -r commit_message
+    commit_message=${commit_message:-"Update on $current_branch"}
+
+    git commit --quiet -m "$commit_message" || return
+
+    # Push changes
+    echo "\nReady to push to origin. Continue? (y/n)"
+    read -r confirm
+    if [ "$confirm" = "y" ]; then
+        git push --quiet --set-upstream origin $current_branch || return
+    else
+        echo "Push cancelled."
+        return
+    fi
+
+    # Ask to create a PR
+    echo "\nWould you like to create a pull request? (y/n)"
+    read -r create_pr
+    if [ "$create_pr" = "y" ]; then
+        git-quick-pr
+    fi
+}
+
+
+function git-quick-pr() {
+    # Get current branch name and default branch
+    current_branch=$(git rev-parse --abbrev-ref HEAD)
+    default_branch=$(git remote show origin | grep "HEAD branch" | cut -d ":" -f 2 | sed -e 's/^[[:space:]]*//')
+
+    # Replace dashes with spaces for the default PR title
+    pr_title_default=$(echo "$current_branch" | tr '-' ' ')
+
+    # Ask for PR title and body
+    echo "\nEnter PR title (default: '$pr_title_default'):"
+    read -r pr_title
+    pr_title=${pr_title:-$pr_title_default}
+
+    echo "\nEnter PR body (optional):"
+    read -r pr_body
+    pr_body=${pr_body:-"Automated PR"}
+
+    # Determine the service (GitHub or GitLab) and execute respective CLI commands
+    origin_url=$(git remote get-url origin)
+    if [[ "$origin_url" =~ github.com ]]; then
+        # Check if GitHub CLI is installed and create PR
+        if command -v gh &> /dev/null; then
+            echo "\nCreating GitHub PR"
+            gh pr create --title "$pr_title" --body "$pr_body" --base $default_branch --head $current_branch
+
+            echo "\nWaiting before checking PR status..."
+            for i in {10..1}; do echo -ne "$i... \r"; sleep 1; done; echo -ne "Completed! \n"
+
+            echo "Starting PR checks."
+            gh pr checks --watch --fail-fast
+            gh pr view --web
+        else
+            echo "\nGitHub CLI (gh) is not installed. Exiting."
+            return 1
+        fi
+    elif [[ "$origin_url" =~ gitlab.com ]]; then
+        echo "\nGitLab functionality is not implemented yet."
+        return 1
+    else
+        echo "\nRemote origin is not supported. Exiting."
+        return 1
+    fi
+}
