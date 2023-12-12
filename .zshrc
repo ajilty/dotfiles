@@ -22,6 +22,13 @@ fi
 
 # Enable Oh My Zsh
 export ZSH=$HOME/.oh-my-zsh
+
+# Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
+# Initialization code that may require console input (password prompts, [y/n]
+# confirmations, etc.) must go above this block; everything else may go below.
+if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
+  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
+fi
  
 ### Fix slowness of pastes with zsh-syntax-highlighting.zsh
 pasteinit() {
@@ -70,7 +77,8 @@ fi
 
 source $ZSH/oh-my-zsh.sh
 source $ZSH_CUSTOM/themes/powerlevel10k/powerlevel10k.zsh-theme
-source $ZSH_CUSTOM/themes/powerlevel10k/config/p10k-pure.zsh
+# source $ZSH_CUSTOM/themes/powerlevel10k/config/p10k-pure.zsh
+source ~/.p10k.zsh
 
 # Customize
 COMPLETION_WAITING_DOTS="true"
@@ -86,6 +94,4 @@ ZSH_AUTOSUGGEST_STRATEGY=(match_prev_cmd completion) # suggest recent match whos
 bindkey -M menuselect "^[OD" .backward-char # auto-complete: ← exits menu select
 bindkey -M menuselect "^[OC" .forward-char  # auto-complete: → exits menu select
 # bindkey -M menuselect '\r' .accept-line     # auto-complete: enter should accept a selection in menu select
-# bindkey '^[v' .describe-key-briefly # Helper to find key bindings
-
-
+# bindkey '^[v' .describe-key-briefly # Helper to find key bindings 
