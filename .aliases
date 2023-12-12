@@ -38,3 +38,6 @@ if command -v python3 &> /dev/null
 then
     alias python=python3
 fi
+
+# clean-up docker images and containers and volumes
+alias docker-clean='docker system prune --force --all --volumes'
