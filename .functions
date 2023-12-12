@@ -130,51 +130,40 @@ function pip() {
     fi
 }
 
-# Quick git update: add changed tracked files to a new branch (ask for name), commit (message is same as branch name), and push
+function git-unstage() {
+    git reset HEAD "$@"
+}
 
-function git-quick-branch() {
+# Quickly commit and push changes to a Git repository
+function git-quick() {
+    # Initial status check for tracked and staged changes
+    if [[ -z $(git status --porcelain --untracked-files=no) ]]; then
+        echo "\nNo tracked changes or staged changes."
+        return
+    fi
+
+    # Fetch updates
+    git fetch --quiet || return
+
     # Determine current and default branches
     current_branch=$(git rev-parse --abbrev-ref HEAD)
     default_branch=$(git remote show origin | grep "HEAD branch" | cut -d ":" -f 2 | sed -e 's/^[[:space:]]*//')
+    echo -e "\nCurrent branch: \033[1m$current_branch\033[0m"
 
+    # Branch creation if on default branch
     if [ "$current_branch" = "$default_branch" ]; then
-        # Logic for when on the default branch
-        echo "\nSwitching to default branch and pulling latest changes"
-        git pull || return
-
-        echo "\nCreating new branch. Enter branch name:"
+        echo "\nYou're on the default branch. Creating a new branch."
+        echo "\nEnter new branch name:"
         read -r new_branch
         new_branch=${new_branch:-$current_branch}
+        new_branch=$(echo $new_branch | tr '[:upper:]' '[:lower:]' | tr ' ' '-') # Format branch name
 
-        # Remove spaces in branch name, replace with dashes and lowercase
-        new_branch=$(echo $new_branch | tr '[:upper:]' '[:lower:]' | tr ' ' '-')
-
-        echo "\nCreating new branch: $new_branch"
-        git checkout -b $new_branch || return
-    else
-        # Logic for when on an existing branch
-        echo "\nYou are on branch '$current_branch'."
-        echo "Would you like to rebase or merge the default branch ('$default_branch') into it? (r/m/n)"
-        read -r action
-        case $action in
-            r)
-                git rebase origin/$default_branch || return
-                ;;
-            m)
-                git merge origin/$default_branch || return
-                ;;
-            *)
-                echo "Skipping rebase/merge."
-                ;;
-        esac
+        git checkout -b "$new_branch" || return
+        echo "\nCreated new branch: $new_branch"
     fi
 
-    # Add changes that are already staged or tracked
-    echo "\nAdding changes that are already staged or tracked"
+    # Add and show staged or tracked changes
     git add -u
-
-    # Show updates and new files that are already staged
-    echo "\nCurrent status of tracked and staged files:"
     git status --untracked-files=no --short
 
     # Commit changes
@@ -185,25 +174,29 @@ function git-quick-branch() {
     git commit --quiet -m "$commit_message" || return
 
     # Push changes
-    echo "\nReady to push to origin. Continue? (y/n)"
+    echo "\nPush to origin? (y/n)"
     read -r confirm
+    confirm=${confirm:-y}
     if [ "$confirm" = "y" ]; then
-        git push --quiet --set-upstream origin $current_branch || return
+        git push --quiet --set-upstream origin "$current_branch" || return
+        echo "\nPushed to origin."
+
+        # Create PR
+        echo "\nCreate PR? (y/n)"
+        read -r confirm
+        confirm=${confirm:-y}
+        if [ "$confirm" = "y" ]; then
+            git-pr
+        else
+            echo "PR cancelled."
+        fi
     else
         echo "Push cancelled."
-        return
-    fi
-
-    # Ask to create a PR
-    echo "\nWould you like to create a pull request? (y/n)"
-    read -r create_pr
-    if [ "$create_pr" = "y" ]; then
-        git-quick-pr
     fi
 }
 
-
-function git-quick-pr() {
+# Create a PR for the current branch
+function git-pr() {
     # Get current branch name and default branch
     current_branch=$(git rev-parse --abbrev-ref HEAD)
     default_branch=$(git remote show origin | grep "HEAD branch" | cut -d ":" -f 2 | sed -e 's/^[[:space:]]*//')
@@ -225,7 +218,7 @@ function git-quick-pr() {
     if [[ "$origin_url" =~ github.com ]]; then
         # Check if GitHub CLI is installed and create PR
         if command -v gh &> /dev/null; then
-            echo "\nCreating GitHub PR"
+            echo "\nCreating GitHub PR..."
             gh pr create --title "$pr_title" --body "$pr_body" --base $default_branch --head $current_branch
 
             echo "\nWaiting before checking PR status..."
