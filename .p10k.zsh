@@ -96,7 +96,6 @@
     # chezmoi_shell           # chezmoi shell (https://www.chezmoi.io/)
     # vpn_ip                # virtual private network indicator
     # disk_usage            # disk usage
-    # ram                   # free RAM
     # swap                  # used swap
     # todo                    # todo items (https://github.com/todotxt/todo.txt-cli)
     # timewarrior             # timewarrior tracking status (https://timewarrior.net/)
@@ -107,6 +106,7 @@
     # =========================[ Line #2 ]=========================
     newline
     load                  # CPU load
+    ram                   # free RAM
     # ip                    # ip address and bandwidth usage for a specified network interface
     # public_ip             # public IP address
     # proxy                 # system-wide http/https/ftp proxy
@@ -811,6 +811,9 @@
   typeset -g POWERLEVEL9K_LOAD_CRITICAL_FOREGROUND=166
   # Custom icon.
   # typeset -g POWERLEVEL9K_LOAD_VISUAL_IDENTIFIER_EXPANSION='⭐'
+
+  typeset -g POWERLEVEL9K_LOAD_WARNING_PCT=80
+  typeset -g POWERLEVEL9K_LOAD_CRITICAL_PCT=95
 
   ################[ todo: todo items (https://github.com/todotxt/todo.txt-cli) ]################
   # Todo color.
