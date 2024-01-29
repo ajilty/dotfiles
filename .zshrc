@@ -3,16 +3,9 @@
 # Configure plug-ins and preferences
 #######################################################
 
-# echo "file: .zshrc"
+echo "file: .zshrc"
 
-# Set common env variables
-source ~/.env
-
-# Set common aliases
-source ~/.aliases
-
-# Set common shell functions
-source ~/.functions
+source "$HOME/.profile"
 
 # Set zsh site functions if Homebrew is installed
 if type brew &>/dev/null

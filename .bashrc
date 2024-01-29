@@ -8,6 +8,8 @@
 
 echo "Loading ~/.bashrc"
 
+source "$HOME/.profile"
+
 # If not running interactively, don't do anything
 case $- in
     *i*) ;;
@@ -121,32 +123,3 @@ if ! shopt -oq posix; then
     . /etc/bash_completion
   fi
 fi
-
-# .bashrc is executed for interactive non-login shells. "upgrade" to zsh if we've got it
-
-if [ -z "${NOZSH}" ] && [ $TERM = "xterm" -o $TERM = "xterm-256color" -o $TERM = "screen" ] && type zsh &> /dev/null
-then
-    export SHELL=$(which zsh)
-    if [[ -o login ]]
-    then
-        exec zsh -l
-    else
-        exec zsh
-    fi
-fi
-
-# Set common aliases
-if [ -f ~/.aliases ]; then
-. ~/.aliases
-fi
-
-# Set common env variables
-if [ -f ~/.env ]; then
-. ~/.env
-fi
-
-# Set common shell functions
-if [ -f ~/.functions ]; then
-. ~/.functions
-fi
-
