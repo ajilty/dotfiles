@@ -3,7 +3,7 @@
 # Configure plug-ins and preferences
 #######################################################
 
-echo "file: .zshrc"
+# echo "file: .zshrc"
 
 source "$HOME/.profile"
 
