@@ -6,7 +6,7 @@
 # for examples
 #######################################################
 
-echo "Loading ~/.bashrc"
+# echo "Loading ~/.bashrc"
 
 source "$HOME/.profile"
 
