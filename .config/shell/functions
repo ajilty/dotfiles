@@ -19,6 +19,12 @@ function git() {
             replace_colon=${end_trimmed/:/\/};
             git_clone_destination=~/gits/$replace_colon;
             
+            if [[ -d $git_clone_destination ]]; then
+                echo "Already exists. Changing to directory. $git_clone_destination"
+                cd $git_clone_destination
+                return
+            fi
+
             echo "Where should git clone to? [$git_clone_destination]?"
             read -r response
             if [[ -z $response ]]; then
