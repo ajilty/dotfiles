@@ -5,6 +5,7 @@
 [default] 
 region = us-east-1
 output = yaml-stream
+cli_auto_prompt = on
 
 ; To log-in with AWS Identity Center, run `aws configure sso` or set here then run `aws sso login`
 ; [sso-session <sso_session_name>]

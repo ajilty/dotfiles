@@ -51,7 +51,7 @@ function git() {
 function config-update-omz(){
     # update oh-my-zsh and plugins
     cd ~
-    omz update
+    # omz update - this is handled via git submodules
     config submodule update --force --recursive --init --remote
     config add -f $(config submodule status | awk '{print $2}')
     config status
@@ -64,6 +64,14 @@ function config-update-omz(){
         config push
     fi
 
+}
+
+function config-zsh-reset(){
+    rm -f ~/.zcompdump*  # Remove zcompdump files (completion cache)
+    # Restart the zsh session
+    autoload -Uz compinit
+    compinit
+    exec zsh
 }
 
 # HashiCorp Vault CLI
