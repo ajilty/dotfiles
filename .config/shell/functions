@@ -51,6 +51,7 @@ function git() {
 function config-update-omz(){
     # update oh-my-zsh and plugins
     cd ~
+    omz update
     config submodule update --force --recursive --init --remote
     config add -f $(config submodule status | awk '{print $2}')
     config status
