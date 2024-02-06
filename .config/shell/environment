@@ -15,11 +15,6 @@ export PATH=$PATH:~/.local/bin
 # Local binaries
 export PATH=$PATH:~/bin
 
-# Local environment variables
-if [ -f ~/.local/config/shell/environment ]; then
-    source ~/.local/config/shell/environment
-fi
-
 # Homebrew
 if [ -d "/opt/homebrew/bin" ]; then
     export HOMEBREW_PREFIX="/opt/homebrew";
@@ -56,8 +51,11 @@ if command -v pyenv 1>/dev/null 2>&1; then
 fi
 
 # AWS
-export AWS_PAGER=""
-export AWS_DEFAULT_OUTPUT="yaml"
+if [ -f ~/.local/config/aws/config ]; then
+    export AWS_CONFIG_FILE=~/.local/config/aws/config
+else
+    export AWS_CONFIG_FILE=~/.config/aws/config
+fi
 
 # DotNET
 export DOTNET_ROOT=$(dirname $(which dotnet))
@@ -65,3 +63,9 @@ export DOTNET_ROOT=$(dirname $(which dotnet))
 # VSCode
 export PATH=$PATH:/Applications/Visual\ Studio\ Code.app/Contents/Resources/app/bin
 export PATH=$PATH:/Applications/Visual\ Studio\ Code\ -\ Insiders.app/Contents/Resources/app/bin
+
+# -----------------------------------------------
+# Local environment variables. This is last to override any previous settings
+if [ -f ~/.local/config/shell/environment ]; then
+    source ~/.local/config/shell/environment
+fi

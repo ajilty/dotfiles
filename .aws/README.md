@@ -1,1 +1,0 @@
-`jinja2 config.tmpl --format=yaml config.yaml > confg`
