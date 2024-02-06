@@ -1,0 +1,21 @@
+; This file is use to provide example of how to configure AWS
+; ~/.local/config/aws/config overrides this file entirely
+
+
+[default] 
+region = us-east-1
+output = yaml-stream
+
+; To log-in with AWS Identity Center, run `aws configure sso` or set here then run `aws sso login`
+; [sso-session <sso_session_name>]
+; sso_start_url = https://<>/start
+; sso_region = <identity_center_region>
+; sso_registration_scopes = sso:account:access
+
+; To add more sso profiles,  run `aws configure sso`, then set the profile name
+
+; [profile <profile_name>]
+; sso_session=<sso_session_name>
+; sso_account_id = <target_account_id>
+; sso_role_name = <target_account_role_name>
+; region = <target_account_region_override>
