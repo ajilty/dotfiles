@@ -258,12 +258,12 @@ function git-pr() {
 
 # helpful AWS context. get get-caller-identity, resolve account ID to account alias, print this all out
 function aws-whoami {
-    caller_identity=$(aws sts get-caller-identity --output json)
+    caller_identity=$(aws sts get-caller-identity --output json --no-cli-pager)
     account_id=$(echo $caller_identity | jq -r '.Account')
     account_alias=$(aws iam list-account-aliases --output json | jq -r '.AccountAliases[0]')
     echo "[Current Identity]"
     echo "Account Alias: $account_alias"
-    aws sts get-caller-identity --output yaml
+    aws sts get-caller-identity --output yaml --no-cli-pager 
 
     echo "\n[Configuration]"
     aws configure list  --output table
