@@ -193,7 +193,7 @@ function git-quick() {
     read -r confirm
     confirm=${confirm:-y}
     if [ "$confirm" = "y" ]; then
-        git push --quiet --set-upstream origin "$current_branch" || return
+        git push --quiet || return
         echo "\nPushed to origin."
 
         # Create PR
