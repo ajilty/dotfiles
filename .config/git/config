@@ -1,42 +1,48 @@
+[core]
+  editor = code --wait
+  excludesfile = ~/.config/git/ignore
+
 [include]
     path = ~/.local/config/git/config
 	
 [init]
-	defaultBranch = master
+	defaultBranch = maaster
 
 [push]
 	default = current # only push current branch
 	autoSetupRemote = true
 
 [pull]
-	# A rebase more or less takes all your changes, sets them aside, fetches in the changes, then re-applies your changes as if you had made the changes from the newest version.
-	# Rebasing is similar to asking Git, “Can you just add my new stuff on top of the stuff that has already been done?”
-	rebase = true
-	# A fast-forward works the other way. It computes the difference and between the parent and current state, then applies that at the end.
-	# autoStash = true
-[fetch]
-	# This configuration will automatically clean Git objects in your repository locally whenever you fetch changes from remote
-	prune = true
+	rebase = true # Rebasing is similar to asking Git, “Can you just add my new stuff on top of the stuff that has already been done?”
+	autoStash = true # automatically stashes your uncommitted changes before starting a rebase and then reapplies them after the rebase is complete
+	#ff = only # A fast-forward works the other way. It computes the difference and between the parent and current state, then applies that at the end.
 
-[core]
-  editor = code --wait
-  excludesfile = ~/.config/git/ignore
-[diff]
-  tool = vscode
-[difftool "vscode"]
-  cmd = code --wait --diff $LOCAL $REMOTE
-[merge]
-  tool = vscode
-[mergetool "vscode"]
-  cmd = code --wait $MERGED
+[fetch]
+	prune = true # remove remote branches that no longer exist on the remote
+
 [rebase]
 	autoStash = true
+
+[diff]
+  tool = vscode
+
+[difftool "vscode"]
+  cmd = code --wait --diff $LOCAL $REMOTE
+
+[merge]
+  tool = vscode
+
+[mergetool "vscode"]
+  cmd = code --wait $MERGED
+
 [credential "https://github.com"]
 	helper = 
 	helper = !gh auth git-credential
+
 [credential "https://gist.github.com"]
 	helper = 
 	helper = !gh auth git-credentialc
+
 [filter "lfs"]
 	clean = git-lfs clean -- %f
 	smudge = git-lfs smudge -- %f
