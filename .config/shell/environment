@@ -60,6 +60,8 @@ fi
 
 # DotNET
 export DOTNET_ROOT=$(dirname $(which dotnet))
+export DOTNET_SKIP_FIRST_TIME_EXPERIENCE=true
+export DOTNET_CLI_TELEMETRY_OPTOUT=false
 
 # VSCode
 export PATH=$PATH:/Applications/Visual\ Studio\ Code.app/Contents/Resources/app/bin
