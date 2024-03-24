@@ -29,6 +29,7 @@ fi
 if [ -d "$TMPDIR" ]; then
     export TMPPREFIX="$TMPDIR"
     export TMUX_TMPDIR="$TMPDIR"
+    export HOMEBREW_TEMP="$TMPDIR"
 fi
 
 # Golang
