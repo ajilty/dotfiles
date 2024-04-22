@@ -92,30 +92,40 @@ function git() {
     fi
 }
 
-function dotfiles-omz-update(){
+function dotfiles-zsh-update(){
     # update oh-my-zsh and plugins
     cd ~
     # omz update - this is handled via git submodules
-    config submodule update --force --recursive --init --remote
-    config add -f $(config submodule status | awk '{print $2}')
-    config status
+    dotfiles submodule update --force --recursive --init --remote
+    dotfiles add -f $(config submodule status | awk '{print $2}')
+    dotfiles status
     echo 'Oh My Zsh and plug-in updates staged for commit'
     echo 'Push? [y/N]'
     read -r response
 
     if [[ $response =~ ^([yY][eE][sS]|[yY])$ ]]; then
-        config commit -m "Update Oh My Zsh and plug-ins"
-        config push
+        dotfiles commit -m "Update Oh My Zsh and plug-ins"
+        dotfiles push
     fi
 
 }
 
-function dotfile-zsh-clean(){
+function dotfiles-zsh-clean(){
     rm -f ~/.zcompdump*  # Remove zcompdump files (completion cache)
     # Restart the zsh session
     autoload -Uz compinit
     compinit
     exec zsh
+}
+
+# Backup installed brew packages
+function dotfiles-brew-sync(){
+    # Backup installed brew packages
+    rm $HOME/.config/homebrew/Brewfile
+    brew bundle --casks --brews --taps dump --file=$HOME/.config/homebrew/Brewfile
+    dotfiles add -f $HOME/.config/homebrew/Brewfile
+    dotfiles commit -m "Backup installed brew packages from $HOST"
+    dotfiles push
 }
 
 # HashiCorp Vault CLI
