@@ -121,9 +121,16 @@ function dotfiles-zsh-clean(){
 # Backup installed brew packages
 function dotfiles-brew-sync(){
     # Backup installed brew packages
-    rm $HOME/.config/homebrew/Brewfile
-    brew bundle --casks --brews --taps dump --file=$HOME/.config/homebrew/Brewfile
-    dotfiles add -f $HOME/.config/homebrew/Brewfile
+    # pull the latest changes from the remote repository
+    cd $HOME/.config/homebrew
+    dotfiles pull
+    brew bundle --casks --brews --taps dump --file=Brewfile.backup
+
+    # merge the backup file with the current Brewfile, remove duplicates and sort
+    cat Brewfile.backup Brewfile | sort | uniq > Brewfile    
+    rm Brewfile.backup
+
+    dotfiles add -f Brewfile
     dotfiles commit -m "Backup installed brew packages from $HOST"
     dotfiles push
 }
