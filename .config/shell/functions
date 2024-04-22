@@ -123,12 +123,13 @@ function dotfiles-brew-sync(){
     # Backup installed brew packages
     # pull the latest changes from the remote repository
     cd $HOME/.config/homebrew
-    dotfiles pull
+    
+    mv Brewfile Brewfile.incoming
     brew bundle --casks --brews --taps dump --file=Brewfile.backup
 
     # merge the backup file with the current Brewfile, remove duplicates and sort
-    cat Brewfile.backup Brewfile | sort | uniq > Brewfile    
-    rm Brewfile.backup
+    cat Brewfile.backup Brewfile.incoming | sort | uniq > Brewfile    
+    rm Brewfile.backup Brewfile.incoming
 
     dotfiles add -f Brewfile
     dotfiles commit -m "Backup installed brew packages from $HOST"
