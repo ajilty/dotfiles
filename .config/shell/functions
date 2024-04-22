@@ -92,7 +92,7 @@ function git() {
     fi
 }
 
-function config-update-omz(){
+function dotfiles-omz-update(){
     # update oh-my-zsh and plugins
     cd ~
     # omz update - this is handled via git submodules
@@ -110,7 +110,7 @@ function config-update-omz(){
 
 }
 
-function config-zsh-reset(){
+function dotfile-zsh-clean(){
     rm -f ~/.zcompdump*  # Remove zcompdump files (completion cache)
     # Restart the zsh session
     autoload -Uz compinit
