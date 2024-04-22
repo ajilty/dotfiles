@@ -5,9 +5,11 @@
 
 # Sane dotfitl management inspired by https://www.atlassian.com/git/tutorials/dotfiles
 alias config='/usr/bin/git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME'
+alias dotfiles='/usr/bin/git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME'
 
 # Better ls
 alias ls='ls --color=auto'
+alias ll='ls -aslhtc --color=auto'
 
 # Better grep - with color
 alias grep='grep --color=auto'
