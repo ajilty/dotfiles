@@ -126,7 +126,7 @@ function dotfiles-brew-sync(){
     
     mv Brewfile Brewfile.incoming
     brew bundle --casks --brews --taps dump --file=Brewfile.backup
-
+                                                                                                                       
     # merge the backup file with the current Brewfile, remove duplicates and sort
     cat Brewfile.backup Brewfile.incoming | sort | uniq > Brewfile    
     rm Brewfile.backup Brewfile.incoming
@@ -134,6 +134,10 @@ function dotfiles-brew-sync(){
     dotfiles add -f Brewfile
     dotfiles commit -m "Backup installed brew packages from $HOST"
     dotfiles push
+
+    brew bundle --verbose --no-upgrade  check --file=Brewfile
+    echo "Brewfile updated and checked for consistency"
+    echo "To install packages run: brew bundle --verbose --no-upgrade install --file=Brewfile"
 }
 
 # HashiCorp Vault CLI
@@ -229,7 +233,7 @@ function git-quick() {
 
     # Branch creation if on default branch
     if [ "$current_branch" = "$default_branch" ]; then
-        echo "\nYou're on the default branch. Creating a new branch."
+        echo "\nYou're on the default branch. Creating a new branch..."
         echo "\nEnter new branch name:"
         read -r new_branch
         new_branch=${new_branch:-$current_branch}
@@ -240,6 +244,7 @@ function git-quick() {
     fi
 
     # Add and show staged or tracked changes
+    echo "\nStaged changes:"
     git add -u
     git status --untracked-files=no --short
 
