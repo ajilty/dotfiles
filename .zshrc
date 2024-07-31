@@ -1,6 +1,6 @@
 #######################################################
 # Oh My Zsh!
-# Configure plug-ins and preferences
+# Configure ylug-ins and preferences
 #######################################################
 
 # echo "file: .zshrc"
@@ -54,12 +54,13 @@ plugins=(aws
   # poetry - breaks
   nmap
   terraform
+  fzf
  )
 
 # Conditionally load pipenv plugin to avoid activation issues
-if [ "$TERM_PROGRAM" != "vscode" ]; then
-  plugins+=(pipenv)
-fi
+# if [ "$TERM_PROGRAM" != "vscode" ]; then
+#   plugins+=(pipenv)
+# fi
 
 source $ZSH/oh-my-zsh.sh
 source $ZSH_CUSTOM/themes/powerlevel10k/powerlevel10k.zsh-theme
@@ -77,7 +78,7 @@ ZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=60 # don't suggest large pastes
 ZSH_AUTOSUGGEST_STRATEGY=(match_prev_cmd completion) # suggest recent match whose preceding history item matches, otherwise use completion
 
 # Customize auto-complete
-# bindkey -M menuselect "^[OD" .backward-char # auto-complete: ← exits menu select
-# bindkey -M menuselect "^[OC" .forward-char  # auto-complete: → exits menu select
-# bindkey -M menuselect '\r' .accept-line     # auto-complete: enter should accept a selection in menu select
-# bindkey '^[v' .describe-key-briefly # Helper to find key bindings 
+bindkey -M menuselect "^[OD" .backward-char # auto-complete: ← exits menu select
+bindkey -M menuselect "^[OC" .forward-char  # auto-complete: → exits menu select
+bindkey -M menuselect '\r' .accept-line     # auto-complete: enter should accept a selection in menu select
+bindkey '^[v' .describe-key-briefly # Helper to find key bindings 
