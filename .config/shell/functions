@@ -240,20 +240,33 @@ function git-quick() {
         new_branch=$(echo $new_branch | tr '[:upper:]' '[:lower:]' | tr ' ' '-') # Format branch name
 
         git checkout -b "$new_branch" || return
-        echo "\nCreated new branch: $new_branch"
+
     fi
 
-    # Add and show staged or tracked changes
-    echo "\nStaged changes:"
-    git add -u
-    git status --untracked-files=no --short
+    # Show currently staged changes
+    git status
 
-    # Commit changes
-    echo "\nEnter commit message:"
-    read -r commit_message
-    commit_message=${commit_message:-"Update on $current_branch"}
+    # Offer to stage modified files
+    echo "\nStage modified files? (y/n)"
+    read -r confirm
+    confirm=${confirm:-y}
+    if [ "$confirm" = "y" ]; then
+        git add -u || return
+        echo "\nStaged all modified files."
+        git status
+    fi
 
-    git commit --quiet -m "$commit_message" || return
+    ## If there are staged changes, ask for commit message
+    if [[ -z $(git diff --cached --name-only) ]]; then
+        echo "\nNo staged changes."
+    else
+        # Commit changes
+        echo "\nEnter commit message:"
+        read -r commit_message
+        commit_message=${commit_message:-"Update on $current_branch"}
+
+        git commit --quiet -m "$commit_message" || return
+    fi
 
     # Push changes
     echo "\nPush to origin? (y/n)"
@@ -300,6 +313,9 @@ function git-pr() {
     if [[ "$origin_url" =~ github.com ]]; then
         # Check if GitHub CLI is installed and create PR
         if command -v gh &> /dev/null; then
+            # Check that the user is logged in to github.com using gh status command and login if not
+            gh auth status --hostname github.com || gh auth login --hostname github.com --git-protocol https --web
+
             echo "\nCreating GitHub PR..."
             gh pr create --title "$pr_title" --body "$pr_body" --base $default_branch --head $current_branch
 
