@@ -7,18 +7,17 @@
 alias config='/usr/bin/git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME'
 alias dotfiles='/usr/bin/git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME'
 
-# Better ls
 alias ls='ls --color=auto'
 alias ll='ls -aslhtc --color=auto'
 
-# Better grep - with color
 alias grep='grep --color=auto'
-
-# Better history - add dates and process elapse times
-alias history='history -i -D'
 
 # Get into gits and list them
 alias gits='cd ~/gits; tree -d -x -C -L 3 ~/gits'
+# gits-find - find directory in gits folder with name with case-insensitive search
+gits-find() {
+    find ~/gits -type d -iname "*$1*"
+}
 
 # Better local copies
 alias cp='rsync --archive --partial --progress'
