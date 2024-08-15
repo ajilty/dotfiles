@@ -215,6 +215,12 @@ function git-unstage() {
     git reset HEAD "$@"
 }
 
+# For a given file, unstage(if staged) and discard changes
+function git-discard() {
+    git reset HEAD "$@"
+    git checkout -- "$@"
+}
+
 # Quickly commit and push changes to a Git repository
 function git-quick() {
     # Initial status check for tracked and staged changes

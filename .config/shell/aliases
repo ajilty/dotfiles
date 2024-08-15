@@ -6,6 +6,7 @@
 # Sane dotfitl management inspired by https://www.atlassian.com/git/tutorials/dotfiles
 alias config='/usr/bin/git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME'
 alias dotfiles='/usr/bin/git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME'
+alias dotfile-shell='export GIT_DIR=$HOME/.dotfiles; export GIT_WORK_TREE=$HOME'
 
 alias ls='ls --color=auto'
 alias ll='ls -aslhtc --color=auto'
