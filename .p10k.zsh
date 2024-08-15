@@ -33,6 +33,7 @@
     # =========================[ Line #1 ]=========================
     # os_icon               # os identifier
     dir                     # current directory
+    gitdir          # custom git directory set
     vcs                     # git status
     # =========================[ Line #2 ]=========================
     newline                 # \n
@@ -1652,6 +1653,12 @@
   function prompt_example() {
     p10k segment -f 208 -i '⭐' -t 'hello, %n'
   }
+
+  function prompt_gitdir() {
+  if [[ -n $GIT_DIR && $GIT_DIR != .git ]]; then
+    p10k segment -f 208 -t "Git Shell${GIT_DIR}"
+  fi
+}
 
   # User-defined prompt segments may optionally provide an instant_prompt_* function. Its job
   # is to generate the prompt segment for display in instant prompt. See
