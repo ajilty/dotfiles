@@ -54,6 +54,7 @@ cd ~
 config submodule add <git url> .zsh_custom/plugins/<plug-in name>
 config commit <msg>
 config push
+???
 ```
 
 ## Update submodules
