@@ -6,10 +6,10 @@
     path = ~/.local/config/git/config
 	
 [init]
-	defaultBranch = maaster
+	defaultBranch = master
 
 [push]
-	default = current # only push current branch
+	default = simple #  Configures the default behavior of git push when you don't specify a branch. Only allows pushing if the upstream branch has the same name as the local branch.
 	autoSetupRemote = true
 
 [pull]
@@ -18,8 +18,11 @@
 	#ff = only # in simple terms this "
 
 [fetch]
-	prune = true # remove remote branches that no longer exist on the remote
-
+	# prune = true # Automatically prunes remote-tracking branches that no longer exist on the remote when you run git fetch. This keeps your local list of remote branches clean and up-to-date.
+[remote "origin"]
+	fetch = +refs/heads/*:refs/remotes/origin/* # fetch all branches referneces by default
+[checkout]
+	defaultRemote = origin
 [rebase]
 	autoStash = true
 
@@ -48,3 +51,4 @@
 	smudge = git-lfs smudge -- %f
 	process = git-lfs filter-process
 	required = true
+
