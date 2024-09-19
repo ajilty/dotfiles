@@ -361,3 +361,12 @@ function aws-whoami {
     echo "\n[Profiles]"
     aws configure list-profiles  --output table
 }
+
+
+python-whoami() {
+    echo "Python Version: $(python --version)"
+    echo "Python Location: $(which python)"
+    echo "Python Virtual Environment: $VIRTUAL_ENV"
+    echo "Python Path: $PYTHONPATH"
+    echo "Python Packages: $(pip list)"
+}
