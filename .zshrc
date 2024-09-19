@@ -1,3 +1,10 @@
+# Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
+# Initialization code that may require console input (password prompts, [y/n]
+# confirmations, etc.) must go above this block; everything else may go below.
+# if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
+#   source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
+# fi
+
 # Load profile
 source "$HOME/.profile"
 
@@ -13,6 +20,7 @@ fi
 # directory (on github) that might be useful to zinit snippet directory. Should only be invoked
 # via zinit atclone"_fix-omz-plugin"
 _fix-omz-plugin() {
+   echo "RUNNING _fix-omz-plugin"
    local PLUG_DIR="$(pwd)" # not sure why after clone, the directory is not the plugin directory
 
   if [[ ! -f ._zinit/teleid ]] then return 0; fi
@@ -41,8 +49,6 @@ ZINIT_HOME="${XDG_DATA_HOME:-${HOME}/.local/share}/zinit/zinit.git"
 [ ! -d $ZINIT_HOME/.git ] && git clone https://github.com/zdharma-continuum/zinit.git "$ZINIT_HOME"
 source "${ZINIT_HOME}/zinit.zsh"
 
-# Skip the not really helping Ubuntu global compinit
-skip_global_compinit=1
 
 # ZSH Customizations
 COMPLETION_WAITING_DOTS="true"
@@ -54,78 +60,93 @@ SHARE_HISTORY="true"
 ZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=60 # don't suggest large pastes
 ZSH_AUTOSUGGEST_STRATEGY=(match_prev_cmd completion) # suggest recent match whose preceding history item matches, otherwise use completion
 
-# ZSH Plugins
-zinit wait lucid for \
-    OMZP::git \
-    OMZP::git-auto-fetch \
-    OMZP::gh \
-    OMZP::dotenv \
-    OMZP::aws \
-    OMZP::azure \
-    OMZP::gcloud \
-    OMZP::kubectl \
-    OMZP::helm \
-    OMZP::docker \
-    OMZP::docker-compose \
-    OMZP::terraform \
-    OMZP::pip \
-    OMZP::pipenv \
-    OMZP::poetry \
-    OMZP::npm \
-    OMZP::yarn \
-    OMZP::node \
-    OMZP::1password \
-    OMZP::vscode \
-    OMZP::brew \
-    OMZP::nmap
-    # OMZP::pyenv
+# ===  Plugin and Theme Installation with Zinit  ===
 
+# Enable Plugin Completion Management
+zinit cdclear -q  # Clear any existing compdef entries
+# Skip global compinit on Ubuntu
+skip_global_compinit=1
+
+# if .cache/zinit/completions doesn't exist, create it
+[ ! -d ~/.cache/zinit/completions ] && mkdir -p ~/.cache/zinit/completions
+zinit wait lucid for \
+      OMZP::git \
+      OMZP::gitfast \
+      OMZP::git-auto-fetch \
+      OMZP::gh \
+      OMZP::dotenv \
+      OMZP::aws \
+      OMZP::azure \
+      OMZP::gcloud \
+      OMZP::kubectl \
+      OMZP::helm \
+      OMZP::docker \
+      OMZP::docker-compose \
+      OMZP::vagrant \
+      OMZP::terraform \
+      OMZP::pip \
+      OMZP::pipenv \
+      OMZP::poetry \
+      OMZP::npm \
+      OMZP::yarn \
+      OMZP::node \
+      OMZP::1password \
+      OMZP::vscode \
+      OMZP::brew \
+      OMZP::nmap \
+      OMZP::pyenv
+
+# stuft that unproven
+#    atpull"%atclone" atclone"_fix-omz-plugin" multisrc"{1password.plugin.zsh _opswd opswd}" \
+#       OMZP::terraform/_terraform \
+#       OMZP::vagrant/_vagrant \
+#       OMZP::docker-compose/_docker-compose \
+#       OMZP::docker/completions/_docker \
+# zi ice as"completion"
+# zi snippet OMZP::gitfast/_git
+zi ice as"completion"
+zi snippet OMZP::vagrant/_vagrant
 
 # These plugins have more than one file, so we need to clone the whole repo
 zinit wait lucid for \
     atpull"%atclone" atclone"_fix-omz-plugin" \
         OMZP::gitfast
+# zinit wait lucid as"completion" for \
+   
 
-PS1="READY >" # provide a simple prompt till the theme loads
+
+# Install Powerlevel10k
+PS1="Loading..." # provide a simple prompt till the theme loads
 setopt promptsubst
-zinit ice depth=1; zinit light romkatv/powerlevel10k
-[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+zinit ice depth'1' lucid nocd atload'source ~/.p10k.zsh; _p9k_precmd'
+zinit light romkatv/powerlevel10k 
 
-# 
-# zi for \
-#     atload"zicompinit; zicdreplay" \
-#     blockf \
-#     lucid \
-#     wait \
-#         zsh-users/zsh-completions \
-#         zsh-users/zsh-autosuggestions \
-#         zdharma-continuum/fast-syntax-highlighting \
-#     ver"23.07.13" \
-#     atload'zicompinit' \
-#         marlonrichert/zsh-autocomplete
-
-
-
-
+# Install Plugins for Enhanced Completion, Syntax Highlighting, and Autosuggestions - Load with Turbo
 zinit wait lucid for \
- atinit"ZINIT[COMPINIT_OPTS]=-C; zicompinit; zicdreplay" \
-    zdharma-continuum/fast-syntax-highlighting \
- blockf \
-    zsh-users/zsh-completions \
- atload"!_zsh_autosuggest_start" \
-    zsh-users/zsh-autosuggestions
+   atinit"ZINIT[COMPINIT_OPTS]=-C; zicompinit; zicdreplay" \
+      zdharma-continuum/fast-syntax-highlighting \
+   atload"!_zsh_autosuggest_start" \
+      zsh-users/zsh-autosuggestions 
 
-# zinit wait lucid for \
-#   atload"zicdreplay" \
-#   ver"23.07.13" \
-#     marlonrichert/zsh-autocomplete
+zi for \
+      atload"zicompinit; zicdreplay" \
+      blockf \
+      lucid \
+      wait \
+   zsh-users/zsh-completions \
+   zsh-users/zsh-autosuggestions \
+   zdharma-continuum/fast-syntax-highlighting 
+   
+# zi ice ver"23.07.13"
+# zi load marlonrichert/zsh-autocomplete
 
-# zinit ice ver"23.07.13" atload'zicompinit'
-# zinit light marlonrichert/zsh-autocomplete
-# zinit ice ver"23.07.13"; zinit load marlonrichert/zsh-autocomplete
+
 
 # # Customize auto-complete
 # bindkey -M menuselect "^[OD" .backward-char # auto-complete: ← exits menu select
 # bindkey -M menuselect "^[OC" .forward-char  # auto-complete: → exits menu select
 # bindkey -M menuselect '\r' .accept-line     # auto-complete: enter should accept a selection in menu select
 # bindkey '^[v' .describe-key-briefly # Helper to find key bindings 
+
+# Powerlevel10k Instant Prompt
+(( ! ${+functions[p10k]} )) || p10k finalize
