@@ -64,17 +64,21 @@ function git() {
             git_clone_destination=~/gits/$replace_colon;
             
             if [[ -d $git_clone_destination ]]; then
-                echo "Already exists. Changing to directory. $git_clone_destination"
+                echo "Clone destination already exists. Changing to directory. $git_clone_destination"
                 cd $git_clone_destination
                 return
             fi
 
-            echo "Where should git clone to? [$git_clone_destination]?"
-            read -r response
-            if [[ -z $response ]]; then
-                response=$git_clone_destination
+            if [[ -n $3 ]]; then
+                git_clone_destination=$3
             else
-                git_clone_destination=$response
+                echo "Where should git clone to? [$git_clone_destination]?"
+                read -r response
+                if [[ -z $response ]]; then
+                    response=$git_clone_destination
+                else
+                    git_clone_destination=$response
+                fi
             fi
 
             echo $git_clone_destination;
@@ -83,39 +87,10 @@ function git() {
             # handle unknown repo source types directly
             command git "$@";
         fi
-
-        # change to new directory
-        cd $git_clone_destination;
     else
-        # handle other sub commands directly 
+        # handle other git commands directly
         command git "$@";
     fi
-}
-
-function dotfiles-zsh-update(){
-    # update oh-my-zsh and plugins
-    cd ~
-    # omz update - this is handled via git submodules
-    dotfiles submodule update --force --recursive --init --remote
-    dotfiles add -f $(config submodule status | awk '{print $2}')
-    dotfiles status
-    echo 'Oh My Zsh and plug-in updates staged for commit'
-    echo 'Push? [y/N]'
-    read -r response
-
-    if [[ $response =~ ^([yY][eE][sS]|[yY])$ ]]; then
-        dotfiles commit -m "Update Oh My Zsh and plug-ins"
-        dotfiles push
-    fi
-
-}
-
-function dotfiles-zsh-clean(){
-    rm -f ~/.zcompdump*  # Remove zcompdump files (completion cache)
-    # Restart the zsh session
-    autoload -Uz compinit
-    compinit
-    exec zsh
 }
 
 # Backup installed brew packages
