@@ -67,9 +67,9 @@ zinit cdclear -q  # Clear any existing compdef entries
 skip_global_compinit=1 # Skip global compinit on Ubuntu
 [ ! -d ~/.cache/zinit/completions ] && mkdir -p ~/.cache/zinit/completions # Create completion cache directory
 zinit wait lucid for \
-    OMZP::git \
     OMZP::git-auto-fetch \
     OMZP::gh \
+    OMZP::direnv \
     OMZP::dotenv \
     OMZP::aws \
     OMZP::azure \

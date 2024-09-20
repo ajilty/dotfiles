@@ -93,32 +93,6 @@ function git() {
     fi
 }
 
-function dotfiles-zsh-update(){
-    # update oh-my-zsh and plugins
-    cd ~
-    # omz update - this is handled via git submodules
-    dotfiles submodule update --force --recursive --init --remote
-    dotfiles add -f $(config submodule status | awk '{print $2}')
-    dotfiles status
-    echo 'Oh My Zsh and plug-in updates staged for commit'
-    echo 'Push? [y/N]'
-    read -r response
-
-    if [[ $response =~ ^([yY][eE][sS]|[yY])$ ]]; then
-        dotfiles commit -m "Update Oh My Zsh and plug-ins"
-        dotfiles push
-    fi
-
-}
-
-function dotfiles-zsh-clean(){
-    rm -f ~/.zcompdump*  # Remove zcompdump files (completion cache)
-    # Restart the zsh session
-    autoload -Uz compinit
-    compinit
-    exec zsh
-}
-
 # Backup installed brew packages
 function dotfiles-brew-sync(){
     # Backup installed brew packages
