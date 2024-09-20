@@ -69,7 +69,6 @@ skip_global_compinit=1 # Skip global compinit on Ubuntu
 zinit wait lucid for \
     OMZP::git-auto-fetch \
     OMZP::gh \
-    OMZP::direnv \
     OMZP::dotenv \
     OMZP::aws \
     OMZP::azure \
@@ -93,10 +92,11 @@ zinit wait lucid for \
     OMZP::poetry \
     OMZP::npm \
     OMZP::yarn \
-    OMZP::node \
-    OMZP::1password \
   as"completion" \
-    OMZP::1password/_opswd \
+    OMZP::yarn/_yarn \
+    OMZP::node \
+  if'[[ -n "$commands[op]" ]]' atload'eval "$(op completion zsh)"; compdef _op o' \
+    OMZP::1password \
     OMZP::vscode \
     OMZP::brew \
     OMZP::nmap \
@@ -104,7 +104,6 @@ zinit wait lucid for \
 # These plugins have more than one file, so we need to clone the whole repo
 zinit atpull"%atclone" atclone"_fix-omz-plugin" wait lucid for \
     OMZP::gitfast
-
 
 # Theme Management
 PS1="Loading..." # provide a simple prompt till the theme loads
