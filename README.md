@@ -1,70 +1,45 @@
-Configuration files for many of the tools that I including.:
-- docker kubectl aws gcloud
-- go
-- git
+# Dotfiles
 
-# Requirements
-- zsh 
-- jinga2 (for .aws templates)
+## Requirements
 
-Install on macOS
-```bash
-sudo port install -y zsh py38-jinja2
-```
-Install on Ubuntu/Debian
-```
-sudo apt install -y zsh python-jinja2
-```
+- `zsh`
+- `git`
+- `curl` or `wget` (for [Zinit](https://github.com/zdharma-continuum/zinit))
 
-# Guide
-
-## Setup
+## Initial Setup
 
 One new machines, the following commands will set these dot files
-They are careful not to overrite files if they already exit. 
+They are careful not to overrite files if they already exist.
 You can modify this behavior with flags to the `reset` command.
 
-An alias to `config` should be used after initial set-up
-```
+An alias to `dotfiles` should be used **after** this set-up
+
+```bash
+# start from home directory
 cd ~
+# clone just the .git directory to a subpath
 git clone --bare https://github.com/ajilty/dotfiles.git $HOME/.dotfiles
+# fetch without pulling down files
 git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME fetch --all
+# pull down files, handle conflicts with current go reckless with `reset --hard`
 git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME reset --merge
-git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME submodule update --force --recursive --init --remote
+# restart shell
+exec zsh
 ```
 
-## View tracked files
-```
-git  --git-dir=$HOME/.dotfiles/ --work-tree=$HOME ls-tree -r master --name-only
-```
+## Commands
 
-## Add tracked files
+| Action                | Command                                                                 |
+|-----------------------|-------------------------------------------------------------------------|
+| View tracked files    | `dotfiles-tracked`                                                      |
+| Add tracked files     | `dotfiles add -f <file or directory to add>`<br>`dotfiles commit <msg>`<br>`dotfiles push`                                                                                             |
+| Update     | `dotfiles-update`                                                                  |
+| Shell    | `dotfiles-shell`                                                         |
 
-By default, files are not tracked. To add more files to be tracked or to add changes of existing tracked files:
-```bash
-cd ~
-config add <file or directory to add>
-config commit <msg>
-config push
-```
+Also see [Zinit commands](https://github.com/zdharma-continuum/zinit?tab=readme-ov-file#zinit-commands)
 
-## Add submodules
-```bash
-cd ~
-config submodule add <git url> .zsh_custom/plugins/<plug-in name>
-config commit <msg>
-config push
-???
-```
+# Resources
 
-## Update submodules
-
-To pull updates from sub modules (like zsh plug-ins and themes)
-```
-cd ~
-config submodule update --force --recursive --init --remote
-```
-
-# Resource
 - https://www.atlassian.com/git/tutorials/dotfiles
 - https://shreevatsa.wordpress.com/2008/03/30/zshbash-startup-files-loading-order-bashrc-zshrc-etc/
+- https://github.com/zdharma-continuum/zinit
