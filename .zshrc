@@ -70,6 +70,10 @@ zinit wait lucid for \
     OMZP::git-auto-fetch \
     OMZP::gh \
     OMZP::dotenv \
+    OMZP::urltools \
+    OMZL::functions.zsh \
+    OMZL::termsupport.zsh \
+    OMZL::directories.zsh \
     OMZP::aws \
     OMZP::azure \
     OMZP::gcloud \
