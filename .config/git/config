@@ -18,9 +18,12 @@
 	#ff = only # in simple terms this "
 
 [fetch]
-	# prune = true # Automatically prunes remote-tracking branches that no longer exist on the remote when you run git fetch. This keeps your local list of remote branches clean and up-to-date.
+	prune = true # Automatically prunes remote-tracking branches that no longer exist on the remote when you run git fetch. This keeps your local list of remote branches clean and up-to-date.
+
 [remote "origin"]
-	fetch = +refs/heads/*:refs/remotes/origin/* # fetch all branches referneces by default
+	# fetch = +refs/heads/*:refs/remotes/origin/* # fetch all branches referneces by default (causing issues with clone 'multiple updates for ref')
+	prune = true
+
 [checkout]
 	defaultRemote = origin
 [rebase]

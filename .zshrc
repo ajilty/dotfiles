@@ -74,6 +74,7 @@ zinit wait lucid for \
     OMZL::functions.zsh \
     OMZL::termsupport.zsh \
     OMZL::directories.zsh \
+    OMZP::per-directory-history/per-directory-history.zsh \
     OMZP::aws \
     OMZP::azure \
     OMZP::gcloud \
