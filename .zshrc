@@ -50,15 +50,10 @@ ZINIT_HOME="${XDG_DATA_HOME:-${HOME}/.local/share}/zinit/zinit.git"
 source "${ZINIT_HOME}/zinit.zsh"
 
 
-# ZSH Customizations
+# Oh My Zsh! Customizations
 COMPLETION_WAITING_DOTS="true"
-HIST_REDUCE_BLANKS="true"
-HIST_FIND_NO_DUPS="true"
-HIST_IGNORE_SPACE="true"
-INC_APPEND_HISTORY="true"
-SHARE_HISTORY="true"
-ZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=60 # don't suggest large pastes
-ZSH_AUTOSUGGEST_STRATEGY=(match_prev_cmd completion) # suggest recent match whose preceding history item matches, otherwise use completion
+# HIST_* settings are mostly set by OMZL::history.zsh
+
 
 # ===  Completions, Plugins and Theme Installation with Zinit  ===
 
@@ -66,6 +61,8 @@ ZSH_AUTOSUGGEST_STRATEGY=(match_prev_cmd completion) # suggest recent match whos
 zinit cdclear -q  # Clear any existing compdef entries
 skip_global_compinit=1 # Skip global compinit on Ubuntu
 [ ! -d ~/.cache/zinit/completions ] && mkdir -p ~/.cache/zinit/completions # Create completion cache directory
+
+    # OMZP::per-directory-history/per-directory-history.zsh \
 zinit wait lucid for \
     OMZP::git-auto-fetch \
     OMZP::gh \
@@ -74,7 +71,7 @@ zinit wait lucid for \
     OMZL::functions.zsh \
     OMZL::termsupport.zsh \
     OMZL::directories.zsh \
-    OMZP::per-directory-history/per-directory-history.zsh \
+    OMZL::history.zsh \
     OMZP::aws \
     OMZP::azure \
     OMZP::gcloud \
@@ -95,7 +92,6 @@ zinit wait lucid for \
     OMZP::pip \
     OMZP::pipenv \
     OMZP::poetry \
-    OMZP::npm \
     OMZP::yarn \
   as"completion" \
     OMZP::yarn/_yarn \
@@ -105,7 +101,9 @@ zinit wait lucid for \
     OMZP::vscode \
     OMZP::brew \
     OMZP::nmap \
-    OMZP::pyenv
+    OMZP::pyenv \
+    nix-community/nix-zsh-completions \
+    OMZP::npm
 # These plugins have more than one file, so we need to clone the whole repo
 zinit atpull"%atclone" atclone"_fix-omz-plugin" wait lucid for \
     OMZP::gitfast
@@ -117,8 +115,20 @@ zinit ice depth'1' lucid nocd atload'source ~/.p10k.zsh; _p9k_precmd'
 zinit light romkatv/powerlevel10k 
 
 # Plugin Management
-zi ice ver"23.07.13"
+
+## Configure marlonrichert/zsh-autocomplete
+ZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=60                    # don't suggest large pastes
+ZSH_AUTOSUGGEST_STRATEGY=(match_prev_cmd completion)  # suggest recent match whose preceding history item matches, otherwise use completion
+# bindkey -M menuselect "^[OD" .backward-char # auto-complete: ← exits menu select
+# bindkey -M menuselect "^[OC" .forward-char  # auto-complete: → exits menu select
+# bindkey -M menuselect '\r' .accept-line     # auto-complete: enter should accept a selection in menu select
+# bindkey '^[v' .describe-key-briefly # Helper to find key bindings 
+
+zi ice \
+  ver"23.07.13" 
 zi load marlonrichert/zsh-autocomplete
+
+
 zi for \
       atload"zicompinit; zicdreplay" \
       blockf \
@@ -129,12 +139,5 @@ zi for \
    zdharma-continuum/fast-syntax-highlighting 
    
   
-
-# # Customize auto-complete
-# bindkey -M menuselect "^[OD" .backward-char # auto-complete: ← exits menu select
-# bindkey -M menuselect "^[OC" .forward-char  # auto-complete: → exits menu select
-# bindkey -M menuselect '\r' .accept-line     # auto-complete: enter should accept a selection in menu select
-# bindkey '^[v' .describe-key-briefly # Helper to find key bindings 
-
 # Powerlevel10k Instant Prompt
 (( ! ${+functions[p10k]} )) || p10k finalize
