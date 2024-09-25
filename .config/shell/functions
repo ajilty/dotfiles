@@ -83,6 +83,7 @@ function git() {
 
             echo $git_clone_destination;
             command git clone $2 $git_clone_destination;
+            cd $git_clone_destination;
         else
             # handle unknown repo source types directly
             command git "$@";
