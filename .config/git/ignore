@@ -1,5 +1,6 @@
 # Sensitive
 .env
+.envrc
 
 ## macOS
 # General

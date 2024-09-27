@@ -67,6 +67,7 @@ zinit wait lucid for \
     OMZP::git-auto-fetch \
     OMZP::gh \
     OMZP::dotenv \
+    OMZP::direnv \
     OMZP::urltools \
     OMZL::functions.zsh \
     OMZL::termsupport.zsh \
