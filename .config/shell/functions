@@ -278,8 +278,8 @@ function git-pr() {
     current_branch=$(git rev-parse --abbrev-ref HEAD)
     default_branch=$(git remote show origin | grep "HEAD branch" | cut -d ":" -f 2 | sed -e 's/^[[:space:]]*//')
 
-    # Replace dashes with spaces for the default PR title
-    pr_title_default=$(echo "$current_branch" | tr '-' ' ')
+    # Set the default PR title to the last commit message
+    pr_title_default=$(git log -1 --pretty=%B)
 
     # Ask for PR title and body
     echo "\nEnter PR title (default: '$pr_title_default'):"
@@ -335,6 +335,9 @@ function aws-whoami {
 
     echo "\n[Profiles]"
     aws configure list-profiles  --output table
+
+    echo "To establish a new SSO session, run 'aws sso login'"
+    echo "To add a new profile with the SSO session, run 'aws configure sso --profile <profile_name>', and enter the SSO sesion name on the first prompt"
 }
 
 
