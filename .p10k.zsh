@@ -110,8 +110,8 @@
     load                  # CPU load
     ram                   # free RAM
     newline
-    ip                    # ip address and bandwidth usage for a specified network interface
-    # public_ip             # public IP address
+    # ip                    # ip address and bandwidth usage for a specified network interface
+    public_ip             # public IP address
     # proxy                 # system-wide http/https/ftp proxy
     # battery               # internal battery
     # wifi                  # wifi speed
@@ -880,8 +880,8 @@
   typeset -g POWERLEVEL9K_PER_DIRECTORY_HISTORY_GLOBAL_FOREGROUND=130
 
   # Tip: Uncomment the next two lines to hide "local"/"global" text and leave just the icon.
-  # typeset -g POWERLEVEL9K_PER_DIRECTORY_HISTORY_LOCAL_CONTENT_EXPANSION=''
-  # typeset -g POWERLEVEL9K_PER_DIRECTORY_HISTORY_GLOBAL_CONTENT_EXPANSION=''
+  typeset -g POWERLEVEL9K_PER_DIRECTORY_HISTORY_LOCAL_CONTENT_EXPANSION='local'
+  typeset -g POWERLEVEL9K_PER_DIRECTORY_HISTORY_GLOBAL_CONTENT_EXPANSION=''
 
   # Custom icon.
   # typeset -g POWERLEVEL9K_PER_DIRECTORY_HISTORY_LOCAL_VISUAL_IDENTIFIER_EXPANSION='⭐'
@@ -1351,7 +1351,7 @@
   #############[ terraform_version: terraform version (https://www.terraform.io) ]##############
   # Terraform version color.
   typeset -g POWERLEVEL9K_TERRAFORM_VERSION_FOREGROUND=38
-  typeset -g POWERLEVEL9K_TERRAFORM_VERSION_SHOW_ON_COMMAND='terraform|tf|make'
+  # typeset -g POWERLEVEL9K_TERRAFORM_VERSION_SHOW_ON_COMMAND='terraform|tf|make'
   # Custom icon.
   # typeset -g POWERLEVEL9K_TERRAFORM_VERSION_VISUAL_IDENTIFIER_EXPANSION='⭐'
 
@@ -1661,6 +1661,29 @@
   if [[ -n $GIT_DIR && $GIT_DIR != .git ]]; then
     p10k segment -f 208 -t "Git Override (${GIT_DIR})"
   fi
+
+  # Show prompt elements based on file extensions
+  function p10k-on-post-widget() {
+    typeset -A PROMPT_ELEMENTS_TO_EXTENSIONS=(
+      [terraform_version]='*.tf'
+      [aws]='*.tf'
+      [azure]='*.tf'
+      [gcloud]='*.tf'
+      [pyenv]='*.py'
+      [virtualenv]='*.py'
+      [direnv]='.envrc'
+      # Add more mappings as needed
+    )
+    
+    for element in ${(k)PROMPT_ELEMENTS_TO_EXTENSIONS}; do
+      local extensions="${PROMPT_ELEMENTS_TO_EXTENSIONS[$element]}"
+      if [[ -n $(find . -maxdepth 1 -name "$extensions" -print -quit) ]]; then
+        p10k display "*/$element"=show
+      else
+        p10k display "*/$element"=hide
+      fi
+    done
+  }
 }
 
   # User-defined prompt segments may optionally provide an instant_prompt_* function. Its job
