@@ -1350,10 +1350,10 @@
 
   #############[ terraform_version: terraform version (https://www.terraform.io) ]##############
   # Terraform version color.
-  typeset -g POWERLEVEL9K_TERRAFORM_VERSION_FOREGROUND=38
-  # typeset -g POWERLEVEL9K_TERRAFORM_VERSION_SHOW_ON_COMMAND='terraform|tf|make'
+  typeset -g POWERLEVEL9K_TERRAFORM_VERSION_FOREGROUND=129
+  typeset -g POWERLEVEL9K_TERRAFORM_VERSION_SHOW_ON_COMMAND='terraform|tf|make'
   # Custom icon.
-  # typeset -g POWERLEVEL9K_TERRAFORM_VERSION_VISUAL_IDENTIFIER_EXPANSION='⭐'
+  typeset -g POWERLEVEL9K_TERRAFORM_VERSION_VISUAL_IDENTIFIER_EXPANSION='tf:'
 
   #[ aws: aws profile (https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-profiles.html) ]#
   # Show aws only when the command you are typing invokes one of these tools.
@@ -1388,7 +1388,7 @@
       # '*test*'  TEST    # to match your needs. Customize them as needed.
       '*'       DEFAULT)
   typeset -g POWERLEVEL9K_AWS_DEFAULT_FOREGROUND=208
-  # typeset -g POWERLEVEL9K_AWS_DEFAULT_VISUAL_IDENTIFIER_EXPANSION='⭐'
+  typeset -g POWERLEVEL9K_AWS_DEFAULT_VISUAL_IDENTIFIER_EXPANSION='aws:'
 
   # AWS segment format. The following parameters are available within the expansion.
   #
@@ -1428,7 +1428,7 @@
   # You can define different colors, icons and content expansions for different classes:
   #
   #   typeset -g POWERLEVEL9K_AZURE_TEST_FOREGROUND=28
-  #   typeset -g POWERLEVEL9K_AZURE_TEST_VISUAL_IDENTIFIER_EXPANSION='⭐'
+    typeset -g POWERLEVEL9K_AZURE_TEST_VISUAL_IDENTIFIER_EXPANSION='azure:'
   #   typeset -g POWERLEVEL9K_AZURE_TEST_CONTENT_EXPANSION='> ${P9K_CONTENT} <'
   typeset -g POWERLEVEL9K_AZURE_CLASSES=(
       # '*prod*'  PROD    # These values are examples that are unlikely
@@ -1438,7 +1438,7 @@
   # Azure account name color.
   typeset -g POWERLEVEL9K_AZURE_OTHER_FOREGROUND=32
   # Custom icon.
-  typeset -g POWERLEVEL9K_AZURE_OTHER_VISUAL_IDENTIFIER_EXPANSION='Azure'
+  typeset -g POWERLEVEL9K_AZURE_OTHER_VISUAL_IDENTIFIER_EXPANSION='azure:'
 
   ##########[ gcloud: google cloud account and project (https://cloud.google.com/) ]###########
   # Show gcloud only when the command you are typing invokes one of these tools.
@@ -1547,7 +1547,7 @@
 
   ###############################[ public_ip: public IP address ]###############################
   # Public IP color.
-  typeset -g POWERLEVEL9K_PUBLIC_IP_FOREGROUND=94
+  typeset -g POWERLEVEL9K_PUBLIC_IP_FOREGROUND=102
   # Custom icon.
   # typeset -g POWERLEVEL9K_PUBLIC_IP_VISUAL_IDENTIFIER_EXPANSION='⭐'
 
@@ -1667,8 +1667,8 @@
     typeset -A PROMPT_ELEMENTS_TO_EXTENSIONS=(
       [terraform_version]='*.tf'
       [aws]='*.tf'
-      [azure]='*.tf'
-      [gcloud]='*.tf'
+      # [azure]='*.tf'
+      # [gcloud]='*.tf'
       [pyenv]='*.py'
       [virtualenv]='*.py'
       [direnv]='.envrc'
@@ -1680,7 +1680,8 @@
       if [[ -n $(find . -maxdepth 1 -name "$extensions" -print -quit) ]]; then
         p10k display "*/$element"=show
       else
-        p10k display "*/$element"=hide
+        # p10k display "*/$element"=hide
+        continue
       fi
     done
   }
