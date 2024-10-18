@@ -30,6 +30,13 @@ if [ -d "$TMPDIR" ]; then
     export TMPPREFIX="$TMPDIR"
     export TMUX_TMPDIR="$TMPDIR"
     export HOMEBREW_TEMP="$TMPDIR"
+    ## check if the permissions of /private/tmp have user set to current user
+    if [ "$(stat -f %Su /private/tmp)" != "$(whoami)" ]; then
+        echo "Setting /private/tmp permissions to current user"
+        sudo chown -R $(whoami) /private/tmp
+        # sudo chown $(whoami):admin /private/tmp/
+    fi
+
 fi
 
 # Golang
