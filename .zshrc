@@ -62,7 +62,6 @@ zinit cdclear -q  # Clear any existing compdef entries
 skip_global_compinit=1 # Skip global compinit on Ubuntu
 [ ! -d ~/.cache/zinit/completions ] && mkdir -p ~/.cache/zinit/completions # Create completion cache directory
 
-    # OMZP::per-directory-history/per-directory-history.zsh \
 zinit wait lucid for \
     OMZP::git-auto-fetch \
     OMZP::gh \
@@ -93,9 +92,6 @@ zinit wait lucid for \
     OMZP::pip \
     OMZP::pipenv \
     OMZP::poetry \
-    OMZP::yarn \
-  as"completion" \
-    OMZP::yarn/_yarn \
     OMZP::node \
   if'[[ -n "$commands[op]" ]]' atload'eval "$(op completion zsh)"; compdef _op o' \
     OMZP::1password \
@@ -116,6 +112,8 @@ zinit ice depth'1' lucid nocd atload'source ~/.p10k.zsh; _p9k_precmd'
 zinit light romkatv/powerlevel10k 
 
 # Plugin Management
+## Configure OMZ plugin AWS to not show prompt
+SHOW_AWS_PROMPT=false
 
 ## Configure marlonrichert/zsh-autocomplete
 ZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=60                    # don't suggest large pastes
