@@ -336,8 +336,13 @@ function aws-whoami {
     echo "\n[Profiles]"
     aws configure list-profiles  --output table
 
-    echo "To establish a new SSO session, run 'aws sso login'"
-    echo "To add a new profile with the SSO session, run 'aws configure sso --profile <profile_name>', and enter the SSO sesion name on the first prompt"
+    echo "\nNew:"
+    echo " - To establish a *new* SSO session, run \`aws configure sso-session\`"
+    echo " - To add a *new* profile with the SSO session, run \`aws configure sso\`, then set the profile name"
+
+    echo "\nExisting:"
+    echo " - To refresh an existing SSO session, run \`aws sso login\`"
+    echo " - To use the an existing profile, run \`export AWS_PROFILE=<profile_name>\`"
 }
 
 
