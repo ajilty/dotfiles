@@ -65,7 +65,6 @@ skip_global_compinit=1 # Skip global compinit on Ubuntu
 zinit wait lucid for \
     OMZP::git-auto-fetch \
     OMZP::gh \
-    OMZP::dotenv \
     OMZP::direnv \
     OMZP::urltools \
     OMZL::functions.zsh \
@@ -125,6 +124,7 @@ ZSH_AUTOSUGGEST_STRATEGY=(match_prev_cmd completion)  # suggest recent match who
 
 zi ice \
   ver"23.07.13" 
+setopt interactivecomments
 zi load marlonrichert/zsh-autocomplete
 
 

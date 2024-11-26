@@ -1,0 +1,4 @@
+# https://github.com/direnv/direnv/blob/master/man/direnv.toml.1.md
+
+[global]
+load_dotenv = true
