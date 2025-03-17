@@ -258,15 +258,8 @@ function git-quick() {
         git push --quiet || return
         echo "\nPushed to origin."
 
-        # Create PR
-        echo "\nCreate PR? (y/n)"
-        read -r confirm
-        confirm=${confirm:-y}
-        if [ "$confirm" = "y" ]; then
-            git-pr
-        else
-            echo "PR cancelled."
-        fi
+        git-pr
+
     else
         echo "Push cancelled."
     fi
@@ -274,39 +267,19 @@ function git-quick() {
 
 # Create a PR for the current branch
 function git-pr() {
-    # Get current branch name and default branch
+
     current_branch=$(git rev-parse --abbrev-ref HEAD)
     default_branch=$(git remote show origin | grep "HEAD branch" | cut -d ":" -f 2 | sed -e 's/^[[:space:]]*//')
-
-    # Set the default PR title to the last commit message
-    pr_title_default=$(git log -1 --pretty=%B)
-
-    # Ask for PR title and body
-    echo "\nEnter PR title (default: '$pr_title_default'):"
-    read -r pr_title
-    pr_title=${pr_title:-$pr_title_default}
-
-    echo "\nEnter PR body (optional):"
-    read -r pr_body
-    pr_body=${pr_body:-"Automated PR"}
-
-    # Determine the service (GitHub or GitLab) and execute respective CLI commands
     origin_url=$(git remote get-url origin)
+    origin_service=$(echo $origin_url | cut -d '/' -f 3)
+
+    # Connect PR
+
     if [[ "$origin_url" =~ github.com ]]; then
-        # Check if GitHub CLI is installed and create PR
+        # Check if GitHub CLI is installed and authenticated
         if command -v gh &> /dev/null; then
             # Check that the user is logged in to github.com using gh status command and login if not
             gh auth status --hostname github.com || gh auth login --hostname github.com --git-protocol https --web
-
-            echo "\nCreating GitHub PR..."
-            gh pr create --title "$pr_title" --body "$pr_body" --base $default_branch --head $current_branch
-
-            echo "\nWaiting before checking PR status..."
-            for i in {10..1}; do echo -ne "$i... \r"; sleep 1; done; echo -ne "Completed! \n"
-
-            echo "Starting PR checks."
-            gh pr checks --watch --fail-fast
-            gh pr view --web
         else
             echo "\nGitHub CLI (gh) is not installed. Exiting."
             return 1
@@ -318,6 +291,75 @@ function git-pr() {
         echo "\nRemote origin is not supported. Exiting."
         return 1
     fi
+    echo "Connected to $origin_service."
+
+    pr_exists="null"
+    if [[ "$origin_url" =~ github.com ]]; then
+        # gh pr list --head $current_branch --base $default_branch --json id --limit 1
+        pr_exists=$(gh pr list --head $current_branch --base $default_branch --json id --limit 1 | jq -r '.[0].id')
+    fi
+
+    # Create PR
+
+    if [ "$pr_exists" != "null" ]; then
+        echo "\nPR already exists for $current_branch."
+    else
+        echo "\nCreate PR? (y/n)"
+        read -r confirm
+        confirm=${confirm:-y}
+        if [ "$confirm" = "y" ]; then
+
+            pr_title_default=$(git log -1 --pretty=%B) # Set the default PR title to the last commit message
+
+            echo "\nEnter PR title (default: '$pr_title_default'):"
+            read -r pr_title
+            pr_title=${pr_title:-$pr_title_default}
+
+            echo "\nEnter PR body (optional):"
+            read -r pr_body
+            pr_body=${pr_body:-"Automated PR"}
+
+            if [[ "$origin_url" =~ github.com ]]; then
+                echo "\nCreating GitHub PR..."
+                gh pr create --title "$pr_title" --body "$pr_body" --base $default_branch --head $current_branch
+
+                echo "\nWaiting before checking PR status..."
+                for i in {10..1}; do echo -ne "$i... \r"; sleep 1; done; echo -ne "Ready to check! \n"
+
+            elif [[ "$origin_url" =~ gitlab.com ]]; then
+                echo "\nGitLab functionality is not implemented yet."
+                return 1
+            else
+                echo "\nRemote origin is not supported. Exiting."
+                return 1
+            fi
+        else
+            echo "PR creation cancelled."
+        fi
+    fi
+
+    # View PR
+
+    if [[ "$origin_url" =~ github.com ]]; then
+        echo "Checking PR status...\n"
+        gh pr checks --watch --fail-fast
+        gh pr view
+
+        echo "\nView PR on GitHub.com? (y/n)"
+        read -r confirm
+        confirm=${confirm:-y}
+        if [ "$confirm" = "y" ]; then
+            gh pr view --web
+        fi
+    
+    elif [[ "$origin_url" =~ gitlab.com ]]; then
+        echo "\nGitLab functionality is not implemented yet."
+        return 1
+    else
+        echo "\nRemote origin is not supported. Exiting."
+        return 1
+    fi
+
 }
 
 
