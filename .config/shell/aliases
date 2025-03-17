@@ -42,3 +42,18 @@ fi
 
 # clean-up docker images and containers and volumes
 alias docker-clean='docker system prune --force --all --volumes'
+
+# zinit helpers (https://github.com/zdharma-continuum/zinit?tab=readme-ov-file#zinit-commands)
+alias zinit-whoami=' zinit version; \
+    zinit completions;\
+    zinit plugins; \
+    zinit snippets;'
+alias zinit-reset='cd ~; 
+    zinit cclear; \
+    zinit cdclear; \ 
+    zinit compinit; \
+    zinit cdreplay; \
+    zinit compile --all; \
+    p10k reload; \
+    zinit times;'
+alias zinit-reinstall='zinit self-update; zinit delete --all --yes && zinit update --all; '
