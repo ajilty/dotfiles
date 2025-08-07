@@ -54,14 +54,25 @@ function git() {
     # clone git repositories into a directory path that matches source URL
 
     if [[ "$1" == "clone" ]]; then
-        # if empty clone source, run default
-        if [[ $2 == https://* ]] || [[ $2 == git://* ]] || [[ $2 == ssh://* ]] || [[ $2 == git@* ]] ; then
+        # Handle GitHub shorthand notation (gh:user/repo)
+        if [[ $2 == gh:* ]]; then
+            github_path=${2#gh:}  # Remove 'gh:' prefix
+            git_src="https://github.com/${github_path}.git"
+            echo "Expanding Github notation ${git_src}"
+        elif [[ $2 == https://* ]] || [[ $2 == git://* ]] || [[ $2 == ssh://* ]] || [[ $2 == git@* ]] ; then
             git_src=$2;
-            front_trimmed_protocl=${git_src/#*\/\/};
-            front_trimed_ssh_user=${front_trimmed_protocl/#*@};
-            end_trimmed=${front_trimed_ssh_user%.*};
-            replace_colon=${end_trimmed/:/\/};
-            git_clone_destination=~/gits/$replace_colon;
+        else
+            # handle unknown repo source types directly
+            command git "$@";
+            return
+        fi
+
+        # Process the git source URL
+        front_trimmed_protocl=${git_src/#*\/\/};
+        front_trimed_ssh_user=${front_trimmed_protocl/#*@};
+        end_trimmed=${front_trimed_ssh_user%.*};
+        replace_colon=${end_trimmed/:/\/};
+        git_clone_destination=~/gits/$replace_colon;
             
             if [[ -d $git_clone_destination ]]; then
                 echo "Clone destination already exists. Changing to directory. $git_clone_destination"
@@ -82,12 +93,12 @@ function git() {
             fi
 
             echo $git_clone_destination;
-            command git clone $2 $git_clone_destination;
-            cd $git_clone_destination;
-        else
-            # handle unknown repo source types directly
-            command git "$@";
-        fi
+            if command git clone $git_src $git_clone_destination; then
+                cd $git_clone_destination;
+            else
+                echo "Clone failed. Not changing directory."
+                return 1
+            fi
     else
         # handle other git commands directly
         command git "$@";
