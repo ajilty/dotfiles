@@ -81,6 +81,18 @@ if command -v code 1>/dev/null 2>&1; then
     export EDITOR="code --wait"
 fi
 
+# MySQL
+if [[ -d "/opt/homebrew/opt/mysql-client/bin" ]]; then
+    export PATH="/opt/homebrew/opt/mysql-client/bin:$PATH"
+    
+    # For compilers to find mysql-client you may need to set:
+    export LDFLAGS="-L/opt/homebrew/opt/mysql-client/lib"   
+    export CPPFLAGS="-I/opt/homebrew/opt/mysql-client/include"
+
+    #For pkg-config to find mysql-client you may need to set:
+    export PKG_CONFIG_PATH="/opt/homebrew/opt/mysql-client/lib/pkgconfig"
+fi
+
 # -----------------------------------------------
 # Local environment variables. This is last to override any previous settings
 if [ -e ~/.local/config/shell/environment ]; then
