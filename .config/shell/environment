@@ -23,6 +23,11 @@ if [ -d "/opt/homebrew/bin" ]; then
 fi
 
 # MacOS Temp Directory
+# Fix TMPDIR if it's set to root's or wrong user's temp directory
+if [[ "$TMPDIR" == "/var/folders/zz/"* ]] || [[ ! -w "$TMPDIR" ]]; then
+    export TMPDIR=$(getconf DARWIN_USER_TEMP_DIR)
+fi
+
 if [ -d "$TMPDIR" ]; then
     export TMPPREFIX="$TMPDIR"
     export TMUX_TMPDIR="$TMPDIR"
