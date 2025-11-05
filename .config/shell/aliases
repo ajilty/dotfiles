@@ -3,7 +3,7 @@
 # Ran from .bashrc and/or .zshrc
 #######################################################
 
-# Sane dotfitl management inspired by https://www.atlassian.com/git/tutorials/dotfiles
+# Sane dotfiles management inspired by https://www.atlassian.com/git/tutorials/dotfiles
 alias config='/usr/bin/git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME'
 alias dotfiles='/usr/bin/git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME'
 alias dotfiles-shell='export GIT_DIR=$HOME/.dotfiles; export GIT_WORK_TREE=$HOME'
