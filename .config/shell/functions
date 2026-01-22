@@ -429,3 +429,65 @@ function try() {
     fi
     cd "$target_dir" || return
 }
+
+# Convert a try directory into a proper git repository and move to ~/gits
+# Usage: keep
+#   - Run from within a ~/tries/* directory
+#   - Prompts for repository name (defaults to current directory name)
+#   - Initializes git, makes initial commit, and moves to ~/gits/github.com/{username}
+
+function keep() {
+    local current_dir=$(pwd)
+    
+    # Check if we're in a tries directory
+    if [[ ! "$current_dir" =~ ^$HOME/tries/.+ ]]; then
+        echo "Error: Must be run from within a ~/tries/* directory"
+        return 1
+    fi
+    
+    local current_name=$(basename "$current_dir")
+    
+    # Get GitHub username from gh CLI
+    local gh_user=$(gh api user --jq '.login' 2>/dev/null)
+    if [ -z "$gh_user" ]; then
+        echo "Warning: Could not get GitHub username from gh CLI"
+        gh_user="unknown"
+    fi
+    
+    # Construct default path
+    local default_path="$HOME/gits/github.com/$gh_user/$current_name"
+    
+    # Prompt for the full path
+    echo "Enter repository path (press Enter for default):"
+    echo "Default: $default_path"
+    read -r user_input
+    
+    local target_dir="${user_input:-$default_path}"
+    
+    # Expand ~ to $HOME if present
+    target_dir="${target_dir/#\~/$HOME}"
+    
+    # Check if target already exists
+    if [ -d "$target_dir" ]; then
+        echo "Error: $target_dir already exists"
+        return 1
+    fi
+    
+    # Initialize git if not already a repo
+    if [ ! -d .git ]; then
+        echo "Initializing git repository..."
+        git init
+        git add .
+        git commit -m "Initial commit from try session"
+    fi
+    
+    # Create parent directories if they don't exist
+    mkdir -p "$(dirname "$target_dir")"
+    
+    # Move to target
+    echo "Moving to $target_dir..."
+    mv "$current_dir" "$target_dir"
+    cd "$target_dir" || return
+    
+    echo "Successfully kept as $target_dir"
+}
