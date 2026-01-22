@@ -406,3 +406,26 @@ python-whoami() {
     echo "Python Path: $PYTHONPATH"
     echo "Python Packages: $(pip list)"
 }
+
+# Create or navigate to a temporary directory in ~/tries for experimentation
+# Usage: try [directory_name]
+#   - Without args: Creates timestamped directory (try-YYYYMMDD-HHMMSS)
+#   - With args: Creates/navigates to named directory
+#   - If directory exists, navigates to it instead of creating new one
+
+function try() {
+    mkdir -p ~/tries
+    if [ -n "$1" ]; then
+        dir_name="$1"
+    else
+        dir_name="try-$(date +%Y%m%d-%H%M%S)"
+    fi 
+    target_dir=~/tries/$dir_name
+    if [ -d "$target_dir" ]; then
+        echo "Directory $target_dir already exists. Changing to it."
+    else
+        mkdir -p "$target_dir"
+        echo "Created directory $target_dir."
+    fi
+    cd "$target_dir" || return
+}
