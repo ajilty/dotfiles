@@ -29,23 +29,33 @@ if [ -n "$HOMEBREW_PREFIX" ]; then
     export INFOPATH="$HOMEBREW_PREFIX/share/info:${INFOPATH:-}"
 fi
 
-# MacOS Temp Directory
+# Temp Directory
 # Fix TMPDIR if it's set to root's or wrong user's temp directory
-if [[ "$TMPDIR" == "/var/folders/zz/"* ]] || [[ ! -w "$TMPDIR" ]]; then
-    export TMPDIR=$(getconf DARWIN_USER_TEMP_DIR)
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    # macOS specific
+    if [[ "$TMPDIR" == "/var/folders/zz/"* ]] || [[ ! -w "$TMPDIR" ]]; then
+        export TMPDIR=$(getconf DARWIN_USER_TEMP_DIR)
+    fi
+else
+    # Linux - use /tmp if TMPDIR is not set or not writable
+    if [[ -z "$TMPDIR" ]] || [[ ! -w "$TMPDIR" ]]; then
+        export TMPDIR="/tmp"
+    fi
 fi
 
 if [ -d "$TMPDIR" ]; then
     export TMPPREFIX="$TMPDIR"
     export TMUX_TMPDIR="$TMPDIR"
     export HOMEBREW_TEMP="$TMPDIR"
-    ## check if the permissions of /private/tmp have user set to current user
-    if [ "$(stat -f %Su /private/tmp)" != "$(whoami)" ]; then
-        echo "Setting /private/tmp permissions to current user"
-        sudo chown -R $(whoami) /private/tmp
-        # sudo chown $(whoami):admin /private/tmp/
+    
+    # macOS specific: check if the permissions of /private/tmp have user set to current user
+    if [[ "$OSTYPE" == "darwin"* ]] && [ -d "/private/tmp" ]; then
+        if [ "$(stat -f %Su /private/tmp)" != "$(whoami)" ]; then
+            echo "Setting /private/tmp permissions to current user"
+            sudo chown -R $(whoami) /private/tmp
+            # sudo chown $(whoami):admin /private/tmp/
+        fi
     fi
-
 fi
 
 # Golang
