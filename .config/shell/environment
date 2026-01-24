@@ -12,14 +12,21 @@ export PATH=$PATH:~/.local/bin
 # Local binaries
 export PATH=$PATH:~/bin
 
-# Homebrew
+# Homebrew (macOS) / Linuxbrew (Linux)
 if [ -d "/opt/homebrew/bin" ]; then
-    export HOMEBREW_PREFIX="/opt/homebrew";
-    export HOMEBREW_CELLAR="/opt/homebrew/Cellar";
-    export HOMEBREW_REPOSITORY="/opt/homebrew";
-    export PATH="/opt/homebrew/bin:/opt/homebrew/sbin${PATH+:$PATH}";
-    export MANPATH="/opt/homebrew/share/man${MANPATH+:$MANPATH}:";
-    export INFOPATH="/opt/homebrew/share/info:${INFOPATH:-}";
+    # macOS Homebrew
+    export HOMEBREW_PREFIX="/opt/homebrew"
+elif [ -d "/home/linuxbrew/.linuxbrew/bin" ]; then
+    # Linuxbrew
+    export HOMEBREW_PREFIX="/home/linuxbrew/.linuxbrew"
+fi
+
+if [ -n "$HOMEBREW_PREFIX" ]; then
+    export HOMEBREW_CELLAR="$HOMEBREW_PREFIX/Cellar"
+    export HOMEBREW_REPOSITORY="$HOMEBREW_PREFIX"
+    export PATH="$HOMEBREW_PREFIX/bin:$HOMEBREW_PREFIX/sbin${PATH+:$PATH}"
+    export MANPATH="$HOMEBREW_PREFIX/share/man${MANPATH+:$MANPATH}:"
+    export INFOPATH="$HOMEBREW_PREFIX/share/info:${INFOPATH:-}"
 fi
 
 # MacOS Temp Directory
@@ -87,15 +94,15 @@ if command -v code 1>/dev/null 2>&1; then
 fi
 
 # MySQL
-if [[ -d "/opt/homebrew/opt/mysql-client/bin" ]]; then
-    export PATH="/opt/homebrew/opt/mysql-client/bin:$PATH"
+if [[ -n "$HOMEBREW_PREFIX" && -d "$HOMEBREW_PREFIX/opt/mysql-client/bin" ]]; then
+    export PATH="$HOMEBREW_PREFIX/opt/mysql-client/bin:$PATH"
     
     # For compilers to find mysql-client you may need to set:
-    export LDFLAGS="-L/opt/homebrew/opt/mysql-client/lib"   
-    export CPPFLAGS="-I/opt/homebrew/opt/mysql-client/include"
+    export LDFLAGS="-L$HOMEBREW_PREFIX/opt/mysql-client/lib"   
+    export CPPFLAGS="-I$HOMEBREW_PREFIX/opt/mysql-client/include"
 
     #For pkg-config to find mysql-client you may need to set:
-    export PKG_CONFIG_PATH="/opt/homebrew/opt/mysql-client/lib/pkgconfig"
+    export PKG_CONFIG_PATH="$HOMEBREW_PREFIX/opt/mysql-client/lib/pkgconfig"
 fi
 
 # -----------------------------------------------
