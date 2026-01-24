@@ -44,7 +44,7 @@ else
 fi
 
 if [ -d "$TMPDIR" ]; then
-    export TMPPREFIX="$TMPDIR"
+    export TMPPREFIX="$TMPDIR/zsh"
     export TMUX_TMPDIR="$TMPDIR"
     export HOMEBREW_TEMP="$TMPDIR"
     
