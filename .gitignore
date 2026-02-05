@@ -1,4 +1,6 @@
 # Ignores for the dotfiles repository
-# To modify global ignore configuration, eidt ~/.config/git/ignore
+# To modify global ignore configuration, edit ~/.config/git/ignore
 .dotfiles
+# Local test sandboxes
+/test/sandbox-*
 *

@@ -14,37 +14,10 @@ then
 fi
 
 # Zinit
-################
-# setopt RE_MATCH_PCRE   # _fix-omz-plugin function uses this regex style
-# Workaround for zinit issue#504: remove subversion dependency. Function clones all files in plugin
-# directory (on github) that might be useful to zinit snippet directory. Should only be invoked
-# via zinit atclone"_fix-omz-plugin"
-_fix-omz-plugin() {
-   echo "RUNNING _fix-omz-plugin"
-   local PLUG_DIR="$(pwd)" # not sure why after clone, the directory is not the plugin directory
-
-  if [[ ! -f ._zinit/teleid ]] then return 0; fi
-  if [[ ! $(cat ._zinit/teleid) =~ "^OMZP::.*" ]] then return 0; fi
-  local OMZP_NAME=$(cat ._zinit/teleid | sed -n 's/OMZP:://p')
-  git clone --quiet --no-checkout --depth=1 --filter=tree:0 https://github.com/ohmyzsh/ohmyzsh
-  cd $PLUG_DIR
-  cd ohmyzsh
-  git sparse-checkout set --no-cone plugins/$OMZP_NAME
-  git checkout --quiet
-  cd ..
-  local OMZP_PATH="ohmyzsh/plugins/$OMZP_NAME"
-  local file
-  echo "Copying files from $OMZP_PATH to $(pwd)..."
-  for file in ohmyzsh/plugins/$OMZP_NAME/*~(.gitignore|*.plugin.zsh)(D); do
-    local filename="${file:t}"
-    echo "Copying $file to $(pwd)/$filename..."
-    cp $file $filename
-  done
-  rm -rf ohmyzsh
-}
+###############################
 
 # Install zinit plugin manager
-ZINIT_HOME="${XDG_DATA_HOME:-${HOME}/.local/share}/zinit/zinit.git"
+ZINIT_HOME="${XDG_DATA_HOME:-$HOME/.local/share}/zinit/zinit.git"
 [ ! -d $ZINIT_HOME ] && mkdir -p "$(dirname $ZINIT_HOME)"
 [ ! -d $ZINIT_HOME/.git ] && git clone https://github.com/zdharma-continuum/zinit.git "$ZINIT_HOME"
 source "${ZINIT_HOME}/zinit.zsh"
@@ -65,7 +38,6 @@ skip_global_compinit=1 # Skip global compinit on Ubuntu
 zinit wait lucid for \
     OMZP::git-auto-fetch \
     OMZP::gh \
-    OMZP::direnv \
     OMZP::urltools \
     OMZL::functions.zsh \
     OMZL::termsupport.zsh \
@@ -99,10 +71,9 @@ zinit wait lucid for \
     OMZP::nmap \
     OMZP::pyenv \
     nix-community/nix-zsh-completions \
-    OMZP::npm
-# These plugins have more than one file, so we need to clone the whole repo
-zinit atpull"%atclone" atclone"_fix-omz-plugin" wait lucid for \
-    OMZP::gitfast
+    OMZP::npm \
+  as"snippet" \
+    https://github.com/ajilty/ohmyzsh/blob/master/plugins/direnv/direnv.plugin.zsh
 
 # Theme Management
 PS1="Loading..." # provide a simple prompt till the theme loads
@@ -137,6 +108,9 @@ zi for \
    zsh-users/zsh-autosuggestions \
    zdharma-continuum/fast-syntax-highlighting 
    
-  
 # Powerlevel10k Instant Prompt
 (( ! ${+functions[p10k]} )) || p10k finalize
+
+# MANUALLY FORCE HOME
+# If we are stuck in the zinit repo (which happens after first-run compiles), go home.
+[[ "$PWD" == *"zinit.git"* ]] && cd "$HOME"

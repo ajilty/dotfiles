@@ -4,16 +4,23 @@
 
 - `zsh`
 - `git`
-- `curl` or `wget` (for [Zinit](https://github.com/zdharma-continuum/zinit))
+- `curl` or `wget`, also `rsync` (for [Zinit](https://github.com/zdharma-continuum/zinit))
 
-## Initial Setup
+See [test/Brewfile](test/Brewfile) for other dependencies used in this dotfiles setup.
 
-One new machines, the following commands will set these dot files
-They are careful not to overrite files if they already exist.
+## Setup
+
+On new machines, the following commands will set these dotfiles
+They are careful not to overwrite files if they already exist.
 You can modify this behavior with flags to the `reset` command.
 
 An alias to `dotfiles` should be used **after** this set-up
 
+### Quick
+`bash -c "$(curl -fsSL https://raw.githubusercontent.com/ajilty/dotfiles/refs/heads/master/bin/setup-dotfiles.sh)"`
+
+
+## Interactive
 ```bash
 # start from home directory
 cd ~
@@ -27,7 +34,7 @@ git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME reset --merge
 exec zsh
 ```
 
-## Commands
+## Usage
 
 | Action                | Command                                                                 |
 |-----------------------|-------------------------------------------------------------------------|
@@ -37,6 +44,24 @@ exec zsh
 | Shell    | `dotfiles-shell`                                                         |
 
 Also see [Zinit commands](https://github.com/zdharma-continuum/zinit?tab=readme-ov-file#zinit-commands)
+
+## Testing
+
+Local sandbox (creates `test/sandbox-<timestamp>` and keeps it for inspection):
+
+```bash
+./test/sandbox-run.sh
+```
+
+Container-based (requires Docker or Podman):
+
+```bash
+./test/container-run.sh ubuntu
+./test/container-run.sh fedora
+./test/container-run.sh amazonlinux
+```
+
+The test dependencies are defined in `test/Brewfile`.
 
 # Resources
 
