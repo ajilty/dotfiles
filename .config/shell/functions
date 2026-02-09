@@ -491,3 +491,14 @@ function keep() {
     
     echo "Successfully kept as $target_dir"
 }
+
+
+# Load modular shell functions
+FUNCTIONS_D="${HOME}/.config/shell/functions.d"
+
+if [ -d "$FUNCTIONS_D" ]; then
+  for f in "$FUNCTIONS_D"/*.sh; do
+    [ -r "$f" ] && . "$f"
+  done
+fi
+unset FUNCTIONS_D f
