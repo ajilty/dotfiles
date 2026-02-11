@@ -5,24 +5,26 @@ skills() {
     shift
     command npx skills add -g -a kimi-cli -y "$@"
   elif [ "$1" = "link" ]; then
-    local source_dir="$HOME/.config/agents/skills"
+    local source_dir="../.agents/skills"
+    local source_dir_abs="~/.agents/skills"
     local target_dirs=(
-      "$HOME/.claude/skills"
-      "$HOME/.copilot/skills"
-      "$HOME/.gemini/skills"
-      "$HOME/.config/opencode/skills"
+      "~/.claude/skills"
+      "~/.copilot/skills"
+      "~/.gemini/skills"
+      "~/.codex/skills"
     )
 
-    if [ ! -d "$source_dir" ]; then
-      echo "skills link: missing source directory: $source_dir" >&2
-      return 1
+    if [ ! -d "$source_dir_abs" ]; then
+      echo "skills link: creating missing source directory: $source_dir_abs" >&2
+      # create the source directory if it doesn't exist
+      mkdir -p "$source_dir_abs"
     fi
 
     local target_dir
     for target_dir in "${target_dirs[@]}"; do
-      rm -rf "$target_dir"
-      mkdir -p "$(dirname "$target_dir")"
-      ln -s "$source_dir" "$target_dir"
+      rm -rf "${target_dir}"
+      mkdir -p "$(dirname "${target_dir}")"
+      ln -s "$source_dir" "${target_dir}"
     done
 
     # Show links to confirm they are in place.
