@@ -9,7 +9,7 @@ alias dotfiles='/usr/bin/git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME'
 alias dotfiles-tracked='dotfiles ls-tree -r master --name-only'
 alias dotfiles-update='dotfiles pull; zinit update --all'
 alias dotfiles-author='git config --local user.name "ajilty"; git config --local user.email "github@ajilty.com"'
-alias dotfiles-shell='dotfiles-author; export GIT_DIR=$HOME/.dotfiles; export GIT_WORK_TREE=$HOME'
+alias dotfiles-shell='export GIT_DIR=$HOME/.dotfiles; export GIT_WORK_TREE=$HOME; dotfiles-author'
 
 alias ls='ls --color=auto'
 alias ll='ls -aslhtc --color=auto'
