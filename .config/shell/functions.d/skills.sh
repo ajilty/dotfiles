@@ -1,5 +1,8 @@
 # always install global skills when adding new skills
 # skills directories are already symlinked to the global skills directory, so they will be available globally
+
+# Guard against an existing alias named "skills" (zsh parses it as a conflict).
+unalias skills 2>/dev/null
 skills() {
   if [ "$1" = "add" ]; then
     shift
