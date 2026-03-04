@@ -1,0 +1,17 @@
+# AI & Development Tools
+# AI/ML tools, code assistants, and development utilities
+
+# models
+
+brew "llm"
+brew "ollama"
+
+# code
+brew "anomalyco/tap/opencode"
+cask "claude-code"
+cask "copilot-cli"
+cask "codex"
+brew "gemini-cli"
+
+# MCP
+brew "playwright-cli"
