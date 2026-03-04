@@ -1,0 +1,33 @@
+# Core System Tools
+# Essential CLI utilities that should be installed first on any system
+
+brew "zsh"
+brew "coreutils"
+brew "curl"
+brew "diffutils"
+brew "direnv"
+brew "fzf"
+brew "git"
+brew "git-lfs"
+brew "htop"
+brew "btop"
+brew "lsd"
+brew "mtr"
+brew "nano"
+brew "netcat"
+brew "nnn"
+brew "openssh"
+brew "rsync"
+brew "sevenzip"
+brew "telnet"
+brew "tmux"
+brew "tree"
+brew "watch"
+brew "wget"
+brew "yq"
+brew "jq"
+brew "zip"
+
+brew "Valkyrie00/homebrew-bbrew/bbrew"
+
+cask "visual-studio-code"

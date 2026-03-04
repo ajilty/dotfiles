@@ -1,0 +1,8 @@
+# Security & Network Tools
+# Security utilities, network analysis, and penetration testing tools
+
+brew "nmap"
+
+brew "mike-engel/jwt-cli/jwt-cli"
+brew "szazeski/tap/checkssl"
+brew "wireshark"

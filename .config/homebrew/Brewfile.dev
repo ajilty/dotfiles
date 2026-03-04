@@ -1,0 +1,81 @@
+# Software Engineering
+
+# Database
+brew "mysql-client"
+brew "postgresql@14"
+cask "snowflake-snowsql"
+
+# Programming
+brew "pre-commit"
+brew "dotenv-org/brew/dotenv-vault"
+brew "cruft"
+
+## Python
+brew "pyenv"
+brew "python@3.10", link: false
+brew "python@3.11", link: false
+brew "uv"
+brew "virtualenv"
+brew "docutils"
+brew "pipenv"
+brew "pipx"
+
+## JS
+brew "yarn"
+brew "node"
+
+## .Net
+cask "dotnet-runtime"
+
+## yaml
+brew "yaml-language-server"
+brew "yamllint"
+brew "yapf"
+
+## Golang
+brew "go"
+
+# Cloud
+
+brew "steampipe"
+
+# github 
+brew "gh"
+brew "act"
+
+## aws
+brew "awscli"
+cask "session-manager-plugin"
+brew "aws2-wrap"
+brew "aws-nuke"
+
+## azure
+brew "azure-cli"
+brew "powershell/tap/powershell"
+
+## gcp
+cask "gcloud-cli"
+
+## cloudflare
+brew "cloudflared"
+brew "cloudflare-wrangler"
+
+## Containers
+brew "docker"
+brew "docker-compose"
+brew "kubernetes-cli"
+brew "colima"
+brew "devcontainer"
+brew "devspace"
+brew "docker"
+brew "helm"
+
+## IaC
+brew "terraform-docs"
+brew "terraformer"
+brew "tfenv"
+brew "warrensbox/tap/tfswitch"
+brew "ansible"
+
+# Secrets
+brew "hashicorp/tap/vault"

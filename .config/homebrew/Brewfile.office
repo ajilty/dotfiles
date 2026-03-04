@@ -1,0 +1,14 @@
+# Productivity & Desktop Applications
+# GUI applications, productivity tools, and desktop utilities
+
+cask "1password"
+cask "1password-cli"
+cask "alt-tab"
+cask "evernote"
+cask "firefox"
+cask "microsoft-remote-desktop"
+cask "powershell"
+cask "rectangle"
+cask "spotify"
+cask "thunderbird"
+cask "obsidian"
