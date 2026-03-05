@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# Load profile.d scripts
+PROFILE_D="${HOME}/.config/shell/profile.d"
+if [ -d "$PROFILE_D" ]; then
+  for f in "$PROFILE_D"/*.sh; do
+    [ -r "$f" ] && . "$f"
+  done
+fi
+unset PROFILE_D f
+
+# Load local user-specific profile overrides
+LOCAL_PROFILE_D="${HOME}/.local/config/shell/profile.d"
+if [ -d "$LOCAL_PROFILE_D" ]; then
+  for f in "$LOCAL_PROFILE_D"/*.sh; do
+    [ -r "$f" ] && . "$f"
+  done
+fi
+unset LOCAL_PROFILE_D f
