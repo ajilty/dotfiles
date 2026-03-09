@@ -72,8 +72,9 @@ zinit wait lucid for \
     OMZP::pyenv \
     nix-community/nix-zsh-completions \
     OMZP::npm \
-  as"snippet" \
-    https://github.com/ajilty/ohmyzsh/blob/master/plugins/direnv/direnv.plugin.zsh
+  as"snippet" atinit'eval "$(direnv hook zsh)"' \
+    https://raw.githubusercontent.com/ajilty/ohmyzsh/refs/heads/master/plugins/direnv/direnv.plugin.zsh
+
 
 # Theme Management
 PS1="Loading..." # provide a simple prompt till the theme loads
