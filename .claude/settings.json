@@ -14,9 +14,13 @@
       "Bash(git status:*)",
       "Bash(git diff:*)",
       "Bash(git log:*)",
-      "Bash(git show:*)"
+      "Bash(git show:*)",
+      "mcp__context7__*",
+      "mcp__plugin_atlassian_atlassian__get*",
+      "mcp__plugin_atlassian_atlassian__search*"
     ]
   },
+  "model": "us.anthropic.claude-opus-4-6-v1",
   "enabledPlugins": {
     "frontend-design@claude-plugins-official": true,
     "context7@claude-plugins-official": true,
@@ -31,5 +35,19 @@
     "explanatory-output-style@claude-plugins-official": true,
     "slack@claude-plugins-official": true
   },
-  "model": "us.anthropic.claude-sonnet-4-6"
+  "extraKnownMarketplaces": {
+    "claude-code-plugins": {
+      "source": {
+        "source": "github",
+        "repo": "anthropics/claude-code"
+      }
+    },
+    "claude-plugins-official": {
+      "source": {
+        "source": "github",
+        "repo": "anthropics/claude-plugins-official"
+      }
+    }
+  },
+  "effortLevel": "medium"
 }
