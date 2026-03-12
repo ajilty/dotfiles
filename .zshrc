@@ -94,10 +94,10 @@ ZSH_AUTOSUGGEST_STRATEGY=(match_prev_cmd completion)  # suggest recent match who
 # bindkey -M menuselect '\r' .accept-line     # auto-complete: enter should accept a selection in menu select
 # bindkey '^[v' .describe-key-briefly # Helper to find key bindings 
 
-zi ice \
-  ver"23.07.13" 
-setopt interactivecomments
-zi load marlonrichert/zsh-autocomplete
+# zi ice \
+#   ver"23.07.13" 
+# setopt interactivecomments
+# zi load marlonrichert/zsh-autocomplete
 
 
 zi for \
@@ -106,9 +106,11 @@ zi for \
       lucid \
       wait \
    zsh-users/zsh-completions \
-   zsh-users/zsh-autosuggestions \
-   zdharma-continuum/fast-syntax-highlighting 
+   zdharma-continuum/fast-syntax-highlighting \
+   marlonrichert/zsh-autocomplete
    
+  #  zsh-users/zsh-autosuggestions \
+
 # Powerlevel10k Instant Prompt
 (( ! ${+functions[p10k]} )) || p10k finalize
 
