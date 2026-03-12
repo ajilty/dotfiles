@@ -60,3 +60,5 @@ $RECYCLE.BIN/
 # Terraform
 **/.terraform/
 
+
+**/.claude/settings.local.json
