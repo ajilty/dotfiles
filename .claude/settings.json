@@ -26,6 +26,10 @@
     "atlassian@claude-plugins-official": true,
     "github@claude-plugins-official": true,
     "claude-md-management@claude-plugins-official": true,
-    "claude-code-setup@claude-plugins-official": true
-  }
+    "claude-code-setup@claude-plugins-official": true,
+    "ralph-loop@claude-plugins-official": true,
+    "explanatory-output-style@claude-plugins-official": true,
+    "slack@claude-plugins-official": true
+  },
+  "model": "us.anthropic.claude-sonnet-4-6"
 }
