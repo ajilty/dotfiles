@@ -1658,9 +1658,9 @@
   }
 
   function prompt_gitdir() {
-  if [[ -n $GIT_DIR && $GIT_DIR != .git ]]; then
-    p10k segment -f 208 -t "Git Override (${GIT_DIR})"
-  fi
+    if [[ -n $GIT_DIR && $GIT_DIR != .git ]]; then
+      p10k segment -f 208 -t "Git Override (${GIT_DIR})"
+    fi
   }
 
   # Show prompt elements based on file extensions
@@ -1686,7 +1686,7 @@
       fi
     done
   }
-}
+
 
   # User-defined prompt segments may optionally provide an instant_prompt_* function. Its job
   # is to generate the prompt segment for display in instant prompt. See
