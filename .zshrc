@@ -90,8 +90,8 @@ done
 # Theme Management
 PS1="Loading..." # provide a simple prompt till the theme loads
 setopt promptsubst
-zinit ice depth'1' lucid nocd atload'source ~/.p10k.zsh; _p9k_precmd'
-zinit light romkatv/powerlevel10k 
+zinit ice depth'1' nocd atload'source ~/.p10k.zsh; _p9k_precmd'
+zinit light romkatv/powerlevel10k
 
 # Plugin Management
 ## Configure OMZ plugin AWS to not show prompt
