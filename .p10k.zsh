@@ -1661,6 +1661,7 @@
   if [[ -n $GIT_DIR && $GIT_DIR != .git ]]; then
     p10k segment -f 208 -t "Git Override (${GIT_DIR})"
   fi
+  }
 
   # Show prompt elements based on file extensions
   function p10k-on-post-widget() {
