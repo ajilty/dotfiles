@@ -68,7 +68,6 @@ zinit wait lucid for \
     OMZP::vscode \
     OMZP::brew \
     OMZP::nmap \
-    OMZP::pyenv \
     nix-community/nix-zsh-completions \
     OMZP::npm \
   as"snippet" atinit'eval "$(direnv hook zsh)"' \
