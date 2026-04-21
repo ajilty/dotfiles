@@ -85,6 +85,13 @@ for cmd completion_cmd in \
   zinit light zdharma-continuum/null
 done
 
+# Plugins requiring generated files to be sourced
+zinit ice wait lucid has"wt" id-as"wt-init" \
+  atclone'wt config shell init zsh > wt-init.zsh' \
+  atpull'%atclone' \
+  src'wt-init.zsh'
+zinit light zdharma-continuum/null
+
 # Theme Management
 PS1="Loading..." # provide a simple prompt till the theme loads
 setopt promptsubst
