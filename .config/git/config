@@ -5,7 +5,12 @@
 [include]
     path = ~/.local/config/git/config
 
-# Dotfiles repo identity + hook guard.
+# Personal repos use the ajilty identity. Anything under
+# ~/gits/github.com/ajilty/ matches.
+[includeIf "gitdir:~/gits/github.com/ajilty/"]
+    path = ~/.config/git/identity.config
+
+# Dotfiles repo: same identity plus the pre-commit hook backstop.
 # When GIT_DIR is ~/.dotfiles (set by `dotfiles-shell`), override user.* and
 # point hooks at the tracked ~/.dotfiles-hooks/ directory.
 [includeIf "gitdir:~/.dotfiles"]
