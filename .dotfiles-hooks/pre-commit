@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Identity allowlist for the dotfiles repo.
+# Activated by core.hooksPath in ~/.config/git/dotfiles.config (via includeIf).
+# Refuses any commit whose author or committer is not the expected identity.
+set -euo pipefail
+
+EXPECTED="ajilty <github@ajilty.com>"
+
+# `git var GIT_AUTHOR_IDENT` returns "Name <email> timestamp tz".
+# Strip the trailing " <timestamp> <tz>" to leave "Name <email>".
+strip_time() {
+    local ident="$1"
+    echo "${ident% * *}"
+}
+
+check() {
+    local label="$1" who
+    who=$(strip_time "$2")
+    if [[ "$who" != "$EXPECTED" ]]; then
+        echo "ERROR: dotfiles identity guard tripped — commit blocked." >&2
+        echo "  $label:   $who" >&2
+        echo "  Expected: $EXPECTED" >&2
+        echo "" >&2
+        echo "Identity for this repo should come from the includeIf block in" >&2
+        echo "~/.config/git/config (matched on gitdir:~/.dotfiles)." >&2
+        echo "If you're seeing this, GIT_DIR may not be set, or the include" >&2
+        echo "isn't matching. Check: git config --show-origin user.email" >&2
+        exit 1
+    fi
+}
+
+check "Author"    "$(git var GIT_AUTHOR_IDENT)"
+check "Committer" "$(git var GIT_COMMITTER_IDENT)"

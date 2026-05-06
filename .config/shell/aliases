@@ -8,8 +8,10 @@ alias config='/usr/bin/git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME'
 alias dotfiles='/usr/bin/git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME'
 alias dotfiles-tracked='dotfiles ls-tree -r master --name-only'
 alias dotfiles-update='dotfiles pull; zinit update --all'
-alias dotfiles-author='git config --local user.name "ajilty"; git config --local user.email "github@ajilty.com"'
-alias dotfiles-shell='export GIT_DIR=$HOME/.dotfiles; export GIT_WORK_TREE=$HOME; dotfiles-author'
+# Identity is set automatically via includeIf "gitdir:~/.dotfiles" in
+# ~/.config/git/config -> ~/.config/git/dotfiles.config. The pre-commit hook
+# at ~/.dotfiles-hooks/pre-commit enforces it as a backstop.
+alias dotfiles-shell='export GIT_DIR=$HOME/.dotfiles; export GIT_WORK_TREE=$HOME'
 
 alias ls='ls --color=auto'
 alias ll='ls -aslhtc --color=auto'
