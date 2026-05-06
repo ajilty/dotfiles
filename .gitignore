@@ -4,3 +4,7 @@
 # Local test sandboxes
 /test/sandbox-*
 *
+# ...except the shared agent-skills tree, so new skills installed via
+# `skills add` show up in `git status` automatically.
+!.agents/
+!.agents/**

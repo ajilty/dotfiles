@@ -6,7 +6,10 @@ unalias skills 2>/dev/null
 skills() {
   if [ "$1" = "add" ]; then
     shift
-    command npx skills add -g -a kimi-cli -y "$@"
+    # -a kimi-cli is a sentinel: not a recognized agent, so the per-agent
+    # symlink branch is a no-op and the skill lands only in the canonical
+    # .agents/skills/ location. Pass -g (or --global) yourself for user scope.
+    command npx skills add -a kimi-cli -y "$@"
   elif [ "$1" = "link" ]; then
     local source_dir="../.agents/skills"
     local source_dir_abs="~/.agents/skills"

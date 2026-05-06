@@ -1,0 +1,15 @@
+{
+  "version": 3,
+  "skills": {
+    "uv-package-manager": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/wshobson/agents.git",
+      "skillPath": "plugins/python-development/skills/uv-package-manager/SKILL.md",
+      "skillFolderHash": "916b782e8fa418c8a7ea5b39d7371ba9de5b8009",
+      "installedAt": "2026-02-11T21:17:09.906Z",
+      "updatedAt": "2026-02-11T21:17:09.906Z"
+    }
+  },
+  "dismissed": {}
+}
