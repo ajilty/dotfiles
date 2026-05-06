@@ -61,7 +61,6 @@ zinit wait lucid for \
   as"completion" \
     OMZP::terraform/_terraform \
     OMZP::pip \
-    OMZP::pipenv \
     OMZP::poetry \
     OMZP::node \
   if'[[ -n "$commands[op]" ]]' atload'eval "$(op completion zsh)"; compdef _op o' \
