@@ -38,7 +38,7 @@
     "frontend-design@claude-plugins-official": false,
     "context7@claude-plugins-official": true,
     "feature-dev@claude-plugins-official": false,
-    "superpowers@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": false,
     "playwright@claude-plugins-official": true,
     "github@claude-plugins-official": true,
     "claude-md-management@claude-plugins-official": true,
