@@ -4,6 +4,12 @@
 
 [include]
     path = ~/.local/config/git/config
+
+# Dotfiles repo identity + hook guard.
+# When GIT_DIR is ~/.dotfiles (set by `dotfiles-shell`), override user.* and
+# point hooks at the tracked ~/.dotfiles-hooks/ directory.
+[includeIf "gitdir:~/.dotfiles"]
+    path = ~/.config/git/dotfiles.config
 	
 [init]
 	defaultBranch = master
