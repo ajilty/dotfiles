@@ -29,6 +29,11 @@
     ]
   },
   "model": "opus[1m]",
+  "statusLine": {
+    "type": "command",
+    "command": "bash ~/.claude/statusline-command.sh",
+    "refreshInterval": 5
+  },
   "enabledPlugins": {
     "frontend-design@claude-plugins-official": false,
     "context7@claude-plugins-official": true,
@@ -57,9 +62,5 @@
     }
   },
   "effortLevel": "medium",
-  "statusLine": {
-    "type": "command",
-    "command": "bash ~/.claude/statusline-command.sh",
-    "refreshInterval": 5
-  }
+  "skipAutoPermissionPrompt": true
 }
