@@ -4,6 +4,7 @@
 - `~/.local/config/git/config` (file) Automatically` included by `~/.config/git/config`
 - `~/.local/config/shell/environment` (file) Automatically includes `environment` by `~/.config/shell/environment`
 - `~/.local/config/ssh/*` (files in directory) Automatically included by ~/.ssh/config
+- `~/.local/config/claude/settings.local.json` (file) Backs `~/.claude/settings.local.json` via symlink. Holds account-/work-specific Claude Code permissions, plugins, and sandbox settings; merged on top of the tracked `~/.claude/settings.json` by Claude Code's built-in tier system.
 
 ## Binaries
 - `~/.local/bin/*` (files in directory) Automatically included by `~/.config/shell/environment`
