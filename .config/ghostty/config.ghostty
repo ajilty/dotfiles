@@ -1,0 +1,36 @@
+# --- Input correctness for agentic CLIs ---
+# Option behaves as Alt so word-jump/edit shortcuts work in Claude Code,
+# Codex, etc. (right Option stays as Option for special characters).
+macos-option-as-alt = left
+
+# --- Notifications & visual indicators ---
+# title    -> 🔔 emoji on the tab/title when BEL is received (per-tab signal)
+# attention-> dock icon bounce
+# audio    -> play a sound on BEL (1.3+, macOS)
+bell-features = title,attention,audio
+bell-audio-path = /System/Library/Sounds/Glass.aiff
+bell-audio-volume = 0.4
+
+# Bonus: any non-Claude command that takes >30s and finishes while you're
+# in another tab/app will also fire a desktop notification. Catches builds,
+# tests, terraform plans, etc. (1.3+, requires shell integration; on by default
+# for zsh/bash, native for fish/nu.)
+desktop-notifications = true
+notify-on-command-finish = unfocused
+notify-on-command-finish-action = no-bell,notify
+notify-on-command-finish-after = 30s
+
+# --- Splits, for running agents side-by-side ---
+keybind = cmd+d=new_split:right
+keybind = cmd+shift+d=new_split:down
+keybind = cmd+ctrl+h=goto_split:left
+keybind = cmd+ctrl+j=goto_split:bottom
+keybind = cmd+ctrl+k=goto_split:top
+keybind = cmd+ctrl+l=goto_split:right
+keybind = cmd+ctrl+z=toggle_split_zoom
+
+# --- Ergonomics ---
+macos-titlebar-style = tabs
+copy-on-select = clipboard
+clipboard-trim-trailing-spaces = true
+mouse-hide-while-typing = true
