@@ -53,26 +53,37 @@ function cd(){
 }
 
 # Create or navigate to a temporary directory in ~/tries for experimentation
-# Usage: try [directory_name]
-#   - Without args: Creates timestamped directory (try-YYYYMMDD-HHMMSS)
-#   - With args: Creates/navigates to named directory
-#   - If directory exists, navigates to it instead of creating new one
+# Usage: try [name]
+#   - Without args: creates timestamped directory (try-YYYYMMDD-HHMMSS)
+#   - With name: resume ~/tries/<name> if it exists; else resume the most
+#     recently modified ~/tries/*<name>* if any partial match exists;
+#     else create ~/tries/<name>-YYYYMMDD-HHMMSS
+
+alias tries='ls -1d ~/tries/*/ 2>/dev/null && find ~/tries/*/ -mindepth 1 -maxdepth 1 -type d 2>/dev/null || echo "No try directories found"'
 
 function try() {
     mkdir -p ~/tries
+    local target dir_name
     if [ -n "$1" ]; then
-        dir_name="$1"
+        local name="$1"
+        if [ -d ~/tries/"$name" ]; then
+            target=~/tries/"$name"
+        else
+            target=$(ls -td ~/tries/*"$name"*/ 2>/dev/null | head -1)
+        fi
+        if [ -n "$target" ]; then
+            echo "Resuming $target"
+            cd "$target" || return
+            return
+        fi
+        dir_name="${name}-$(date +%Y%m%d-%H%M%S)"
     else
         dir_name="try-$(date +%Y%m%d-%H%M%S)"
     fi
-    target_dir=~/tries/$dir_name
-    if [ -d "$target_dir" ]; then
-        echo "Directory $target_dir already exists. Changing to it."
-    else
-        mkdir -p "$target_dir"
-        echo "Created directory $target_dir."
-    fi
-    cd "$target_dir" || return
+    target=~/tries/"$dir_name"
+    mkdir -p "$target"
+    echo "Created $target"
+    cd "$target" || return
 }
 
 # Convert a try directory into a proper git repository and move to ~/gits
