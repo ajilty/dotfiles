@@ -75,5 +75,6 @@
     "autoAllowBashIfSandboxed": true
   },
   "effortLevel": "medium",
-  "skipAutoPermissionPrompt": true
+  "skipAutoPermissionPrompt": true,
+  "voiceEnabled": true
 }
