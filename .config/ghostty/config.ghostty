@@ -3,6 +3,13 @@
 # Codex, etc. (right Option stays as Option for special characters).
 macos-option-as-alt = left
 
+# --- SSH: fix prompt redraw / "characters repeat" on remote hosts ---
+# ssh-env: auto-fallback TERM to xterm-256color when remote lacks
+#   xterm-ghostty terminfo (prevents readline cursor miscount on PS1 wrap).
+# ssh-terminfo: on first connect, tic-install ghostty's terminfo into the
+#   remote's ~/.terminfo so subsequent sessions get full ghostty features.
+shell-integration-features = ssh-env,ssh-terminfo
+
 # --- Notifications & visual indicators ---
 # title    -> 🔔 emoji on the tab/title when BEL is received (per-tab signal)
 # attention-> dock icon bounce
