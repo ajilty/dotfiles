@@ -8,3 +8,8 @@
 # `skills add` show up in `git status` automatically.
 !.agents/
 !.agents/**
+# Re-ignore noise that lands inside the un-ignored .agents/ tree.
+# (Repo-level `*` short-circuits global ignores, so this can't live in
+# ~/.config/git/ignore for files under .agents/.)
+.agents/**/.DS_Store
+.agents/**/__pycache__/
