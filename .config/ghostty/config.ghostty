@@ -15,12 +15,13 @@ macos-option-as-alt = left
 # behavior detect via TERM_PROGRAM=ghostty / GHOSTTY_* env vars.
 term = xterm-256color
 
-# --- SSH: belt-and-suspenders for the prompt redraw / agent paths ---
-# Even with TERM=xterm-256color above, leaving these on costs nothing and
-# keeps useful side-effects: ssh-env still propagates COLORTERM and other
-# env to remotes; ssh-terminfo is a no-op now (xterm-256color is already
-# everywhere) but harmless if we ever revert the term= line.
-shell-integration-features = ssh-env,ssh-terminfo
+# NOTE on shell-integration-features ssh-env/ssh-terminfo:
+# Do NOT enable them alongside `term = xterm-256color`. ssh-terminfo
+# auto-installs ghostty's terminfo into the remote user's ~/.terminfo
+# AND then re-forwards TERM=xterm-ghostty on every subsequent ssh,
+# overriding the global term= setting above for ssh sessions. That makes
+# the remote user's shell work but `sudo` still breaks (root's $HOME has
+# no ~/.terminfo). Leaving these off keeps TERM=xterm-256color end-to-end.
 
 # --- Notifications & visual indicators ---
 # title    -> 🔔 emoji on the tab/title when BEL is received (per-tab signal)
