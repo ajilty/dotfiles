@@ -26,6 +26,7 @@
       "Bash(acli jira:*)",
       "Bash(acli confluence:*)",
       "WebFetch(domain:registry.npmjs.org)",
+      "WebFetch(domain:api.github.com)",
       "mcp__plugin_context7_context7__*",
       "mcp__ajilty__datacommons_search_indicators",
       "mcp__ajilty__datacommons_get_observations",
@@ -35,8 +36,14 @@
       "mcp__plugin_atlassian_atlassian__fetch",
       "mcp__plugin_atlassian_atlassian__lookupJiraAccountId",
       "mcp__plugin_slack_slack__slack_read_*",
-      "mcp__plugin_slack_slack__slack_search_*"
-    ]
+      "mcp__plugin_slack_slack__slack_search_*",
+      "mcp__wiz__list_*",
+      "mcp__wiz__get_*",
+      "mcp__wiz__graph_search",
+      "mcp__falcon-mcp__falcon_search_*",
+      "Read(~/.claude/skills/**)"
+    ],
+    "defaultMode": "auto"
   },
   "model": "opus[1m]",
   "statusLine": {
@@ -70,11 +77,11 @@
       }
     }
   },
-  "sandbox": {
-    "enabled": true,
-    "autoAllowBashIfSandboxed": true
-  },
   "effortLevel": "medium",
-  "skipAutoPermissionPrompt": true,
-  "voiceEnabled": true
+  "voice": {
+    "enabled": true,
+    "mode": "hold"
+  },
+  "voiceEnabled": true,
+  "skipAutoPermissionPrompt": true
 }
