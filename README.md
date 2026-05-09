@@ -1,5 +1,9 @@
 # Dotfiles
 
+> **Working with LLM agents in this repo?** See [AGENTS.md](AGENTS.md) for the
+> non-obvious mechanics (bare-repo layout, inverse-allowlist `.gitignore`,
+> pre-commit identity guard, autostash conflict handling).
+
 ## Requirements
 
 - `zsh`
