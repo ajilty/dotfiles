@@ -63,7 +63,6 @@ zinit wait lucid for \
     OMZP::pip \
     OMZP::poetry \
     OMZP::node \
-  if'[[ -n "$commands[op]" ]]' atload'eval "$(op completion zsh)"; compdef _op o' \
     OMZP::1password \
     OMZP::vscode \
     OMZP::brew \

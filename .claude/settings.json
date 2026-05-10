@@ -83,5 +83,5 @@
     "mode": "hold"
   },
   "voiceEnabled": true,
-  "skipAutoPermissionPrompt": true
+  "agentPushNotifEnabled": true
 }
