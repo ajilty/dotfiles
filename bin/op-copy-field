@@ -1,0 +1,226 @@
+#!/usr/bin/env bash
+# op-copy-field SRC DST [--move|--copy] [--category CAT] [--type TYPE]
+#                       [--account ACCT] [-y|--yes]
+#
+# Copy a single field between 1Password items (across vaults if needed).
+# SRC and DST are secret references: op://VAULT/ITEM[/SECTION]/FIELD
+#
+# When run on a tty and a relevant flag is omitted, the script prompts:
+#   - copy vs move
+#   - destination category (mirror / API Credential / Login / Password / other)
+#   - destination field type (mirror / concealed / text / url / email / otp / other)
+# Pass -y to suppress prompts and use defaults (copy + mirror source).
+#
+# Other behavior:
+#   - If destination field already has a value, exit non-zero (no overwrite).
+
+set -euo pipefail
+
+die() { printf 'error: %s\n' "$*" >&2; exit 1; }
+
+usage() {
+  sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'
+  exit "${1:-2}"
+}
+
+MOVE=0
+MOVE_SET=0
+CATEGORY=""
+TYPE_OVERRIDE=""
+ACCOUNT=""
+ASSUME_YES=0
+SRC=""
+DST=""
+
+while (($#)); do
+  case "$1" in
+    --move)      MOVE=1; MOVE_SET=1; shift ;;
+    --copy)      MOVE=0; MOVE_SET=1; shift ;;
+    --category)  CATEGORY="${2:?}"; shift 2 ;;
+    --type)      TYPE_OVERRIDE="${2:?}"; shift 2 ;;
+    --account)   ACCOUNT="${2:?}"; shift 2 ;;
+    -y|--yes)    ASSUME_YES=1; shift ;;
+    -h|--help)   usage 0 ;;
+    --)          shift; break ;;
+    -*)          die "unknown flag: $1" ;;
+    *)           if [[ -z $SRC ]]; then SRC="$1"
+                 elif [[ -z $DST ]]; then DST="$1"
+                 else die "unexpected arg: $1"; fi
+                 shift ;;
+  esac
+done
+
+# Interactive prompts only when on a tty and -y not given.
+INTERACTIVE=0
+if (( ! ASSUME_YES )) && [[ -t 0 && -t 2 ]]; then
+  INTERACTIVE=1
+fi
+
+# prompt_choice "Question" default_index option1 option2 ...
+# Echoes the chosen option (string). Reads from /dev/tty so it works even when
+# stdout is being captured.
+prompt_choice() {
+  local q="$1" def="$2"; shift 2
+  local opts=("$@") i ans
+  printf '\n%s\n' "$q" >&2
+  for i in "${!opts[@]}"; do
+    local marker=" "
+    [[ $((i+1)) == "$def" ]] && marker="*"
+    printf '  %s %d) %s\n' "$marker" "$((i+1))" "${opts[$i]}" >&2
+  done
+  printf '  select [1-%d, default %d, or type custom value]: ' "${#opts[@]}" "$def" >&2
+  IFS= read -r ans </dev/tty || ans=""
+  [[ -z $ans ]] && ans="$def"
+  if [[ $ans =~ ^[0-9]+$ ]] && (( ans >= 1 && ans <= ${#opts[@]} )); then
+    printf '%s' "${opts[$((ans-1))]}"
+  else
+    printf '%s' "$ans"
+  fi
+}
+
+[[ -n $SRC && -n $DST ]] || usage 2
+
+OP=(op)
+[[ -n $ACCOUNT ]] && OP+=(--account "$ACCOUNT")
+
+# Parse op://VAULT/ITEM[/SECTION]/FIELD into vault/item/section/field.
+# Slashes inside labels are not supported by op references, so split is safe.
+parse_ref() {
+  local ref="$1" rest
+  [[ $ref == op://* ]] || die "not an op:// reference: $ref"
+  rest="${ref#op://}"
+  IFS='/' read -r -a parts <<<"$rest"
+  case "${#parts[@]}" in
+    3) printf '%s\n%s\n%s\n%s\n' "${parts[0]}" "${parts[1]}" "" "${parts[2]}" ;;
+    4) printf '%s\n%s\n%s\n%s\n' "${parts[0]}" "${parts[1]}" "${parts[2]}" "${parts[3]}" ;;
+    *) die "unsupported reference shape (expected 3 or 4 segments): $ref" ;;
+  esac
+}
+
+mapfile -t S < <(parse_ref "$SRC")
+SRC_VAULT="${S[0]}"; SRC_ITEM="${S[1]}"; SRC_SECTION="${S[2]}"; SRC_FIELD="${S[3]}"
+
+mapfile -t D < <(parse_ref "$DST")
+DST_VAULT="${D[0]}"; DST_ITEM="${D[1]}"; DST_SECTION="${D[2]}"; DST_FIELD="${D[3]}"
+
+# Build a field assignment string for `op item create` / `op item edit`.
+# Form: [SECTION.]FIELD[type]=value
+fld_assignment() {
+  local section="$1" field="$2" type="$3" value="$4" prefix=""
+  [[ -n $section ]] && prefix="${section}."
+  printf '%s%s[%s]=%s' "$prefix" "$field" "$type" "$value"
+}
+
+# Map JSON field type (uppercase, e.g. CONCEALED, STRING) to assignment-syntax
+# type (lowercase, e.g. concealed, text).
+normalize_type() {
+  local t="$1"
+  case "$t" in
+    STRING|string|"")     echo "text" ;;
+    CONCEALED|concealed)  echo "concealed" ;;
+    URL|url)              echo "url" ;;
+    EMAIL|email)          echo "email" ;;
+    DATE|date)            echo "date" ;;
+    MONTH_YEAR|monthYear) echo "monthYear" ;;
+    PHONE|phone)          echo "phone" ;;
+    OTP|otp)              echo "otp" ;;
+    *)                    echo "$t" | tr '[:upper:]' '[:lower:]' ;;
+  esac
+}
+
+# Inspect the source item once; reuse for category, field type, value.
+SRC_JSON="$("${OP[@]}" item get "$SRC_ITEM" --vault "$SRC_VAULT" --format json)"
+
+# Find the source field. Match by section label (or absence) AND field label.
+SRC_FIELD_JSON="$(jq -c \
+  --arg sec "$SRC_SECTION" --arg lbl "$SRC_FIELD" '
+    .fields[]
+    | select(.label == $lbl)
+    | select(
+        ($sec == "" and (.section // null | not))
+        or (.section.label // "" == $sec)
+      )
+  ' <<<"$SRC_JSON")"
+
+[[ -n $SRC_FIELD_JSON ]] || die "source field not found: $SRC"
+[[ $(wc -l <<<"$SRC_FIELD_JSON") -eq 1 ]] || die "source field is ambiguous (multiple matches): $SRC"
+
+SRC_TYPE_RAW="$(jq -r '.type // ""' <<<"$SRC_FIELD_JSON")"
+SRC_VALUE="$(jq -r '.value // ""' <<<"$SRC_FIELD_JSON")"
+SRC_CATEGORY="$(jq -r '.category' <<<"$SRC_JSON")"
+
+[[ -n $SRC_VALUE ]] || die "source field has no value: $SRC"
+
+# Interactive picks for category, type, and copy/move when not specified.
+if (( INTERACTIVE )); then
+  if [[ -z $CATEGORY ]]; then
+    pick="$(prompt_choice \
+      "Destination category? (source is: $SRC_CATEGORY)" 2 \
+      "$SRC_CATEGORY (mirror source)" \
+      "API Credential" \
+      "Login" \
+      "Password" \
+      "Secure Note")"
+    # Strip the "(mirror source)" suffix on the mirror choice.
+    [[ $pick == *" (mirror source)" ]] && pick="${pick% (mirror source)}"
+    CATEGORY="$pick"
+  fi
+
+  if [[ -z $TYPE_OVERRIDE ]]; then
+    src_t_norm="$(normalize_type "$SRC_TYPE_RAW")"
+    pick="$(prompt_choice \
+      "Destination field type? (source is: $src_t_norm)" 1 \
+      "$src_t_norm (mirror source)" \
+      "concealed" \
+      "text" \
+      "url" \
+      "otp")"
+    [[ $pick == *" (mirror source)" ]] && pick="${pick% (mirror source)}"
+    TYPE_OVERRIDE="$pick"
+  fi
+
+  if (( ! MOVE_SET )); then
+    pick="$(prompt_choice \
+      "Copy or move?" 1 \
+      "copy (leave source)" \
+      "move (delete source after verify)")"
+    [[ $pick == move* ]] && MOVE=1 || MOVE=0
+  fi
+fi
+
+DST_TYPE="$(normalize_type "${TYPE_OVERRIDE:-$SRC_TYPE_RAW}")"
+DST_CAT="${CATEGORY:-$SRC_CATEGORY}"
+
+# Conflict check: refuse if destination field already exists with a value.
+if "${OP[@]}" read "$DST" >/dev/null 2>&1; then
+  die "destination already has a value: $DST  (refusing to overwrite)"
+fi
+
+# Does the destination item exist?
+if "${OP[@]}" item get "$DST_ITEM" --vault "$DST_VAULT" >/dev/null 2>&1; then
+  printf 'destination item exists; adding field\n' >&2
+  "${OP[@]}" item edit "$DST_ITEM" --vault "$DST_VAULT" \
+    "$(fld_assignment "$DST_SECTION" "$DST_FIELD" "$DST_TYPE" "$SRC_VALUE")" \
+    >/dev/null
+else
+  printf 'creating destination item: %s/%s (category=%s)\n' "$DST_VAULT" "$DST_ITEM" "$DST_CAT" >&2
+  "${OP[@]}" item create \
+    --category "$DST_CAT" \
+    --vault "$DST_VAULT" \
+    --title "$DST_ITEM" \
+    "$(fld_assignment "$DST_SECTION" "$DST_FIELD" "$DST_TYPE" "$SRC_VALUE")" \
+    >/dev/null
+fi
+
+# Verify by reading back, comparing values.
+DST_VALUE="$("${OP[@]}" read "$DST")"
+[[ $DST_VALUE == "$SRC_VALUE" ]] || die "verification failed: read-back value differs at $DST"
+printf 'copied: %s -> %s\n' "$SRC" "$DST"
+
+if (( MOVE )); then
+  printf 'deleting source field: %s\n' "$SRC" >&2
+  del_path="${SRC_FIELD}[delete]"
+  [[ -n $SRC_SECTION ]] && del_path="${SRC_SECTION}.${del_path}"
+  "${OP[@]}" item edit "$SRC_ITEM" --vault "$SRC_VAULT" "$del_path" >/dev/null
+  printf 'moved.\n'
+fi
