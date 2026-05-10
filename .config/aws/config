@@ -4,8 +4,8 @@
 
 [default] 
 region = us-east-1
-output = yaml-stream
-cli_auto_prompt = on
+output = yaml
+; cli_auto_prompt = on
 
 ; To log-in with AWS Identity Center, run `aws configure sso` or set here then run `aws sso login`
 ; [sso-session <sso_session_name>]
@@ -20,3 +20,25 @@ cli_auto_prompt = on
 ; sso_account_id = <target_account_id>
 ; sso_role_name = <target_account_role_name>
 ; region = <target_account_region_override>
+[profile dev]
+sso_session = personal
+sso_account_id = 641514747893
+sso_role_name = AdministratorAccess
+region = us-east-2
+output = yaml-stream
+[sso-session personal]
+sso_start_url = https://alicursi.awsapps.com/start
+sso_region = us-east-1
+sso_registration_scopes = sso:account:access
+[profile test]
+sso_session = personal
+sso_account_id = 732474813292
+sso_role_name = AdministratorAccess
+region = us-east-2
+output = yaml
+[profile prod]
+sso_session = personal
+sso_account_id = 718972858300
+sso_role_name = AdministratorAccess
+region = us-east-2
+output = yaml

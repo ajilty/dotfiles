@@ -54,3 +54,11 @@ macos-titlebar-style = tabs
 copy-on-select = clipboard
 clipboard-trim-trailing-spaces = true
 mouse-hide-while-typing = true
+
+# --- SSH: make remotes understand xterm-ghostty ---
+# ssh-terminfo: on first SSH to a host, install the xterm-ghostty terminfo
+#               into the remote's ~/.terminfo via `infocmp | ssh ... tic`.
+# ssh-env:      forward TERM (and other ghostty env hints) so the remote
+#               picks up the right terminfo entry instead of falling back.
+# Defaults (cursor, sudo, title) are preserved by listing them explicitly.
+shell-integration-features = cursor, sudo, title, ssh-env, ssh-terminfo
