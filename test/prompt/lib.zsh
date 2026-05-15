@@ -64,12 +64,17 @@ zpty_capture() {
   last_at=$SECONDS
   deadline=$(( SECONDS + timeout ))
 
-  # Belt-and-suspenders: one early newline to dismiss any startup y/n
-  # prompt (compinit's "insecure directories" question is the known case;
-  # default is [y]). Compinit reads via `read -k1` directly from $TTY,
-  # not through zle, so the keystroke-eating problem that bit our
-  # post-prompt writes doesn't apply here. If there's no blocking prompt,
-  # the newline lands in zle's empty buffer and causes a harmless redraw.
+  # Belt-and-suspenders: if startup goes quiet for 2s, write `y\n` to the
+  # pty to dismiss compinit's "insecure directories" prompt.
+  #
+  # The default-answer hint in compinit's prompt -- "[y] or abort [n]?" --
+  # is *misleading*: the actual logic is `case $reply in [Yy]*) ;; *)
+  # abort ;; esac`. An empty answer aborts, so we must send a literal 'y'.
+  # Compinit reads its answer via `read -k1` directly from $TTY (not
+  # through zle), so this lands cleanly even though zle is otherwise
+  # active. If no prompt is blocking, the buffer contains 'y' followed by
+  # Enter, which submits the (one-character) command 'y' -- visible in the
+  # capture as a 'command not found: y' line but otherwise harmless.
   local nudged=0
 
   while (( SECONDS < deadline )); do
@@ -79,7 +84,7 @@ zpty_capture() {
       last_at=$SECONDS
     else
       if (( ! nudged && SECONDS - last_at >= 2 )); then
-        zpty -w SHELL $'\n' 2>/dev/null
+        zpty -w SHELL $'y\n' 2>/dev/null
         nudged=1
         last_at=$SECONDS
       elif (( SECONDS - last_at >= quiet_for )); then
