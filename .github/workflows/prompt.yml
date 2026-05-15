@@ -61,18 +61,19 @@ jobs:
           export DOTFILES_TEST_LOG_DIR="$SANDBOX/test-logs"
           mkdir -p "$DOTFILES_TEST_LOG_DIR"
 
-          # Compinit refuses to load completions from any group-writable dir in
-          # $fpath and prompts interactively for confirmation. In a zpty with
-          # no human, that hangs the inner zsh forever (we observed exactly
-          # this on the first run). Tighten perms in the sandbox before any
-          # zsh runs, and let zsh's own `compaudit` find anything we missed.
+          # Keep compinit from prompting at all. compinit's "insecure dirs"
+          # audit fails on any group-writable directory in $fpath; in a zpty
+          # with no human, the y/n prompt hangs the shell. The root cause is
+          # umask -- zinit clones its plugins during the first interactive
+          # zsh, and the new dirs inherit whatever umask CI ran us with.
+          # umask 022 ensures every new dir is 0755 (no group write), so
+          # compinit's audit passes silently.
+          umask 022
+
+          # Belt-and-suspenders: also chmod the sandbox tree before tests
+          # run. This catches anything that was already on disk from the
+          # checkout/install with looser perms.
           chmod -R go-w "$SANDBOX" 2>/dev/null || true
-          HOME="$SANDBOX" zsh -c '
-            autoload -Uz compaudit
-            for d in ${(f)"$(compaudit 2>/dev/null)"}; do
-              [[ -n "$d" && -e "$d" ]] && chmod -R go-w,go-s "$d" 2>/dev/null
-            done
-          ' 2>/dev/null || true
 
           HOME="$SANDBOX" bash "$SANDBOX/test/run.sh"
 
