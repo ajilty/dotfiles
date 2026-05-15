@@ -932,8 +932,10 @@
   typeset -g POWERLEVEL9K_VIRTUALENV_SHOW_WITH_PYENV=false
   # Separate environment name from Python version only with a space.
   typeset -g POWERLEVEL9K_VIRTUALENV_{LEFT,RIGHT}_DELIMITER=
-  # Only show virtualenv near python files / project markers.
-  typeset -g POWERLEVEL9K_VIRTUALENV_SHOW_ON_UPGLOB='*.py|pyproject.toml|requirements*.txt|Pipfile|setup.py|setup.cfg|.python-version'
+  # Only show virtualenv near python project files. Note: .python-version is
+  # excluded on purpose — it's commonly used as a global pyenv pin in $HOME,
+  # which would otherwise trigger pyenv/virtualenv in every dir under $HOME.
+  typeset -g POWERLEVEL9K_VIRTUALENV_SHOW_ON_UPGLOB='*.py|pyproject.toml|requirements*.txt|Pipfile|setup.py|setup.cfg'
   # Custom icon.
   # typeset -g POWERLEVEL9K_VIRTUALENV_VISUAL_IDENTIFIER_EXPANSION='⭐'
 
@@ -992,8 +994,10 @@
   #    starts with "$P9K_PYENV_PYTHON_VERSION/".
   # 2. Otherwise display "$P9K_CONTENT $P9K_PYENV_PYTHON_VERSION".
   typeset -g POWERLEVEL9K_PYENV_CONTENT_EXPANSION='${P9K_CONTENT}${${P9K_CONTENT:#$P9K_PYENV_PYTHON_VERSION(|/*)}:+ $P9K_PYENV_PYTHON_VERSION}'
-  # Only show pyenv near python files / project markers.
-  typeset -g POWERLEVEL9K_PYENV_SHOW_ON_UPGLOB='*.py|pyproject.toml|requirements*.txt|Pipfile|setup.py|setup.cfg|.python-version'
+  # Only show pyenv near python project files. Note: .python-version is
+  # excluded on purpose — it's commonly used as a global pyenv pin in $HOME,
+  # which would otherwise trigger pyenv in every dir under $HOME.
+  typeset -g POWERLEVEL9K_PYENV_SHOW_ON_UPGLOB='*.py|pyproject.toml|requirements*.txt|Pipfile|setup.py|setup.cfg'
 
   # Custom icon.
   # typeset -g POWERLEVEL9K_PYENV_VISUAL_IDENTIFIER_EXPANSION='⭐'
