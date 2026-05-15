@@ -93,6 +93,45 @@ dotfiles-blocklist-sync
 
 The gist must contain a file literally named `dotfiles-blocklist.txt`. After 30 days the local copy is considered stale (warns but still scans); re-run `dotfiles-blocklist-sync` to refresh.
 
+## Installing agent skills
+
+Skills are managed by the `npx skills` CLI (vercel-labs/skills). The canonical store is `~/.agents/skills/`; `~/.claude/skills` is a symlink to it (`~/.claude/skills -> ../.agents/skills`), so a single install is visible to every agent that reads from `~/.claude/skills/`. There are no per-agent duplicate copies.
+
+Install pattern:
+
+```bash
+npx skills add <owner/repo> -g -s <skill-name> -a claude-code -y
+# multiple skills from the same repo: REPEAT -s, never comma-separate
+npx skills add obra/superpowers -g -s brainstorming -s writing-plans -a claude-code -y
+```
+
+Flags worth knowing: `-g` = user-global (writes to `~/.agents/`), `-a claude-code` = register with Claude Code (creates/maintains the `~/.claude/skills` symlink target), `-y` = skip prompts, `--list` (with `-g`) prints the available skills in a repo without installing.
+
+The lockfile at `~/.agents/.skill-lock.json` records source repo, commit SHA, and install time for every CLI-installed skill. It's tracked in this dotfiles repo; `npx skills check` / `npx skills update` use it to detect drift and refresh.
+
+After install you'll typically see three changes in `dotfiles status`: lockfile `M`, new skill dir untracked, and a new entry inside `.agents/.skill-lock.json`. Stage with `dotfiles add -f .agents/skills/<name>` (force, since the inverse-allowlist treats new files as ignored) and `dotfiles add -u .agents/.skill-lock.json`. Commit normally.
+
+Caveats and gotchas:
+
+- **Reinstall to register an existing skill.** If a skill is on disk but missing from `.skill-lock.json` (e.g. it was added by a different installer like `obra/superpowers`'s own bootstrap, or a manual `git clone`), `rm -rf` both `~/.agents/skills/<name>` and `~/.claude/skills/<name>` first, then `npx skills add` — that ensures a clean install and populates the lockfile entry. Skip the `rm` step and the CLI may complain about an existing directory.
+- **Comma-separated `-s` silently fails.** `npx skills add ... -s a,b` reports "no matching skills found" and dumps the full repo skill list. Always repeat the flag: `-s a -s b`.
+- **Stale lockfile entries** (skill in `.skill-lock.json` but not on disk) don't auto-clean. Edit `.skill-lock.json` directly with a tiny Python one-liner: `python3 -c "import json, os; p=os.path.expanduser('~/.agents/.skill-lock.json'); d=json.load(open(p)); d['skills'].pop('<name>'); json.dump(d, open(p,'w'), indent=2)"` and then add a trailing newline.
+- **Homegrown skills don't have a source repo** and will never be lockfile-tracked. Currently that's just `dotfiles-repo` itself. Don't try to "fix" its absence from the lockfile.
+- **The CLI's "symlinked: Claude Code" output is about the parent dir**, not each skill. Don't expect `readlink ~/.claude/skills/<name>` to return anything.
+- **Heavy skills** (e.g. `xlsx` from `anthropics/skills` bundles the full OOXML XSD tree, ~MB) bloat the dotfiles repo. Worth confirming with the user before installing if the size is non-trivial.
+- **Security ratings vary** between Gen / Socket / Snyk in the CLI's install summary. Treat "High Risk" from one scanner as a prompt to skim `SKILL.md` before committing, not an automatic block — false positives on benign skills (e.g. `open <file>.html`) are common.
+
+Commands worth remembering:
+
+```bash
+npx skills find <query>         # search the registry (interactive)
+npx skills add ... --list       # list a repo's skills without installing
+npx skills ls -g                # list installed global skills
+npx skills check                # check for updates
+npx skills update               # update all
+npx skills remove -g -s <name>  # uninstall
+```
+
 ## Commit messages
 
 Pre-commit doesn't block on message content, but the hook runs `set -euo pipefail`, so commit via `-F <file>` (heredoc into a temp file) for multi-line messages — inline `$(cat <<'EOF' ... EOF)` heredocs interact badly with the wrapper alias in some shells.
@@ -113,7 +152,8 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
 - `~/.config/git/ignore` — global ignores (consulted only when no repo-level rule matches; tracked in this repo so it deploys to every machine).
 - `~/.config/git/dotfiles.config` — per-repo overrides (hooksPath + identity), included via `[includeIf "gitdir:~/.dotfiles/"]`.
 - `~/.dotfiles-hooks/` — the hooks dir referenced by the includeIf above.
-- `~/.agents/skills/` — vendored agent skills tree, intentionally tracked despite the global `*` ignore. New skills installed via `skills add` show up in `git status` automatically.
+- `~/.agents/skills/` — vendored agent skills tree (the canonical location), intentionally tracked despite the global `*` ignore. `~/.claude/skills` is a symlink into here. New skills installed via `npx skills add` show up in `git status` automatically; see the "Installing agent skills" section above.
+- `~/.agents/.skill-lock.json` — manifest of every CLI-installed skill (source repo, commit SHA, install timestamp). Tracked. The homegrown `dotfiles-repo` skill is not listed here.
 - `~/.claude/settings.json` — Claude Code user settings (tracked).
 - `~/.claude/settings.local.json` — local-only overrides (gitignored globally via `**/.claude/settings.local.json` in `~/.config/git/ignore`).
 
