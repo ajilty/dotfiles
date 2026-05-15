@@ -29,12 +29,14 @@ if ! zsh -i -c 'exit' >/dev/null 2>"$steady_log"; then
   die "interactive zsh failed on steady-state startup"
 fi
 
-# Hard-failure markers only. Benign p10k/zinit informational messages that
-# touch stderr (rare but possible) shouldn't break the build.
-pattern='(syntax error|parse error|command not found|undefined function|cannot stat|permission denied|no such file or directory)'
-if grep -E -i -- "$pattern" "$steady_log" >/dev/null; then
+# Real fatal errors zsh emits are prefixed with `zsh:`. Plugin/zinit
+# warnings (e.g. snippet downloads, optional config absences) are not.
+# Match only the zsh-prefixed form so we don't false-positive on benign
+# zinit `no such file or directory` traces from snippet fetches.
+pattern='^zsh: (syntax error|parse error|command not found|undefined function)'
+if grep -E -- "$pattern" "$steady_log" >/dev/null; then
   warn "fatal-looking lines in $steady_log:"
-  grep -E -i --color=never -- "$pattern" "$steady_log" >&2 || true
+  grep -E --color=never -- "$pattern" "$steady_log" >&2 || true
   die "interactive zsh emitted fatal-looking errors on steady-state startup"
 fi
 

@@ -4,7 +4,14 @@
 # Why zpty: the zsh/zpty module is built into zsh itself, so any machine that
 # can run these tests already has it. No extra apt/brew install, identical
 # behavior on Linux and macOS, no `script`/`expect` flag-portability shims.
-# That's the whole reason we don't capture via `script -qec`.
+#
+# Why we never write into the spawned zsh's zle (a hard-won lesson):
+# zsh-autocomplete is loaded by .zshrc and runs live, intercepting every
+# keystroke through zle widgets. Writing "cd /tmp/foo" via `zpty -w` after
+# the prompt has drawn produces "d /tmp/foo" -- autocomplete's redraw eats
+# the first character. So instead of typing commands, we hand them to the
+# spawn line (`cd /tmp/foo && exec zsh -i`) and let the inner zsh start
+# already in the right state. No zle interaction needed.
 
 emulate -L zsh
 
@@ -21,66 +28,55 @@ strip_ansi() {
   '
 }
 
-# Drive an interactive zsh inside a zpty, send a setup command, and capture
-# everything up to a unique sentinel marker. The sentinel is what tells us
-# the prompt has actually drawn (and zinit/p10k have finished any deferred
-# loads triggered by the first prompt).
+# Spawn interactive zsh in a zpty and capture its output until it goes
+# quiet. "Quiet" means no new bytes for QUIET_FOR seconds -- by then,
+# p10k's instant prompt has drawn, zinit's deferred plugins have loaded,
+# and async vcs lookups have settled.
 #
-# Usage: zpty_capture <setup-cmd> [<timeout-seconds>]
-#   <setup-cmd>        Run inside the inner zsh before the sentinel (e.g. cd).
-#   <timeout-seconds>  Wall-clock budget (default 20).
+# Usage: zpty_capture <pre-shell-cmd> [<timeout-seconds>] [<quiet-for-seconds>]
+#   <pre-shell-cmd>      Sh command run before `exec zsh -i`. Use this to
+#                        place the inner zsh in a fixture dir, set env vars,
+#                        etc. Pass "" to spawn zsh from wherever we are.
+#   <timeout-seconds>    Hard wall-clock budget (default 25).
+#   <quiet-for-seconds>  Idle threshold to declare the prompt "rendered"
+#                        (default 3).
 #
 # stdout: the raw byte stream from the pty (ANSI included).
-# stderr: diagnostics.
 zpty_capture() {
-  local setup="${1:-}"
-  local timeout="${2:-20}"
-  local sentinel="__DOTFILES_PROMPT_SENTINEL_$$_${RANDOM}__"
-  local output="" chunk="" deadline
-  deadline=$(( SECONDS + timeout ))
+  local pre_cmd="${1:-}"
+  local timeout="${2:-25}"
+  local quiet_for="${3:-3}"
+  local output="" chunk="" last_at deadline
 
   if ! zmodload zsh/zpty 2>/dev/null; then
     print -u2 "zpty_capture: zsh/zpty module unavailable"
     return 1
   fi
 
-  if ! zpty -b SHELL "zsh -i" 2>/dev/null; then
+  local spawn="exec zsh -i"
+  [[ -n "$pre_cmd" ]] && spawn="$pre_cmd && exec zsh -i"
+
+  if ! zpty -b SHELL "$spawn" 2>/dev/null; then
     print -u2 "zpty_capture: failed to spawn inner zsh"
     return 1
   fi
 
-  # Let the prompt draw at least once before we send anything. p10k's instant
-  # prompt and the deferred-loaded full prompt race; without a brief drain
-  # the sentinel echo can interleave with prompt output and confuse readers.
-  local primer_deadline=$(( SECONDS + 5 ))
-  while (( SECONDS < primer_deadline )); do
-    chunk=""
-    if zpty -r -t SHELL chunk 2>/dev/null; then
-      output+="$chunk"
-    else
-      sleep 0.2
-      # Stop priming once output has stabilized.
-      local before="$output"
-      chunk=""
-      zpty -r -t SHELL chunk 2>/dev/null && output+="$chunk"
-      [[ "$output" == "$before" ]] && break
-    fi
-  done
-
-  [[ -n "$setup" ]] && zpty -w SHELL "$setup"
-  zpty -w SHELL "print -- $sentinel"
+  last_at=$SECONDS
+  deadline=$(( SECONDS + timeout ))
 
   while (( SECONDS < deadline )); do
     chunk=""
     if zpty -r -t SHELL chunk 2>/dev/null; then
       output+="$chunk"
-      [[ "$output" == *"$sentinel"* ]] && break
+      last_at=$SECONDS
     else
+      if (( SECONDS - last_at >= quiet_for )); then
+        break
+      fi
       sleep 0.1
     fi
   done
 
   zpty -d SHELL 2>/dev/null
-
   print -r -- "$output"
 }
