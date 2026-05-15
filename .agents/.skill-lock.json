@@ -38,6 +38,45 @@
       "pluginName": "mattpocock-skills",
       "installedAt": "2026-05-15T20:30:34.033Z",
       "updatedAt": "2026-05-15T20:30:34.033Z"
+    },
+    "docx": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/anthropics/skills.git",
+      "skillPath": "skills/docx/SKILL.md",
+      "skillFolderHash": "a0d216202f9793a78da44cf96aabe48f42e627ac",
+      "pluginName": "document-skills",
+      "installedAt": "2026-05-15T20:49:53.192Z",
+      "updatedAt": "2026-05-15T20:49:53.192Z"
+    },
+    "pdf": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/anthropics/skills.git",
+      "skillPath": "skills/pdf/SKILL.md",
+      "skillFolderHash": "6369f4649de69bd6857c9bc3b058a77206009238",
+      "pluginName": "document-skills",
+      "installedAt": "2026-05-15T20:49:53.225Z",
+      "updatedAt": "2026-05-15T20:49:53.225Z"
+    },
+    "xlsx": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/anthropics/skills.git",
+      "skillPath": "skills/xlsx/SKILL.md",
+      "skillFolderHash": "f5fb1cdb7993b2feee8367e983e9d4d58d2eedd4",
+      "pluginName": "document-skills",
+      "installedAt": "2026-05-15T20:49:53.252Z",
+      "updatedAt": "2026-05-15T20:49:53.252Z"
+    },
+    "playground": {
+      "source": "anthropics/claude-plugins-official",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/anthropics/claude-plugins-official.git",
+      "skillPath": "plugins/playground/skills/playground/SKILL.md",
+      "skillFolderHash": "8b48d9161c33190447492f7d7d106cc140322772",
+      "installedAt": "2026-05-15T20:49:57.963Z",
+      "updatedAt": "2026-05-15T20:49:57.963Z"
     }
   },
   "dismissed": {}
