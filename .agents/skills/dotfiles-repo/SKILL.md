@@ -1,6 +1,6 @@
 ---
 name: dotfiles-repo
-description: Use when working in the bare git dotfiles repo at ~/.dotfiles (worktree $HOME, accessed via the `dotfiles` alias / dotfiles-shell). Covers the inverse-allowlist .gitignore (`*` plus `!.agents/**`) and why `git add` warns on tracked files, the pre-commit identity hook requiring ajilty <github@ajilty.com> (do not --no-verify or --author=), `dotfiles pull` (rebase --autostash) conflict recovery including autostash-pop vs replay conflicts and the `update-index --refresh` gotcha, blocklist bootstrap on fresh machines, commit-message conventions (-F file, Co-Authored-By trailer), and the don'ts (no `git init` under $HOME, no force-pushing the public remote).
+description: Use when working in the ajilty dotfiles bare git repo at ~/.dotfiles (worktree $HOME, `dotfiles` alias / dotfiles-shell). Triggers include `dotfiles add` warning paths-are-ignored on tracked files, the pre-commit hook rejecting commits whose author is not ajilty (github@ajilty.com), `dotfiles pull` leaving UU/DU paths or mid-rebase --autostash state with `.dotfiles/rebase-merge/`, "WARN dotfiles blocklist not initialized" on a fresh machine, or unfamiliarity with the inverse-allowlist .gitignore pattern (`*` plus `!.agents/**`) and why `git add` complains about already-tracked files.
 ---
 
 # dotfiles-repo
