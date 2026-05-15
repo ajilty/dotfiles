@@ -1,3 +1,17 @@
+# Dumb-terminal short-circuit. When this file is sourced from a context with
+# no real terminal -- CI runners without a TTY, Emacs TRAMP mode, some SSH
+# invocations without -t -- zinit's `+zinit-message` color registry fails to
+# initialize and its OMZP::-prefix resolver bails. Symptoms include
+# unexpanded `{rst}{info}` literals in output, snippet-download paths like
+# `OMZP::name/OMZP::name`, and p10k rendering a degraded prompt with no vcs
+# segment. Bail out to a minimal prompt before any of that runs.
+if [[ "$TERM" == "dumb" ]]; then
+  unsetopt zle prompt_cr prompt_subst 2>/dev/null
+  unfunction precmd preexec 2>/dev/null
+  PS1='$ '
+  return
+fi
+
 # Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
 # Initialization code that may require console input (password prompts, [y/n]
 # confirmations, etc.) must go above this block; everything else may go below.
