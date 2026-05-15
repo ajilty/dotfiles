@@ -1,8 +1,9 @@
 # Dotfiles
 
-> **Working with LLM agents in this repo?** See [AGENTS.md](AGENTS.md) for the
-> non-obvious mechanics (bare-repo layout, inverse-allowlist `.gitignore`,
-> pre-commit identity guard, autostash conflict handling).
+> **Working with LLM agents in this repo?** Operational mechanics live in the
+> `dotfiles-repo` skill at [.agents/skills/dotfiles-repo/SKILL.md](.agents/skills/dotfiles-repo/SKILL.md)
+> (bare-repo layout, inverse-allowlist `.gitignore`, pre-commit identity guard, autostash conflict handling).
+> A short digest also remains in [AGENTS.md](AGENTS.md) for non-skill-aware tools.
 
 ## Requirements
 
