@@ -1,0 +1,78 @@
+name: prompt
+
+# Tests the interactive zsh prompt (powerlevel10k + zinit). Triggers only
+# when something that can affect the prompt actually changes, so unrelated
+# PRs don't get spammed with a render-comment.
+#
+# All real work lives in test/tests.d/3*-prompt-*.sh. To reproduce locally:
+#
+#   bash test/in-sandbox.sh
+#   SANDBOX=$(ls -td test/sandbox-* | head -1)
+#   HOME="$SANDBOX" DOTFILES_TEST_LOG_DIR="$SANDBOX/test-logs" \
+#     bash "$SANDBOX/test/run.sh"
+#   cat "$SANDBOX/test-logs/prompt-report.md"
+
+on:
+  pull_request:
+    paths:
+      - '.zshrc'
+      - '.zshenv'
+      - '.profile'
+      - '.p10k.zsh'
+      - '.config/shell/**'
+      - 'bin/setup-dotfiles.sh'
+      - 'test/lib.sh'
+      - 'test/run.sh'
+      - 'test/in-sandbox.sh'
+      - 'test/prompt/**'
+      - 'test/tests.d/**'
+      - '.github/workflows/prompt.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  prompt-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install zsh + perl + rsync
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            zsh perl rsync curl ca-certificates git
+
+      - name: Run sandbox + tests
+        id: tests
+        run: |
+          set -euo pipefail
+          bash test/in-sandbox.sh
+          SANDBOX=$(ls -td test/sandbox-* | head -1)
+          if [ -z "$SANDBOX" ] || [ ! -d "$SANDBOX" ]; then
+            echo "no sandbox directory found" >&2
+            exit 1
+          fi
+          echo "sandbox=$SANDBOX" >>"$GITHUB_OUTPUT"
+          export DOTFILES_TEST_LOG_DIR="$SANDBOX/test-logs"
+          mkdir -p "$DOTFILES_TEST_LOG_DIR"
+          HOME="$SANDBOX" bash "$SANDBOX/test/run.sh"
+
+      - name: Upload test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: prompt-test-logs
+          path: ${{ steps.tests.outputs.sandbox }}/test-logs/
+          if-no-files-found: warn
+
+      - name: Post or update PR comment
+        if: success() && github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: prompt-render
+          path: ${{ steps.tests.outputs.sandbox }}/test-logs/prompt-report.md
