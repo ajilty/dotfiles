@@ -1,0 +1,234 @@
+name: prompt
+
+# Tests the interactive zsh prompt (powerlevel10k + zinit). Triggers only
+# when something that can affect the prompt actually changes, so unrelated
+# PRs don't get spammed with a render-comment.
+#
+# All real work lives in test/tests.d/3*-prompt-*.sh. To reproduce locally:
+#
+#   bash test/in-sandbox.sh
+#   SANDBOX=$(ls -td test/sandbox-* | head -1)
+#   HOME="$SANDBOX" DOTFILES_TEST_LOG_DIR="$SANDBOX/test-logs" \
+#     bash "$SANDBOX/test/run.sh"
+#   cat "$SANDBOX/test-logs/prompt-report.md"
+
+on:
+  pull_request:
+    paths:
+      - '.zshrc'
+      - '.zshenv'
+      - '.profile'
+      - '.p10k.zsh'
+      - '.config/shell/**'
+      - 'bin/setup-dotfiles.sh'
+      - 'test/lib.sh'
+      - 'test/run.sh'
+      - 'test/in-sandbox.sh'
+      - 'test/prompt/**'
+      - 'test/tests.d/**'
+      - '.github/workflows/prompt.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  prompt-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # GH Actions runners inherit TERM from the agent process, which has no
+      # controlling terminal. That commonly arrives as `TERM=dumb` (or unset)
+      # in the run step, which makes zinit's color-message registry fail to
+      # initialize -- causing literal `{rst}` placeholders in output, doubled
+      # snippet paths (OMZP::name/OMZP::name), and a degraded p10k render
+      # with no vcs segment. Setting a real terminfo entry here gives the
+      # whole step a usable TERM and prevents that cascade.
+      TERM: xterm-256color
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install zsh + perl + rsync + zinit's download deps
+        run: |
+          sudo apt-get update
+          # zinit's plugin/snippet downloader tries curl, then wget, then
+          # lftp -- and p10k's gitstatusd binary is fetched the same way.
+          # If wget is missing, zinit's fallback chain can leave it in a
+          # half-installed state where snippet paths exist but binaries
+          # don't, and p10k renders a degraded prompt with no vcs segment.
+          # All three (curl + wget + git) need to be available.
+          sudo apt-get install -y --no-install-recommends \
+            zsh perl rsync curl wget ca-certificates git bsdmainutils
+          # Force-refresh CA cert bundle. ca-certificates' postinst runs
+          # update-ca-certificates automatically on most systems, but in
+          # some minimal containers (notably act's image) the cert bundle
+          # ends up empty -- which makes git fail with "server certificate
+          # verification failed. CAfile: none" when zinit tries to clone.
+          # No-op on a properly configured GH runner.
+          sudo update-ca-certificates 2>&1 | tail -3 || true
+
+      - name: Diagnose terminal env
+        # One-time visibility into the runtime conditions that have been
+        # confusing this workflow. If a future run misbehaves, the answers
+        # to these four questions usually disambiguate the cause.
+        run: |
+          echo "TERM=${TERM:-<unset>}"
+          echo "stdin is tty? $([ -t 0 ] && echo yes || echo no)"
+          echo "stdout is tty? $([ -t 1 ] && echo yes || echo no)"
+          locale 2>/dev/null || true
+          ls -la /proc/self/fd/0 || true
+          command -v script && script --version | head -1
+
+      - name: Run sandbox + tests
+        id: tests
+        run: |
+          set -euo pipefail
+          bash test/in-sandbox.sh
+          # CRITICAL: $HOME *must* be an absolute path. zsh interprets
+          # `~`-prefixed paths relative to $HOME's literal value -- if
+          # that's relative, every `source ~/foo` resolves against the
+          # CURRENT PWD, which changes during init (e.g. zinit cds into
+          # its own dir during install). The result is silent
+          # `no such file or directory` errors and a half-initialized zsh.
+          SANDBOX=$(cd "$(ls -td test/sandbox-* | head -1)" && pwd)
+          if [ -z "$SANDBOX" ] || [ ! -d "$SANDBOX" ]; then
+            echo "no sandbox directory found" >&2
+            exit 1
+          fi
+          echo "sandbox=$SANDBOX" >>"$GITHUB_OUTPUT"
+          export DOTFILES_TEST_LOG_DIR="$SANDBOX/test-logs"
+          mkdir -p "$DOTFILES_TEST_LOG_DIR"
+
+          # umask 022 + chmod -R go-w: keep compinit's "insecure dirs"
+          # audit from prompting. zinit clones its plugins during the first
+          # interactive zsh; new dirs inherit whatever umask CI started us
+          # with. 022 makes every new dir 0755 (no group write). chmod is
+          # belt-and-suspenders for anything already on disk.
+          umask 022
+          chmod -R go-w "$SANDBOX" 2>/dev/null || true
+          # And the parent chain compaudit walks up to /. The CI runner
+          # frequently has group-writable bits on /home/runner/work/<repo>;
+          # they only matter to compinit because it walks ancestors.
+          # `${VAR:-}` defaults so this works under act too (which doesn't
+          # set RUNNER_WORKSPACE / GITHUB_WORKSPACE the same way GH does).
+          chmod go-w "${RUNNER_WORKSPACE:-}" "${GITHUB_WORKSPACE:-}" 2>/dev/null || true
+
+          # Belt-and-suspenders: patch the sandbox's .zshrc to skip
+          # compinit's interactive insecure-dirs audit in CI. `zicompinit`
+          # is zinit's wrapper around `compinit`; replacing it inline with
+          # `compinit -u` (accept insecure dirs without prompting) sidesteps
+          # the prompt that, if it fires and goes unanswered, poisons
+          # zinit's subsequent snippet downloads with a doubled-path error
+          # (`OMZP::name/OMZP::name`). We only do this for the sandbox copy;
+          # the source-of-truth .zshrc in $HOME is unchanged.
+          sed -i 's/zicompinit;/compinit -u -d "${ZINIT[ZCOMPDUMP_PATH]:-$HOME\/.zcompdump}" 2>\/dev\/null;/g' \
+            "$SANDBOX/.zshrc" 2>/dev/null || true
+
+          # PTY-backed warmup. With compinit patched to `-u` above, zinit's
+          # bootstrap completes cleanly under script's PTY: deferred plugins
+          # install, gitstatusd downloads, the compdump gets written, and
+          # subsequent test-time zsh sessions see a quiescent sandbox.
+          warmup_log="$SANDBOX/warmup.log"
+          if ! HOME="$SANDBOX" timeout 120 \
+              script -qec 'zsh -i -c "sleep 60; exit"' /dev/null \
+              </dev/null >"$warmup_log" 2>&1; then
+            echo "warmup did not complete cleanly (continuing); tail of log:" >&2
+            tail -50 "$warmup_log" >&2 || true
+          fi
+
+          HOME="$SANDBOX" bash "$SANDBOX/test/run.sh"
+
+      - name: Measure base-branch startup time (for delta comparison)
+        # On pull_request events, also measure interactive zsh startup on
+        # the BASE branch -- so the PR comment can show "+150ms vs main"
+        # if the PR slowed things down. Skipped on workflow_dispatch (no
+        # base to compare against). Never gates CI: we only emit a number.
+        id: base_speed
+        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+        continue-on-error: true
+        run: |
+          set -uo pipefail
+          base_sha="${{ github.event.pull_request.base.sha }}"
+          base_ref="${{ github.event.pull_request.base.ref }}"
+          echo "Measuring startup time on base ($base_ref @ $base_sha)..."
+
+          BASE_DIR="$RUNNER_TEMP/base-checkout"
+          mkdir -p "$BASE_DIR"
+          git clone --quiet --shared . "$BASE_DIR"
+          git -C "$BASE_DIR" checkout --quiet "$base_sha"
+
+          # Mirror the main job's sandbox setup against the base checkout.
+          umask 022
+          BASE_SANDBOX=$(cd "$BASE_DIR" && bash test/in-sandbox.sh \
+            && cd "$BASE_DIR/$(ls -td test/sandbox-* | head -1)" && pwd)
+          chmod -R go-w "$BASE_SANDBOX" 2>/dev/null || true
+          chmod go-w "${RUNNER_WORKSPACE:-}" "${GITHUB_WORKSPACE:-}" 2>/dev/null || true
+          sed -i 's/zicompinit;/compinit -u -d "${ZINIT[ZCOMPDUMP_PATH]:-$HOME\/.zcompdump}" 2>\/dev\/null;/g' \
+            "$BASE_SANDBOX/.zshrc" 2>/dev/null || true
+
+          # Warmup so plugin install doesn't pollute the timing measurement.
+          HOME="$BASE_SANDBOX" timeout 120 \
+            script -qec 'zsh -i -c "sleep 60; exit"' /dev/null </dev/null \
+            >/dev/null 2>&1 || true
+
+          # 10 timed runs, median (same logic as 20-speed-test.sh).
+          times=()
+          for _ in $(seq 1 10); do
+            s=$(date +%s%N)
+            HOME="$BASE_SANDBOX" script -qec 'zsh -i -c exit' /dev/null \
+              >/dev/null 2>&1 || true
+            e=$(date +%s%N)
+            times+=("$(( (e - s) / 1000000 ))")
+          done
+          IFS=$'\n' sorted=($(sort -n <<<"${times[*]}"))
+          unset IFS
+          base_median=$(( (sorted[4] + sorted[5]) / 2 ))
+          echo "base_ms=$base_median" >>"$GITHUB_OUTPUT"
+          echo "base startup median: ${base_median}ms"
+
+      - name: Build PR comment markdown
+        # Combine status table + startup time (current + base delta) +
+        # rendered-prompt details into one markdown file. The sticky-
+        # comment action posts it.
+        id: comment
+        if: ${{ !cancelled() && steps.tests.outputs.sandbox != '' }}
+        continue-on-error: true
+        run: |
+          set -uo pipefail
+          SANDBOX="${{ steps.tests.outputs.sandbox }}"
+          DOTFILES_TEST_LOG_DIR="$SANDBOX/test-logs" \
+          DOTFILES_TEST_BASE_MS="${{ steps.base_speed.outputs.base_ms }}" \
+            bash "$SANDBOX/test/prompt/build-comment.sh" \
+              "$SANDBOX/test-logs/prompt-report.md" \
+              > "$SANDBOX/test-logs/pr-comment.md"
+          echo "comment_path=$SANDBOX/test-logs/pr-comment.md" >>"$GITHUB_OUTPUT"
+          echo "--- comment preview ---"
+          head -30 "$SANDBOX/test-logs/pr-comment.md"
+
+      - name: Upload test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: prompt-test-logs
+          path: ${{ steps.tests.outputs.sandbox }}/test-logs/
+          if-no-files-found: warn
+
+      - name: Post or update PR comment
+        # Always attempt the comment, even when tests failed. The status
+        # table itself is the most useful signal -- ❌ rows tell you what
+        # broke at a glance. `continue-on-error` keeps a missing comment
+        # file (e.g. tests crashed before any logs were written) from
+        # masking the underlying test failure.
+        if: ${{ !cancelled() && github.event_name == 'pull_request' && steps.comment.outputs.comment_path != '' }}
+        continue-on-error: true
+        # StepSecurity's hardened fork of marocchino/sticky-pull-request-
+        # comment. Same API, separately-audited supply chain. Pinned by
+        # SHA for immutability (tags are mutable; GitHub allows force-
+        # moving them, so `@v3` today could point to a different commit
+        # tomorrow). The trailing comment tracks the tag for readability.
+        uses: step-security/sticky-pull-request-comment@f062e9edbd7a1cf1661c5863f76b8dc3fcbdce70 # v3.0.4
+        with:
+          header: prompt-render
+          path: ${{ steps.comment.outputs.comment_path }}
