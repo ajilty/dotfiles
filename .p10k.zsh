@@ -31,11 +31,14 @@
   # The list of segments shown on the left. Fill it with the most important segments.
   typeset -g POWERLEVEL9K_LEFT_PROMPT_ELEMENTS=(
     # =========================[ Line #1 ]=========================
+    context                 # user@hostname
+    newline                 # \n
+    # =========================[ Line #2 ]=========================
     # os_icon               # os identifier
     dir                     # current directory
-    gitdir          # custom git directory set
+    gitdir                  # custom git directory set
     vcs                     # git status
-    # =========================[ Line #2 ]=========================
+    # =========================[ Line #3 ]=========================
     newline                 # \n
     prompt_char             # prompt symbol
   )
@@ -85,7 +88,7 @@
     gcloud                  # google cloud cli account and project (https://cloud.google.com/)
     # google_app_cred         # google application credentials (https://cloud.google.com/docs/authentication/production)
     # toolbox                 # toolbox name (https://github.com/containers/toolbox)
-    context                 # user@hostname
+    # context                 # user@hostname — moved to the left prompt
     # nordvpn                 # nordvpn connection status, linux only (https://nordvpn.com/)
     # ranger                  # ranger shell (https://github.com/ranger/ranger)
     # nnn                     # nnn shell (https://github.com/jarun/nnn)
@@ -912,9 +915,7 @@
   # Default context format (no privileges, no SSH): user@hostname.
   typeset -g POWERLEVEL9K_CONTEXT_TEMPLATE='%n@%m'
 
-  # Don't show context unless running with privileges or in SSH.
-  # Tip: Remove the next line to always show context.
-  # typeset -g POWERLEVEL9K_CONTEXT_{DEFAULT,SUDO}_{CONTENT,VISUAL_IDENTIFIER}_EXPANSION=
+  # Always show context (moved to its own line on the left prompt).
 
   # Custom icon.
   # typeset -g POWERLEVEL9K_CONTEXT_VISUAL_IDENTIFIER_EXPANSION='⭐'
@@ -931,6 +932,8 @@
   typeset -g POWERLEVEL9K_VIRTUALENV_SHOW_WITH_PYENV=false
   # Separate environment name from Python version only with a space.
   typeset -g POWERLEVEL9K_VIRTUALENV_{LEFT,RIGHT}_DELIMITER=
+  # Only show virtualenv near python files / project markers.
+  typeset -g POWERLEVEL9K_VIRTUALENV_SHOW_ON_UPGLOB='*.py|pyproject.toml|requirements*.txt|Pipfile|setup.py|setup.cfg|.python-version'
   # Custom icon.
   # typeset -g POWERLEVEL9K_VIRTUALENV_VISUAL_IDENTIFIER_EXPANSION='⭐'
 
@@ -989,6 +992,8 @@
   #    starts with "$P9K_PYENV_PYTHON_VERSION/".
   # 2. Otherwise display "$P9K_CONTENT $P9K_PYENV_PYTHON_VERSION".
   typeset -g POWERLEVEL9K_PYENV_CONTENT_EXPANSION='${P9K_CONTENT}${${P9K_CONTENT:#$P9K_PYENV_PYTHON_VERSION(|/*)}:+ $P9K_PYENV_PYTHON_VERSION}'
+  # Only show pyenv near python files / project markers.
+  typeset -g POWERLEVEL9K_PYENV_SHOW_ON_UPGLOB='*.py|pyproject.toml|requirements*.txt|Pipfile|setup.py|setup.cfg|.python-version'
 
   # Custom icon.
   # typeset -g POWERLEVEL9K_PYENV_VISUAL_IDENTIFIER_EXPANSION='⭐'
@@ -1003,6 +1008,8 @@
   typeset -g POWERLEVEL9K_GOENV_PROMPT_ALWAYS_SHOW=false
   # If set to false, hide go version if it's equal to "system".
   typeset -g POWERLEVEL9K_GOENV_SHOW_SYSTEM=true
+  # Only show goenv near go files / project markers.
+  typeset -g POWERLEVEL9K_GOENV_SHOW_ON_UPGLOB='*.go|go.mod|go.sum|.go-version'
   # Custom icon.
   # typeset -g POWERLEVEL9K_GOENV_VISUAL_IDENTIFIER_EXPANSION='⭐'
 
@@ -1016,6 +1023,8 @@
   typeset -g POWERLEVEL9K_NODENV_PROMPT_ALWAYS_SHOW=false
   # If set to false, hide node version if it's equal to "system".
   typeset -g POWERLEVEL9K_NODENV_SHOW_SYSTEM=true
+  # Only show nodenv near node files / project markers.
+  typeset -g POWERLEVEL9K_NODENV_SHOW_ON_UPGLOB='*.js|*.ts|*.tsx|*.jsx|*.mjs|*.cjs|package.json|.nvmrc|.node-version'
   # Custom icon.
   # typeset -g POWERLEVEL9K_NODENV_VISUAL_IDENTIFIER_EXPANSION='⭐'
 
@@ -1228,8 +1237,7 @@
 
   #############[ kubecontext: current kubernetes context (https://kubernetes.io/) ]#############
   # Show kubecontext only when the command you are typing invokes one of these tools.
-  # Tip: Remove the next line to always show kubecontext.
-  # typeset -g POWERLEVEL9K_KUBECONTEXT_SHOW_ON_COMMAND='kubectl|helm|kubens|kubectx|oc|istioctl|kogito|k9s|helmfile|flux|fluxctl|stern|kubeseal|skaffold|kubent|kubecolor|cmctl|sparkctl'
+  typeset -g POWERLEVEL9K_KUBECONTEXT_SHOW_ON_COMMAND='kubectl|helm|kubens|kubectx|oc|istioctl|kogito|k9s|helmfile|flux|fluxctl|stern|kubeseal|skaffold|kubent|kubecolor|cmctl|sparkctl'
 
   # Kubernetes context classes for the purpose of using different colors, icons and expansions with
   # different contexts.
@@ -1345,19 +1353,23 @@
       # '*test*'  TEST    # to match your needs. Customize them as needed.
       '*'         OTHER)
   typeset -g POWERLEVEL9K_TERRAFORM_OTHER_FOREGROUND=38
+  # Only show terraform workspace near terraform files.
+  typeset -g POWERLEVEL9K_TERRAFORM_SHOW_ON_UPGLOB='*.tf|*.tofu'
   # typeset -g POWERLEVEL9K_TERRAFORM_OTHER_VISUAL_IDENTIFIER_EXPANSION='⭐'
 
   #############[ terraform_version: terraform version (https://www.terraform.io) ]##############
   # Terraform version color.
   typeset -g POWERLEVEL9K_TERRAFORM_VERSION_FOREGROUND=129
-  # typeset -g POWERLEVEL9K_TERRAFORM_VERSION_SHOW_ON_COMMAND='terraform|tf|make'
+  # Only show terraform_version near terraform files or when invoking terraform/tofu/make.
+  typeset -g POWERLEVEL9K_TERRAFORM_VERSION_SHOW_ON_UPGLOB='*.tf|*.tofu'
+  typeset -g POWERLEVEL9K_TERRAFORM_VERSION_SHOW_ON_COMMAND='terraform|tofu|tf|make'
   # Custom icon.
   typeset -g POWERLEVEL9K_TERRAFORM_VERSION_VISUAL_IDENTIFIER_EXPANSION='tf:'
 
   #[ aws: aws profile (https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-profiles.html) ]#
-  # Show aws only when the command you are typing invokes one of these tools.
-  # Tip: Remove the next line to always show aws.
-  # typeset -g POWERLEVEL9K_AWS_SHOW_ON_COMMAND='aws|awless|terraform|pulumi|terragrunt'
+  # Show aws only when the command you are typing invokes one of these tools, or when *.tf files are nearby.
+  typeset -g POWERLEVEL9K_AWS_SHOW_ON_COMMAND='aws|awless|terraform|tofu|pulumi|terragrunt'
+  typeset -g POWERLEVEL9K_AWS_SHOW_ON_UPGLOB='*.tf|*.tofu'
 
   # POWERLEVEL9K_AWS_CLASSES is an array with even number of elements. The first element
   # in each pair defines a pattern against which the current AWS profile gets matched.
@@ -1403,8 +1415,7 @@
 
   ##########[ azure: azure account name (https://docs.microsoft.com/en-us/cli/azure) ]##########
   # Show azure only when the command you are typing invokes one of these tools.
-  # Tip: Remove the next line to always show azure.
-  # typeset -g POWERLEVEL9K_AZURE_SHOW_ON_COMMAND='az|terraform|pulumi|terragrunt'
+  typeset -g POWERLEVEL9K_AZURE_SHOW_ON_COMMAND='az|terraform|tofu|pulumi|terragrunt'
 
   # POWERLEVEL9K_AZURE_CLASSES is an array with even number of elements. The first element
   # in each pair defines a pattern against which the current azure account name gets matched.
@@ -1441,8 +1452,7 @@
 
   ##########[ gcloud: google cloud account and project (https://cloud.google.com/) ]###########
   # Show gcloud only when the command you are typing invokes one of these tools.
-  # Tip: Remove the next line to always show gcloud.
-  # typeset -g POWERLEVEL9K_GCLOUD_SHOW_ON_COMMAND='gcloud|gcs|gsutil'
+  typeset -g POWERLEVEL9K_GCLOUD_SHOW_ON_COMMAND='gcloud|gcs|gsutil'
    # Google cloud color.
   typeset -g POWERLEVEL9K_GCLOUD_FOREGROUND=32
 
@@ -1662,30 +1672,11 @@
     fi
   }
 
-  # Show prompt elements based on file extensions
-  function p10k-on-post-widget() {
-    typeset -A PROMPT_ELEMENTS_TO_EXTENSIONS=(
-      [terraform_version]='*.tf'
-      [aws]='*.tf'
-      # [azure]='*.tf'
-      # [gcloud]='*.tf'
-      [pyenv]='*.py'
-      [virtualenv]='*.py'
-      [direnv]='.envrc'
-      # Add more mappings as needed
-    )
-    
-    for element in ${(k)PROMPT_ELEMENTS_TO_EXTENSIONS}; do
-      local extensions="${PROMPT_ELEMENTS_TO_EXTENSIONS[$element]}"
-      if [[ -n $(find . -maxdepth 1 -name "$extensions" -print -quit) ]]; then
-        p10k display "*/$element"=show
-      else
-        # p10k display "*/$element"=hide
-        continue
-      fi
-    done
-  }
-
+  # Conditional segment display is now handled by p10k's built-in *_SHOW_ON_UPGLOB
+  # and *_SHOW_ON_COMMAND options (see the per-segment config above). The previous
+  # p10k-on-post-widget function had two bugs: it never hid segments once shown
+  # (the else branch was `continue`), and it only globbed the current directory
+  # rather than walking up to the project root.
 
   # User-defined prompt segments may optionally provide an instant_prompt_* function. Its job
   # is to generate the prompt segment for display in instant prompt. See
