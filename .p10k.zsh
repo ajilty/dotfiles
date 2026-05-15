@@ -1686,47 +1686,67 @@
   }
 
   ##################[ AWS account-id resolver for the aws segment ]####################
-  # Resolves the account-id for the current AWS profile from $AWS_CONFIG_FILE
-  # (falling back to ~/.aws/config). The result is exposed in
-  # $_ajilty_aws_account_id and consumed by POWERLEVEL9K_AWS_CONTENT_EXPANSION
-  # above. Per-profile cache means the awk parse runs at most once per profile
-  # per session — re-source ~/.p10k.zsh to bust the cache after editing config.
-  typeset -gA _ajilty_aws_account_cache=()
-  typeset -g  _ajilty_aws_account_id=''
-  typeset -g  _ajilty_aws_last_profile='__unset__'
+  # Resolves the current AWS profile's account-id and exposes it via
+  # $_ajilty_aws_account_id, which is referenced by POWERLEVEL9K_AWS_CONTENT_EXPANSION
+  # above. Strategy:
+  #
+  #   1. Memoize in-process on (profile, mtime($AWS_CONFIG_FILE)): same profile
+  #      with same config-file mtime means same answer — skip all work. mtime
+  #      comes from `zstat` (zsh builtin, no fork).
+  #   2. Persist resolved values to disk under $XDG_CACHE_HOME/p10k-aws/, keyed
+  #      by profile + mtime. Survives shell restarts; busts automatically when
+  #      the config file is edited (`aws configure sso`, manual edit, etc.).
+  #   3. Use `aws configure get` rather than parsing the ini ourselves. This
+  #      handles SSO v2 `[sso-session]` indirection, `source_profile` chains,
+  #      and `~/.aws/config` `include` files — all of which an ad-hoc parser
+  #      would miss. The Python fork happens at most once per (profile, mtime).
+  #   4. Fall back to extracting the account from `role_arn` for assume-role
+  #      profiles (it's embedded in the ARN: `arn:aws:iam::<account>:role/...`).
+  zmodload -F zsh/stat b:zstat 2>/dev/null
+  typeset -g _ajilty_aws_account_id=''
+  typeset -g _ajilty_aws_cache_key=''
 
   function _ajilty_aws_precmd() {
     emulate -L zsh
     local profile=${AWS_VAULT:-${AWS_PROFILE:-${AWS_DEFAULT_PROFILE:-}}}
-    [[ $profile == $_ajilty_aws_last_profile ]] && return
-    _ajilty_aws_last_profile=$profile
-    _ajilty_aws_account_id=''
-    [[ -z $profile ]] && return
-    if (( ${+_ajilty_aws_account_cache[$profile]} )); then
-      _ajilty_aws_account_id=${_ajilty_aws_account_cache[$profile]}
+    if [[ -z $profile ]]; then
+      _ajilty_aws_account_id=''
+      _ajilty_aws_cache_key=''
       return
     fi
-    local cfg=${AWS_CONFIG_FILE:-$HOME/.aws/config} acct=''
-    if [[ -r $cfg ]]; then
-      acct=$(awk -v p="$profile" '
-        BEGIN { hdr = (p == "default" ? "default" : "profile " p) }
-        /^[[:space:]]*\[.*\][[:space:]]*$/ {
-          s = $0
-          sub(/^[[:space:]]*\[[[:space:]]*/, "", s)
-          sub(/[[:space:]]*\][[:space:]]*$/, "", s)
-          gsub(/[[:space:]]+/, " ", s)
-          in_section = (s == hdr)
-          next
-        }
-        in_section && /^[[:space:]]*(sso_account_id|aws_account_id)[[:space:]]*=/ {
-          sub(/^[^=]*=[[:space:]]*/, "")
-          sub(/[[:space:]].*$/, "")
-          gsub(/"/, "")
-          print; exit
-        }
-      ' "$cfg" 2>/dev/null)
+    local cfg=${AWS_CONFIG_FILE:-$HOME/.aws/config}
+    local -a _mt=()
+    (( $+builtins[zstat] )) && zstat -L -A _mt +mtime $cfg 2>/dev/null
+    local mtime=${_mt[1]:-0}
+    local key="$profile:$mtime"
+    [[ $_ajilty_aws_cache_key == $key ]] && return
+    _ajilty_aws_cache_key=$key
+
+    local cache_dir=${XDG_CACHE_HOME:-$HOME/.cache}/p10k-aws
+    local safe_profile=${profile//[^a-zA-Z0-9._-]/_}
+    local cache_file=$cache_dir/$safe_profile.$mtime
+    if [[ -r $cache_file ]]; then
+      _ajilty_aws_account_id=$(<$cache_file)
+      return
     fi
-    _ajilty_aws_account_cache[$profile]=$acct
+
+    local acct=''
+    if (( $+commands[aws] )); then
+      acct=$(aws configure get sso_account_id --profile $profile 2>/dev/null)
+      [[ -z $acct ]] && acct=$(aws configure get aws_account_id --profile $profile 2>/dev/null)
+      if [[ -z $acct ]]; then
+        local arn=$(aws configure get role_arn --profile $profile 2>/dev/null)
+        [[ $arn =~ 'arn:aws:iam::([0-9]+):' ]] && acct=$match[1]
+      fi
+    fi
+
+    [[ -d $cache_dir ]] || mkdir -p $cache_dir 2>/dev/null
+    # Evict stale cache files for this profile so the dir doesn't grow unbounded.
+    local old
+    for old in $cache_dir/$safe_profile.*(N); do
+      [[ $old == $cache_file ]] || rm -f $old
+    done
+    print -r -- $acct > $cache_file 2>/dev/null
     _ajilty_aws_account_id=$acct
   }
 
