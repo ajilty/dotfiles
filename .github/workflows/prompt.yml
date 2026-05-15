@@ -61,6 +61,13 @@ jobs:
           # All three (curl + wget + git) need to be available.
           sudo apt-get install -y --no-install-recommends \
             zsh perl rsync curl wget ca-certificates git bsdmainutils
+          # Force-refresh CA cert bundle. ca-certificates' postinst runs
+          # update-ca-certificates automatically on most systems, but in
+          # some minimal containers (notably act's image) the cert bundle
+          # ends up empty -- which makes git fail with "server certificate
+          # verification failed. CAfile: none" when zinit tries to clone.
+          # No-op on a properly configured GH runner.
+          sudo update-ca-certificates 2>&1 | tail -3 || true
 
       - name: Diagnose terminal env
         # One-time visibility into the runtime conditions that have been
@@ -79,7 +86,13 @@ jobs:
         run: |
           set -euo pipefail
           bash test/in-sandbox.sh
-          SANDBOX=$(ls -td test/sandbox-* | head -1)
+          # CRITICAL: $HOME *must* be an absolute path. zsh interprets
+          # `~`-prefixed paths relative to $HOME's literal value -- if
+          # that's relative, every `source ~/foo` resolves against the
+          # CURRENT PWD, which changes during init (e.g. zinit cds into
+          # its own dir during install). The result is silent
+          # `no such file or directory` errors and a half-initialized zsh.
+          SANDBOX=$(cd "$(ls -td test/sandbox-* | head -1)" && pwd)
           if [ -z "$SANDBOX" ] || [ ! -d "$SANDBOX" ]; then
             echo "no sandbox directory found" >&2
             exit 1
@@ -95,13 +108,28 @@ jobs:
           # belt-and-suspenders for anything already on disk.
           umask 022
           chmod -R go-w "$SANDBOX" 2>/dev/null || true
+          # And the parent chain compaudit walks up to /. The CI runner
+          # frequently has group-writable bits on /home/runner/work/<repo>;
+          # they only matter to compinit because it walks ancestors.
+          # `${VAR:-}` defaults so this works under act too (which doesn't
+          # set RUNNER_WORKSPACE / GITHUB_WORKSPACE the same way GH does).
+          chmod go-w "${RUNNER_WORKSPACE:-}" "${GITHUB_WORKSPACE:-}" 2>/dev/null || true
 
-          # PTY-backed warmup. Run interactive zsh under `script` (util-linux)
-          # for 60s -- enough to let zinit's first-run install, deferred
-          # `wait lucid` queue, compinit/zicdreplay, and p10k's gitstatusd
-          # download all complete in a fully terminal-equipped session.
-          # Tests that follow then operate against a quiescent sandbox.
-          # Output captured to a log; only surfaced if the warmup fails.
+          # Belt-and-suspenders: patch the sandbox's .zshrc to skip
+          # compinit's interactive insecure-dirs audit in CI. `zicompinit`
+          # is zinit's wrapper around `compinit`; replacing it inline with
+          # `compinit -u` (accept insecure dirs without prompting) sidesteps
+          # the prompt that, if it fires and goes unanswered, poisons
+          # zinit's subsequent snippet downloads with a doubled-path error
+          # (`OMZP::name/OMZP::name`). We only do this for the sandbox copy;
+          # the source-of-truth .zshrc in $HOME is unchanged.
+          sed -i 's/zicompinit;/compinit -u -d "${ZINIT[ZCOMPDUMP_PATH]:-$HOME\/.zcompdump}" 2>\/dev\/null;/g' \
+            "$SANDBOX/.zshrc" 2>/dev/null || true
+
+          # PTY-backed warmup. With compinit patched to `-u` above, zinit's
+          # bootstrap completes cleanly under script's PTY: deferred plugins
+          # install, gitstatusd downloads, the compdump gets written, and
+          # subsequent test-time zsh sessions see a quiescent sandbox.
           warmup_log="$SANDBOX/warmup.log"
           if ! HOME="$SANDBOX" timeout 120 \
               script -qec 'zsh -i -c "sleep 60; exit"' /dev/null \
