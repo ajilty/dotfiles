@@ -60,6 +60,20 @@ jobs:
           echo "sandbox=$SANDBOX" >>"$GITHUB_OUTPUT"
           export DOTFILES_TEST_LOG_DIR="$SANDBOX/test-logs"
           mkdir -p "$DOTFILES_TEST_LOG_DIR"
+
+          # Compinit refuses to load completions from any group-writable dir in
+          # $fpath and prompts interactively for confirmation. In a zpty with
+          # no human, that hangs the inner zsh forever (we observed exactly
+          # this on the first run). Tighten perms in the sandbox before any
+          # zsh runs, and let zsh's own `compaudit` find anything we missed.
+          chmod -R go-w "$SANDBOX" 2>/dev/null || true
+          HOME="$SANDBOX" zsh -c '
+            autoload -Uz compaudit
+            for d in ${(f)"$(compaudit 2>/dev/null)"}; do
+              [[ -n "$d" && -e "$d" ]] && chmod -R go-w,go-s "$d" 2>/dev/null
+            done
+          ' 2>/dev/null || true
+
           HOME="$SANDBOX" bash "$SANDBOX/test/run.sh"
 
       - name: Upload test logs
