@@ -40,7 +40,7 @@ plain=$(zsh -c "source '$PROMPT_DIR/lib.zsh'; strip_ansi" <"$raw")
 # Look at the last non-empty line, which is the active prompt line.
 last=$(printf '%s\n' "$plain" | awk 'NF{l=$0} END{print l}')
 
-if printf '%s' "$last" | grep -Fq 'Loading...'; then
+if printf '%s' "$last" | grep -aFq 'Loading...'; then
   warn "raw output: $raw"
   warn "last non-empty line: $last"
   die "prompt stuck on placeholder 'Loading...' -- p10k did not finish loading"
