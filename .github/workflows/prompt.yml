@@ -96,6 +96,18 @@ jobs:
           umask 022
           chmod -R go-w "$SANDBOX" 2>/dev/null || true
 
+          # CI runners can still make compaudit unhappy via parent directory
+          # permissions outside the sandbox. If compinit prompts during this
+          # non-interactive warmup, EOF answers abort and leaves zinit's
+          # deferred snippet resolver in a poisoned state. Patch only the
+          # disposable sandbox copy so CI skips compaudit without changing the
+          # checked-in interactive shell behavior.
+          perl -0pi -e 's/atload"zicompinit; zicdreplay"/atload"zicompinit -u; zicdreplay"/g' "$SANDBOX/.zshrc"
+          if ! grep -q 'zicompinit -u; zicdreplay' "$SANDBOX/.zshrc"; then
+            echo "failed to patch sandbox .zshrc for non-interactive compinit" >&2
+            exit 1
+          fi
+
           # PTY-backed warmup. Run interactive zsh under `script` (util-linux)
           # for 60s -- enough to let zinit's first-run install, deferred
           # `wait lucid` queue, compinit/zicdreplay, and p10k's gitstatusd
