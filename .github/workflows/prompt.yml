@@ -41,11 +41,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install zsh + perl + rsync
+      - name: Install zsh + perl + rsync + zinit's download deps
         run: |
           sudo apt-get update
+          # zinit's plugin/snippet downloader tries curl, then wget, then
+          # lftp -- and p10k's gitstatusd binary is fetched the same way.
+          # If wget is missing, zinit's fallback chain can leave it in a
+          # half-installed state where snippet paths exist but binaries
+          # don't, and p10k renders a degraded prompt with no vcs segment.
+          # All three (curl + wget + git) need to be available.
           sudo apt-get install -y --no-install-recommends \
-            zsh perl rsync curl ca-certificates git
+            zsh perl rsync curl wget ca-certificates git
 
       - name: Run sandbox + tests
         id: tests
