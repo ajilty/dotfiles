@@ -87,6 +87,16 @@
       "pluginName": "example-skills",
       "installedAt": "2026-05-15T20:51:58.775Z",
       "updatedAt": "2026-05-15T20:51:58.775Z"
+    },
+    "handoff": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/mattpocock/skills.git",
+      "skillPath": "skills/productivity/handoff/SKILL.md",
+      "skillFolderHash": "85c644da8f99d073b434261f1e3fc058e2116236",
+      "pluginName": "mattpocock-skills",
+      "installedAt": "2026-05-15T20:53:18.660Z",
+      "updatedAt": "2026-05-15T20:53:18.660Z"
     }
   },
   "dismissed": {}
