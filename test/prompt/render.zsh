@@ -17,9 +17,12 @@ source "$SCRIPT_DIR/lib.zsh"
 
 fixture="${1:?fixture name required}"
 
-# Build each fixture's state, then echo the sh command that, when
-# prepended to `exec zsh -i`, lands the inner zsh in that state.
+# Build each fixture's state and resolve the absolute cwd the inner zsh
+# should start in. We pass that path to script_capture, which does the cd
+# in the OUTER sh before exec'ing zsh -- never typing into the inner shell
+# (zsh-autocomplete eats the first character of typed input).
 work=""
+fixture_dir=""
 case "$fixture" in
   clean-git)
     work=$(mktemp -d -t dotfiles-prompt-XXXXXX) || exit 1
@@ -31,10 +34,10 @@ case "$fixture" in
     git -C "$work/repo" \
       -c user.email=test@example.com -c user.name=test \
       commit --allow-empty -q -m init || exit 1
-    pre_cmd="cd $work/repo"
+    fixture_dir="$work/repo"
     ;;
   home)
-    pre_cmd='cd "$HOME"'
+    fixture_dir="$HOME"
     ;;
   *)
     print -u2 "render.zsh: unknown fixture '$fixture'"
@@ -42,7 +45,7 @@ case "$fixture" in
     ;;
 esac
 
-script_capture "$pre_cmd" 30 8
+script_capture "$fixture_dir" 30 8
 
 # Best-effort cleanup. Failure here doesn't mask render success.
 [[ -n "$work" && -d "$work" ]] && rm -rf "$work" 2>/dev/null || true

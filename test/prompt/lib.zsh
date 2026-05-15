@@ -35,24 +35,24 @@ strip_ansi() {
   '
 }
 
-# Run interactive zsh under script(1) and capture its output. The inner
-# zsh's stdin gets a small command sequence: optionally cd to a fixture
-# dir, sleep long enough for p10k to draw the steady-state prompt, then
-# exit. Anything written to the pty during that window -- including the
-# rendered prompt -- is captured.
+# Run interactive zsh under script(1) and capture its output. The fixture
+# dir (if any) is set as the inner zsh's cwd via the OUTER sh's cd before
+# `exec zsh -i` -- never via typed input -- so zsh-autocomplete can't eat
+# our keystrokes. Once zsh is interactive, we feed a tiny stdin script
+# (sleep then exit) to keep it alive long enough for p10k's deferred
+# loads and gitstatusd to draw a steady-state prompt.
 #
-# Usage: script_capture <pre-shell-cmd> [<timeout-seconds>] [<sleep-for-seconds>]
-#   <pre-shell-cmd>      Shell command run as the FIRST stdin line of the
-#                        inner zsh (e.g. "cd /tmp/fixture"). Pass "" to
-#                        skip and start from the inherited cwd.
+# Usage: script_capture <fixture-dir> [<timeout-seconds>] [<sleep-for-seconds>]
+#   <fixture-dir>        Absolute path the inner zsh should start in. Pass
+#                        "" to inherit the calling shell's cwd.
 #   <timeout-seconds>    Hard wall-clock budget (default 30).
-#   <sleep-for-seconds>  How long the inner zsh sleeps before exiting.
-#                        The final prompt drawn during this window is what
-#                        we capture (default 8).
+#   <sleep-for-seconds>  How long the inner zsh sleeps before exiting; the
+#                        final prompt drawn during this window is what we
+#                        capture (default 8).
 #
 # stdout: the raw byte stream from the pty (ANSI included).
 script_capture() {
-  local pre_cmd="${1:-}"
+  local fixture_dir="${1:-}"
   local timeout="${2:-30}"
   local sleep_for="${3:-8}"
 
@@ -61,19 +61,25 @@ script_capture() {
     return 1
   fi
 
-  # Build the stdin command sequence for the inner zsh. Each line is a
-  # separate command, drawing a fresh prompt between them.
-  local stdin_script=""
-  [[ -n "$pre_cmd" ]] && stdin_script+="$pre_cmd"$'\n'
-  stdin_script+="sleep $sleep_for"$'\n'
-  stdin_script+="exit"$'\n'
+  # Outer command: optionally cd, then `exec zsh -i`. cd happens in the
+  # POSIX sh that script(1) invokes, before zsh ever starts -- so zsh's
+  # zle/autocomplete (which eats the first character of typed commands)
+  # never gets a chance to mangle the path.
+  local outer="exec zsh -i"
+  [[ -n "$fixture_dir" ]] && outer="cd ${(q)fixture_dir} && exec zsh -i"
+
+  # Tiny stdin script: keep zsh alive long enough for steady state, then
+  # exit. zle may eat the first char of these but we don't care -- we're
+  # only asserting on the rendered *prompt*, not on whether the typed
+  # commands execute. The sleep just buys time.
+  local stdin_script="sleep $sleep_for"$'\n'"exit"$'\n'
 
   # Linux util-linux vs BSD script have different CLI shapes. Same outcome.
   if script --version 2>&1 | grep -q util-linux; then
     print -rn -- "$stdin_script" | timeout "$timeout" \
-      script -qec 'zsh -i' /dev/null 2>&1
+      script -qec "$outer" /dev/null 2>&1
   else
     print -rn -- "$stdin_script" | timeout "$timeout" \
-      script -q /dev/null zsh -i 2>&1
+      script -q /dev/null sh -c "$outer" 2>&1
   fi
 }
