@@ -1012,8 +1012,10 @@
   typeset -g POWERLEVEL9K_GOENV_PROMPT_ALWAYS_SHOW=false
   # If set to false, hide go version if it's equal to "system".
   typeset -g POWERLEVEL9K_GOENV_SHOW_SYSTEM=true
-  # Only show goenv near go files / project markers.
-  typeset -g POWERLEVEL9K_GOENV_SHOW_ON_UPGLOB='*.go|go.mod|go.sum|.go-version'
+  # Only show goenv near go project files. Note: .go-version excluded — it's a
+  # version pin (potentially in $HOME), not a project-type marker. go.mod /
+  # *.go cover real projects.
+  typeset -g POWERLEVEL9K_GOENV_SHOW_ON_UPGLOB='*.go|go.mod|go.sum'
   # Custom icon.
   # typeset -g POWERLEVEL9K_GOENV_VISUAL_IDENTIFIER_EXPANSION='⭐'
 
@@ -1027,8 +1029,10 @@
   typeset -g POWERLEVEL9K_NODENV_PROMPT_ALWAYS_SHOW=false
   # If set to false, hide node version if it's equal to "system".
   typeset -g POWERLEVEL9K_NODENV_SHOW_SYSTEM=true
-  # Only show nodenv near node files / project markers.
-  typeset -g POWERLEVEL9K_NODENV_SHOW_ON_UPGLOB='*.js|*.ts|*.tsx|*.jsx|*.mjs|*.cjs|package.json|.nvmrc|.node-version'
+  # Only show nodenv near node project files. Note: .nvmrc / .node-version
+  # excluded — they're version pins (potentially in $HOME), not project-type
+  # markers. package.json / *.js / *.ts cover real projects.
+  typeset -g POWERLEVEL9K_NODENV_SHOW_ON_UPGLOB='*.js|*.ts|*.tsx|*.jsx|*.mjs|*.cjs|package.json'
   # Custom icon.
   # typeset -g POWERLEVEL9K_NODENV_VISUAL_IDENTIFIER_EXPANSION='⭐'
 
