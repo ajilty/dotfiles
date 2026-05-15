@@ -81,7 +81,7 @@ fi
 # rendered prompt. If it doesn't, the inner zsh wasn't actually placed in
 # the fixture dir -- which means the zpty spawn line is wrong, not that
 # p10k or vcs is misconfigured.
-if ! printf '%s' "$clean_render" | grep -Fq 'repo'; then
+if ! printf '%s' "$clean_render" | grep -aFq 'repo'; then
   warn "see $log_dir/render-clean-git.raw"
   warn "rendered (ANSI-stripped):"
   printf '%s\n' "$clean_render" >&2
@@ -92,7 +92,7 @@ fi
 # on first CI run. We don't gate on it -- the rendered prompt is in the PR
 # comment, so a human can see whether vcs is working at a glance. But we
 # log a warning so it's not silent.
-if ! printf '%s' "$clean_render" | grep -Fq 'master'; then
+if ! printf '%s' "$clean_render" | grep -aFq 'master'; then
   warn "vcs segment did not surface 'master' -- gitstatusd may have failed."
   warn "  This is logged but does not fail the test. Check the rendered"
   warn "  prompt in $log_dir/render-clean-git.raw."
