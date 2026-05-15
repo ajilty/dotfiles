@@ -64,13 +64,25 @@ zpty_capture() {
   last_at=$SECONDS
   deadline=$(( SECONDS + timeout ))
 
+  # Belt-and-suspenders: one early newline to dismiss any startup y/n
+  # prompt (compinit's "insecure directories" question is the known case;
+  # default is [y]). Compinit reads via `read -k1` directly from $TTY,
+  # not through zle, so the keystroke-eating problem that bit our
+  # post-prompt writes doesn't apply here. If there's no blocking prompt,
+  # the newline lands in zle's empty buffer and causes a harmless redraw.
+  local nudged=0
+
   while (( SECONDS < deadline )); do
     chunk=""
     if zpty -r -t SHELL chunk 2>/dev/null; then
       output+="$chunk"
       last_at=$SECONDS
     else
-      if (( SECONDS - last_at >= quiet_for )); then
+      if (( ! nudged && SECONDS - last_at >= 2 )); then
+        zpty -w SHELL $'\n' 2>/dev/null
+        nudged=1
+        last_at=$SECONDS
+      elif (( SECONDS - last_at >= quiet_for )); then
         break
       fi
       sleep 0.1
