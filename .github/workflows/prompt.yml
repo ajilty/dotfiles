@@ -71,7 +71,13 @@ jobs:
           if-no-files-found: warn
 
       - name: Post or update PR comment
-        if: success() && github.event_name == 'pull_request'
+        # Always attempt the comment, even when tests failed. The rendered
+        # prompt is the most useful debugging signal when something broke,
+        # and the report is written before assertions run. `continue-on-
+        # error` keeps a missing report (e.g. test crashed before the render
+        # step) from masking the underlying test failure.
+        if: ${{ !cancelled() && github.event_name == 'pull_request' && steps.tests.outputs.sandbox != '' }}
+        continue-on-error: true
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           header: prompt-render
