@@ -8,8 +8,19 @@
 # `skills add` show up in `git status` automatically.
 !.agents/
 !.agents/**
+# Also un-ignore the homegrown skills authoring root (~/skills/).
+# These are published via `npx skills add ~/skills -s <name>` into
+# ~/.agents/skills/ for local use, and can be pushed to a standalone
+# repo for distribution.
+!skills/
+!skills/**
 # Re-ignore noise that lands inside the un-ignored .agents/ tree.
 # (Repo-level `*` short-circuits global ignores, so this can't live in
 # ~/.config/git/ignore for files under .agents/.)
 .agents/**/.DS_Store
 .agents/**/__pycache__/
+skills/**/.DS_Store
+# Re-ignore homegrown skills under .agents/skills/ — they're locally
+# installed by `npx skills add ~/skills -s <name>` from the authoritative
+# copy in ~/skills/<name>/. Adding a new homegrown skill? Add it here.
+.agents/skills/dotfiles-repo/
