@@ -37,6 +37,15 @@ jobs:
   prompt-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      # GH Actions runners inherit TERM from the agent process, which has no
+      # controlling terminal. That commonly arrives as `TERM=dumb` (or unset)
+      # in the run step, which makes zinit's color-message registry fail to
+      # initialize -- causing literal `{rst}` placeholders in output, doubled
+      # snippet paths (OMZP::name/OMZP::name), and a degraded p10k render
+      # with no vcs segment. Setting a real terminfo entry here gives the
+      # whole step a usable TERM and prevents that cascade.
+      TERM: xterm-256color
 
     steps:
       - uses: actions/checkout@v4
@@ -51,7 +60,19 @@ jobs:
           # don't, and p10k renders a degraded prompt with no vcs segment.
           # All three (curl + wget + git) need to be available.
           sudo apt-get install -y --no-install-recommends \
-            zsh perl rsync curl wget ca-certificates git
+            zsh perl rsync curl wget ca-certificates git bsdmainutils
+
+      - name: Diagnose terminal env
+        # One-time visibility into the runtime conditions that have been
+        # confusing this workflow. If a future run misbehaves, the answers
+        # to these four questions usually disambiguate the cause.
+        run: |
+          echo "TERM=${TERM:-<unset>}"
+          echo "stdin is tty? $([ -t 0 ] && echo yes || echo no)"
+          echo "stdout is tty? $([ -t 1 ] && echo yes || echo no)"
+          locale 2>/dev/null || true
+          ls -la /proc/self/fd/0 || true
+          command -v script && script --version | head -1
 
       - name: Run sandbox + tests
         id: tests
@@ -67,19 +88,27 @@ jobs:
           export DOTFILES_TEST_LOG_DIR="$SANDBOX/test-logs"
           mkdir -p "$DOTFILES_TEST_LOG_DIR"
 
-          # Keep compinit from prompting at all. compinit's "insecure dirs"
-          # audit fails on any group-writable directory in $fpath; in a zpty
-          # with no human, the y/n prompt hangs the shell. The root cause is
-          # umask -- zinit clones its plugins during the first interactive
-          # zsh, and the new dirs inherit whatever umask CI ran us with.
-          # umask 022 ensures every new dir is 0755 (no group write), so
-          # compinit's audit passes silently.
+          # umask 022 + chmod -R go-w: keep compinit's "insecure dirs"
+          # audit from prompting. zinit clones its plugins during the first
+          # interactive zsh; new dirs inherit whatever umask CI started us
+          # with. 022 makes every new dir 0755 (no group write). chmod is
+          # belt-and-suspenders for anything already on disk.
           umask 022
-
-          # Belt-and-suspenders: also chmod the sandbox tree before tests
-          # run. This catches anything that was already on disk from the
-          # checkout/install with looser perms.
           chmod -R go-w "$SANDBOX" 2>/dev/null || true
+
+          # PTY-backed warmup. Run interactive zsh under `script` (util-linux)
+          # for 60s -- enough to let zinit's first-run install, deferred
+          # `wait lucid` queue, compinit/zicdreplay, and p10k's gitstatusd
+          # download all complete in a fully terminal-equipped session.
+          # Tests that follow then operate against a quiescent sandbox.
+          # Output captured to a log; only surfaced if the warmup fails.
+          warmup_log="$SANDBOX/warmup.log"
+          if ! HOME="$SANDBOX" timeout 120 \
+              script -qec 'zsh -i -c "sleep 60; exit"' /dev/null \
+              </dev/null >"$warmup_log" 2>&1; then
+            echo "warmup did not complete cleanly (continuing); tail of log:" >&2
+            tail -50 "$warmup_log" >&2 || true
+          fi
 
           HOME="$SANDBOX" bash "$SANDBOX/test/run.sh"
 

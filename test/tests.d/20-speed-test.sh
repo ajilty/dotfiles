@@ -3,18 +3,23 @@
 # startups. Never gates CI -- a slow runner shouldn't fail the suite.
 #
 # `zinit` is a zsh function (not a binary), so calls have to go through
-# `zsh -ic` rather than running bare. The previous version of this script
-# ran `zinit times` directly from bash under `set -e`, which exits 127 the
-# moment bash can't find the command.
+# `zsh -ic` rather than running bare. Run under `script` to provide a PTY
+# (without one, zinit's bootstrap is incomplete: see test/prompt/lib.zsh
+# and 31-prompt-no-stderr.sh for the same fix).
 set -uo pipefail
 
+if ! command -v script >/dev/null 2>&1; then
+  echo "(script unavailable; skipping speed test)"
+  exit 0
+fi
+
 echo "zinit times:"
-zsh -i -c 'zinit times' 2>&1 || echo "(zinit times unavailable)"
+script -qec 'zsh -i -c "zinit times"' /dev/null 2>&1 || echo "(zinit times unavailable)"
 
 echo
 echo "10x interactive startup:"
 for _ in $(seq 1 10); do
-  { time zsh -i -c exit; } 2>&1 || true
+  { time script -qec 'zsh -i -c exit' /dev/null >/dev/null; } 2>&1 || true
 done
 
 exit 0

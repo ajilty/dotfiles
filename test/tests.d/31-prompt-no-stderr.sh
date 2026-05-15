@@ -20,11 +20,20 @@ mkdir -p "$log_dir"
 prime_log="$log_dir/zsh-startup-prime.log"
 steady_log="$log_dir/zsh-startup-steady.log"
 
+# Wrap interactive zsh in `script` so it runs under a real PTY. Without
+# one, `setopt monitor` (job control) fails inside p10k's worker startup
+# and gitstatusd can't init -- which makes `zsh -i -c exit` return 1 even
+# though nothing user-facing went wrong. The PTY normalizes terminal
+# context so the exit code reflects actual problems, not setup quirks.
+if ! command -v script >/dev/null 2>&1; then
+  die "script (util-linux) is required for PTY-backed zsh tests"
+fi
+
 info "Priming (downloads plugins, builds caches; may be slow)"
-zsh -i -c 'exit' >"$prime_log" 2>&1 || true
+script -qec 'zsh -i -c exit' /dev/null >"$prime_log" 2>&1 || true
 
 info "Steady-state startup"
-if ! zsh -i -c 'exit' >/dev/null 2>"$steady_log"; then
+if ! script -qec 'zsh -i -c exit' /dev/null >/dev/null 2>"$steady_log"; then
   warn "see $steady_log"
   die "interactive zsh failed on steady-state startup"
 fi
