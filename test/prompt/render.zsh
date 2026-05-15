@@ -42,7 +42,7 @@ case "$fixture" in
     ;;
 esac
 
-zpty_capture "$pre_cmd" 25 3
+script_capture "$pre_cmd" 30 8
 
 # Best-effort cleanup. Failure here doesn't mask render success.
 [[ -n "$work" && -d "$work" ]] && rm -rf "$work" 2>/dev/null || true

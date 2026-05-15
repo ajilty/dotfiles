@@ -1,17 +1,24 @@
 #!/usr/bin/env zsh
 # Shared helpers for zsh-prompt rendering tests.
 #
-# Why zpty: the zsh/zpty module is built into zsh itself, so any machine that
-# can run these tests already has it. No extra apt/brew install, identical
-# behavior on Linux and macOS, no `script`/`expect` flag-portability shims.
+# Why script(1) and not zpty: zsh's zpty builtin allocates a pseudo-terminal
+# but in some constrained environments (containers without full session-leader
+# semantics) the inner zsh sees enough of a tty to start but not enough for
+# p10k's worker startup. Symptom: the inner zsh degrades to a bare `vm#`
+# prompt instead of full p10k. util-linux `script` (preinstalled on every
+# Ubuntu/Debian) gives a fuller PTY allocation and `setopt monitor` works
+# under it -- which is what gitstatusd needs. Trade-off: macOS BSD `script`
+# has different CLI syntax (`-q FILE COMMAND...` vs Linux `-qec COMMAND
+# FILE`), papered over with a small shim below.
 #
-# Why we never write into the spawned zsh's zle (a hard-won lesson):
-# zsh-autocomplete is loaded by .zshrc and runs live, intercepting every
-# keystroke through zle widgets. Writing "cd /tmp/foo" via `zpty -w` after
-# the prompt has drawn produces "d /tmp/foo" -- autocomplete's redraw eats
-# the first character. So instead of typing commands, we hand them to the
-# spawn line (`cd /tmp/foo && exec zsh -i`) and let the inner zsh start
-# already in the right state. No zle interaction needed.
+# Why we feed commands via stdin (heredoc) and not `zsh -i -c '...'`: the
+# `-c` form makes zsh treat the argument as a single command-string and exit
+# without entering the prompt loop -- so no prompt is ever drawn. Interactive
+# zsh with stdin redirected from a heredoc reads commands one per line,
+# drawing a fresh prompt between each, which is what we want to capture.
+# zsh-autocomplete may eat the first character of our typed commands (e.g.
+# "exit" → "xit"), which is harmless: we only care about the *prompt*, not
+# whether the typed commands execute cleanly.
 
 emulate -L zsh
 
@@ -28,72 +35,45 @@ strip_ansi() {
   '
 }
 
-# Spawn interactive zsh in a zpty and capture its output until it goes
-# quiet. "Quiet" means no new bytes for QUIET_FOR seconds -- by then,
-# p10k's instant prompt has drawn, zinit's deferred plugins have loaded,
-# and async vcs lookups have settled.
+# Run interactive zsh under script(1) and capture its output. The inner
+# zsh's stdin gets a small command sequence: optionally cd to a fixture
+# dir, sleep long enough for p10k to draw the steady-state prompt, then
+# exit. Anything written to the pty during that window -- including the
+# rendered prompt -- is captured.
 #
-# Usage: zpty_capture <pre-shell-cmd> [<timeout-seconds>] [<quiet-for-seconds>]
-#   <pre-shell-cmd>      Sh command run before `exec zsh -i`. Use this to
-#                        place the inner zsh in a fixture dir, set env vars,
-#                        etc. Pass "" to spawn zsh from wherever we are.
-#   <timeout-seconds>    Hard wall-clock budget (default 25).
-#   <quiet-for-seconds>  Idle threshold to declare the prompt "rendered"
-#                        (default 3).
+# Usage: script_capture <pre-shell-cmd> [<timeout-seconds>] [<sleep-for-seconds>]
+#   <pre-shell-cmd>      Shell command run as the FIRST stdin line of the
+#                        inner zsh (e.g. "cd /tmp/fixture"). Pass "" to
+#                        skip and start from the inherited cwd.
+#   <timeout-seconds>    Hard wall-clock budget (default 30).
+#   <sleep-for-seconds>  How long the inner zsh sleeps before exiting.
+#                        The final prompt drawn during this window is what
+#                        we capture (default 8).
 #
 # stdout: the raw byte stream from the pty (ANSI included).
-zpty_capture() {
+script_capture() {
   local pre_cmd="${1:-}"
-  local timeout="${2:-25}"
-  local quiet_for="${3:-3}"
-  local output="" chunk="" last_at deadline
+  local timeout="${2:-30}"
+  local sleep_for="${3:-8}"
 
-  if ! zmodload zsh/zpty 2>/dev/null; then
-    print -u2 "zpty_capture: zsh/zpty module unavailable"
+  if ! command -v script >/dev/null 2>&1; then
+    print -u2 "script_capture: script(1) not installed"
     return 1
   fi
 
-  local spawn="exec zsh -i"
-  [[ -n "$pre_cmd" ]] && spawn="$pre_cmd && exec zsh -i"
+  # Build the stdin command sequence for the inner zsh. Each line is a
+  # separate command, drawing a fresh prompt between them.
+  local stdin_script=""
+  [[ -n "$pre_cmd" ]] && stdin_script+="$pre_cmd"$'\n'
+  stdin_script+="sleep $sleep_for"$'\n'
+  stdin_script+="exit"$'\n'
 
-  if ! zpty -b SHELL "$spawn" 2>/dev/null; then
-    print -u2 "zpty_capture: failed to spawn inner zsh"
-    return 1
+  # Linux util-linux vs BSD script have different CLI shapes. Same outcome.
+  if script --version 2>&1 | grep -q util-linux; then
+    print -rn -- "$stdin_script" | timeout "$timeout" \
+      script -qec 'zsh -i' /dev/null 2>&1
+  else
+    print -rn -- "$stdin_script" | timeout "$timeout" \
+      script -q /dev/null zsh -i 2>&1
   fi
-
-  last_at=$SECONDS
-  deadline=$(( SECONDS + timeout ))
-
-  # Belt-and-suspenders: if startup goes quiet for 2s, write `y\n` to the
-  # pty to dismiss compinit's "insecure directories" prompt.
-  #
-  # The default-answer hint in compinit's prompt -- "[y] or abort [n]?" --
-  # is *misleading*: the actual logic is `case $reply in [Yy]*) ;; *)
-  # abort ;; esac`. An empty answer aborts, so we must send a literal 'y'.
-  # Compinit reads its answer via `read -k1` directly from $TTY (not
-  # through zle), so this lands cleanly even though zle is otherwise
-  # active. If no prompt is blocking, the buffer contains 'y' followed by
-  # Enter, which submits the (one-character) command 'y' -- visible in the
-  # capture as a 'command not found: y' line but otherwise harmless.
-  local nudged=0
-
-  while (( SECONDS < deadline )); do
-    chunk=""
-    if zpty -r -t SHELL chunk 2>/dev/null; then
-      output+="$chunk"
-      last_at=$SECONDS
-    else
-      if (( ! nudged && SECONDS - last_at >= 2 )); then
-        zpty -w SHELL $'y\n' 2>/dev/null
-        nudged=1
-        last_at=$SECONDS
-      elif (( SECONDS - last_at >= quiet_for )); then
-        break
-      fi
-      sleep 0.1
-    fi
-  done
-
-  zpty -d SHELL 2>/dev/null
-  print -r -- "$output"
 }
