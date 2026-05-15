@@ -31,11 +31,14 @@
   # The list of segments shown on the left. Fill it with the most important segments.
   typeset -g POWERLEVEL9K_LEFT_PROMPT_ELEMENTS=(
     # =========================[ Line #1 ]=========================
+    context                 # user@hostname
+    newline                 # \n
+    # =========================[ Line #2 ]=========================
     # os_icon               # os identifier
     dir                     # current directory
-    gitdir          # custom git directory set
+    gitdir                  # custom git directory set
     vcs                     # git status
-    # =========================[ Line #2 ]=========================
+    # =========================[ Line #3 ]=========================
     newline                 # \n
     prompt_char             # prompt symbol
   )
@@ -85,7 +88,7 @@
     gcloud                  # google cloud cli account and project (https://cloud.google.com/)
     # google_app_cred         # google application credentials (https://cloud.google.com/docs/authentication/production)
     # toolbox                 # toolbox name (https://github.com/containers/toolbox)
-    context                 # user@hostname
+    # context                 # user@hostname — moved to the left prompt
     # nordvpn                 # nordvpn connection status, linux only (https://nordvpn.com/)
     # ranger                  # ranger shell (https://github.com/ranger/ranger)
     # nnn                     # nnn shell (https://github.com/jarun/nnn)
@@ -912,9 +915,7 @@
   # Default context format (no privileges, no SSH): user@hostname.
   typeset -g POWERLEVEL9K_CONTEXT_TEMPLATE='%n@%m'
 
-  # Don't show context unless running with privileges or in SSH.
-  # Tip: Remove the next line to always show context.
-  # typeset -g POWERLEVEL9K_CONTEXT_{DEFAULT,SUDO}_{CONTENT,VISUAL_IDENTIFIER}_EXPANSION=
+  # Always show context (moved to its own line on the left prompt).
 
   # Custom icon.
   # typeset -g POWERLEVEL9K_CONTEXT_VISUAL_IDENTIFIER_EXPANSION='⭐'
@@ -931,6 +932,10 @@
   typeset -g POWERLEVEL9K_VIRTUALENV_SHOW_WITH_PYENV=false
   # Separate environment name from Python version only with a space.
   typeset -g POWERLEVEL9K_VIRTUALENV_{LEFT,RIGHT}_DELIMITER=
+  # Only show virtualenv near python project files. Note: .python-version is
+  # excluded on purpose — it's commonly used as a global pyenv pin in $HOME,
+  # which would otherwise trigger pyenv/virtualenv in every dir under $HOME.
+  typeset -g POWERLEVEL9K_VIRTUALENV_SHOW_ON_UPGLOB='*.py|pyproject.toml|requirements*.txt|Pipfile|setup.py|setup.cfg'
   # Custom icon.
   # typeset -g POWERLEVEL9K_VIRTUALENV_VISUAL_IDENTIFIER_EXPANSION='⭐'
 
@@ -989,6 +994,10 @@
   #    starts with "$P9K_PYENV_PYTHON_VERSION/".
   # 2. Otherwise display "$P9K_CONTENT $P9K_PYENV_PYTHON_VERSION".
   typeset -g POWERLEVEL9K_PYENV_CONTENT_EXPANSION='${P9K_CONTENT}${${P9K_CONTENT:#$P9K_PYENV_PYTHON_VERSION(|/*)}:+ $P9K_PYENV_PYTHON_VERSION}'
+  # Only show pyenv near python project files. Note: .python-version is
+  # excluded on purpose — it's commonly used as a global pyenv pin in $HOME,
+  # which would otherwise trigger pyenv in every dir under $HOME.
+  typeset -g POWERLEVEL9K_PYENV_SHOW_ON_UPGLOB='*.py|pyproject.toml|requirements*.txt|Pipfile|setup.py|setup.cfg'
 
   # Custom icon.
   # typeset -g POWERLEVEL9K_PYENV_VISUAL_IDENTIFIER_EXPANSION='⭐'
@@ -1003,6 +1012,10 @@
   typeset -g POWERLEVEL9K_GOENV_PROMPT_ALWAYS_SHOW=false
   # If set to false, hide go version if it's equal to "system".
   typeset -g POWERLEVEL9K_GOENV_SHOW_SYSTEM=true
+  # Only show goenv near go project files. Note: .go-version excluded — it's a
+  # version pin (potentially in $HOME), not a project-type marker. go.mod /
+  # *.go cover real projects.
+  typeset -g POWERLEVEL9K_GOENV_SHOW_ON_UPGLOB='*.go|go.mod|go.sum'
   # Custom icon.
   # typeset -g POWERLEVEL9K_GOENV_VISUAL_IDENTIFIER_EXPANSION='⭐'
 
@@ -1016,6 +1029,10 @@
   typeset -g POWERLEVEL9K_NODENV_PROMPT_ALWAYS_SHOW=false
   # If set to false, hide node version if it's equal to "system".
   typeset -g POWERLEVEL9K_NODENV_SHOW_SYSTEM=true
+  # Only show nodenv near node project files. Note: .nvmrc / .node-version
+  # excluded — they're version pins (potentially in $HOME), not project-type
+  # markers. package.json / *.js / *.ts cover real projects.
+  typeset -g POWERLEVEL9K_NODENV_SHOW_ON_UPGLOB='*.js|*.ts|*.tsx|*.jsx|*.mjs|*.cjs|package.json'
   # Custom icon.
   # typeset -g POWERLEVEL9K_NODENV_VISUAL_IDENTIFIER_EXPANSION='⭐'
 
@@ -1228,8 +1245,7 @@
 
   #############[ kubecontext: current kubernetes context (https://kubernetes.io/) ]#############
   # Show kubecontext only when the command you are typing invokes one of these tools.
-  # Tip: Remove the next line to always show kubecontext.
-  # typeset -g POWERLEVEL9K_KUBECONTEXT_SHOW_ON_COMMAND='kubectl|helm|kubens|kubectx|oc|istioctl|kogito|k9s|helmfile|flux|fluxctl|stern|kubeseal|skaffold|kubent|kubecolor|cmctl|sparkctl'
+  typeset -g POWERLEVEL9K_KUBECONTEXT_SHOW_ON_COMMAND='kubectl|helm|kubens|kubectx|oc|istioctl|kogito|k9s|helmfile|flux|fluxctl|stern|kubeseal|skaffold|kubent|kubecolor|cmctl|sparkctl'
 
   # Kubernetes context classes for the purpose of using different colors, icons and expansions with
   # different contexts.
@@ -1345,19 +1361,24 @@
       # '*test*'  TEST    # to match your needs. Customize them as needed.
       '*'         OTHER)
   typeset -g POWERLEVEL9K_TERRAFORM_OTHER_FOREGROUND=38
+  # Only show terraform workspace near terraform files.
+  typeset -g POWERLEVEL9K_TERRAFORM_SHOW_ON_UPGLOB='*.tf|*.tofu'
   # typeset -g POWERLEVEL9K_TERRAFORM_OTHER_VISUAL_IDENTIFIER_EXPANSION='⭐'
 
   #############[ terraform_version: terraform version (https://www.terraform.io) ]##############
   # Terraform version color.
   typeset -g POWERLEVEL9K_TERRAFORM_VERSION_FOREGROUND=129
-  # typeset -g POWERLEVEL9K_TERRAFORM_VERSION_SHOW_ON_COMMAND='terraform|tf|make'
+  # Only show terraform_version near terraform files or when invoking terraform/tofu/make.
+  typeset -g POWERLEVEL9K_TERRAFORM_VERSION_SHOW_ON_UPGLOB='*.tf|*.tofu'
+  typeset -g POWERLEVEL9K_TERRAFORM_VERSION_SHOW_ON_COMMAND='terraform|tofu|tf|make'
   # Custom icon.
   typeset -g POWERLEVEL9K_TERRAFORM_VERSION_VISUAL_IDENTIFIER_EXPANSION='tf:'
 
   #[ aws: aws profile (https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-profiles.html) ]#
-  # Show aws only when the command you are typing invokes one of these tools.
-  # Tip: Remove the next line to always show aws.
-  # typeset -g POWERLEVEL9K_AWS_SHOW_ON_COMMAND='aws|awless|terraform|pulumi|terragrunt'
+  # No SHOW_ON_COMMAND / SHOW_ON_UPGLOB gates: the segment's natural trigger is
+  # $AWS_PROFILE / $AWS_VAULT / $AWS_DEFAULT_PROFILE being set in env, which is
+  # an explicit per-session signal we want to surface. Compare with azure/gcloud
+  # below, whose context is persistent global config and so is gated by command.
 
   # POWERLEVEL9K_AWS_CLASSES is an array with even number of elements. The first element
   # in each pair defines a pattern against which the current AWS profile gets matched.
@@ -1389,11 +1410,15 @@
   typeset -g POWERLEVEL9K_AWS_DEFAULT_FOREGROUND=208
   typeset -g POWERLEVEL9K_AWS_DEFAULT_VISUAL_IDENTIFIER_EXPANSION='aws:'
 
-  # AWS segment format. The following parameters are available within the expansion.
+  # AWS segment format: <profile>(<region>:<account-id>) when all three are
+  # known; gracefully degrades to <profile>(<region>), <profile>(<account>), or
+  # just <profile> as fields drop out.
   #
-  # - P9K_AWS_PROFILE  The name of the current AWS profile.
-  # - P9K_AWS_REGION   The region associated with the current AWS profile.
-  typeset -g POWERLEVEL9K_AWS_CONTENT_EXPANSION='${P9K_AWS_PROFILE//\%/%%}${P9K_AWS_REGION:+ ${P9K_AWS_REGION//\%/%%}}'
+  # Available parameters:
+  #   - P9K_AWS_PROFILE         set by p10k (env or $AWS_CONFIG_FILE)
+  #   - P9K_AWS_REGION          set by p10k (env or $AWS_CONFIG_FILE)
+  #   - _ajilty_aws_account_id  set by _ajilty_aws_precmd below; cached per profile
+  typeset -g POWERLEVEL9K_AWS_CONTENT_EXPANSION='${P9K_AWS_PROFILE//\%/%%}${${P9K_AWS_REGION:+(${P9K_AWS_REGION//\%/%%}${_ajilty_aws_account_id:+:${_ajilty_aws_account_id}})}:-${_ajilty_aws_account_id:+(${_ajilty_aws_account_id})}}'
 
   #[ aws_eb_env: aws elastic beanstalk environment (https://aws.amazon.com/elasticbeanstalk/) ]#
   # AWS Elastic Beanstalk environment color.
@@ -1403,8 +1428,7 @@
 
   ##########[ azure: azure account name (https://docs.microsoft.com/en-us/cli/azure) ]##########
   # Show azure only when the command you are typing invokes one of these tools.
-  # Tip: Remove the next line to always show azure.
-  # typeset -g POWERLEVEL9K_AZURE_SHOW_ON_COMMAND='az|terraform|pulumi|terragrunt'
+  typeset -g POWERLEVEL9K_AZURE_SHOW_ON_COMMAND='az|terraform|tofu|pulumi|terragrunt'
 
   # POWERLEVEL9K_AZURE_CLASSES is an array with even number of elements. The first element
   # in each pair defines a pattern against which the current azure account name gets matched.
@@ -1441,8 +1465,7 @@
 
   ##########[ gcloud: google cloud account and project (https://cloud.google.com/) ]###########
   # Show gcloud only when the command you are typing invokes one of these tools.
-  # Tip: Remove the next line to always show gcloud.
-  # typeset -g POWERLEVEL9K_GCLOUD_SHOW_ON_COMMAND='gcloud|gcs|gsutil'
+  typeset -g POWERLEVEL9K_GCLOUD_SHOW_ON_COMMAND='gcloud|gcs|gsutil'
    # Google cloud color.
   typeset -g POWERLEVEL9K_GCLOUD_FOREGROUND=32
 
@@ -1662,30 +1685,80 @@
     fi
   }
 
-  # Show prompt elements based on file extensions
-  function p10k-on-post-widget() {
-    typeset -A PROMPT_ELEMENTS_TO_EXTENSIONS=(
-      [terraform_version]='*.tf'
-      [aws]='*.tf'
-      # [azure]='*.tf'
-      # [gcloud]='*.tf'
-      [pyenv]='*.py'
-      [virtualenv]='*.py'
-      [direnv]='.envrc'
-      # Add more mappings as needed
-    )
-    
-    for element in ${(k)PROMPT_ELEMENTS_TO_EXTENSIONS}; do
-      local extensions="${PROMPT_ELEMENTS_TO_EXTENSIONS[$element]}"
-      if [[ -n $(find . -maxdepth 1 -name "$extensions" -print -quit) ]]; then
-        p10k display "*/$element"=show
-      else
-        # p10k display "*/$element"=hide
-        continue
+  ##################[ AWS account-id resolver for the aws segment ]####################
+  # Resolves the current AWS profile's account-id and exposes it via
+  # $_ajilty_aws_account_id, which is referenced by POWERLEVEL9K_AWS_CONTENT_EXPANSION
+  # above. Strategy:
+  #
+  #   1. Memoize in-process on (profile, mtime($AWS_CONFIG_FILE)): same profile
+  #      with same config-file mtime means same answer — skip all work. mtime
+  #      comes from `zstat` (zsh builtin, no fork).
+  #   2. Persist resolved values to disk under $XDG_CACHE_HOME/p10k-aws/, keyed
+  #      by profile + mtime. Survives shell restarts; busts automatically when
+  #      the config file is edited (`aws configure sso`, manual edit, etc.).
+  #   3. Use `aws configure get` rather than parsing the ini ourselves. This
+  #      handles SSO v2 `[sso-session]` indirection, `source_profile` chains,
+  #      and `~/.aws/config` `include` files — all of which an ad-hoc parser
+  #      would miss. The Python fork happens at most once per (profile, mtime).
+  #   4. Fall back to extracting the account from `role_arn` for assume-role
+  #      profiles (it's embedded in the ARN: `arn:aws:iam::<account>:role/...`).
+  zmodload -F zsh/stat b:zstat 2>/dev/null
+  typeset -g _ajilty_aws_account_id=''
+  typeset -g _ajilty_aws_cache_key=''
+
+  function _ajilty_aws_precmd() {
+    emulate -L zsh
+    local profile=${AWS_VAULT:-${AWS_PROFILE:-${AWS_DEFAULT_PROFILE:-}}}
+    if [[ -z $profile ]]; then
+      _ajilty_aws_account_id=''
+      _ajilty_aws_cache_key=''
+      return
+    fi
+    local cfg=${AWS_CONFIG_FILE:-$HOME/.aws/config}
+    local -a _mt=()
+    (( $+builtins[zstat] )) && zstat -L -A _mt +mtime $cfg 2>/dev/null
+    local mtime=${_mt[1]:-0}
+    local key="$profile:$mtime"
+    [[ $_ajilty_aws_cache_key == $key ]] && return
+    _ajilty_aws_cache_key=$key
+
+    local cache_dir=${XDG_CACHE_HOME:-$HOME/.cache}/p10k-aws
+    local safe_profile=${profile//[^a-zA-Z0-9._-]/_}
+    local cache_file=$cache_dir/$safe_profile.$mtime
+    if [[ -r $cache_file ]]; then
+      _ajilty_aws_account_id=$(<$cache_file)
+      return
+    fi
+
+    local acct=''
+    if (( $+commands[aws] )); then
+      acct=$(aws configure get sso_account_id --profile $profile 2>/dev/null)
+      [[ -z $acct ]] && acct=$(aws configure get aws_account_id --profile $profile 2>/dev/null)
+      if [[ -z $acct ]]; then
+        local arn=$(aws configure get role_arn --profile $profile 2>/dev/null)
+        [[ $arn =~ 'arn:aws:iam::([0-9]+):' ]] && acct=$match[1]
       fi
+    fi
+
+    [[ -d $cache_dir ]] || mkdir -p $cache_dir 2>/dev/null
+    # Evict stale cache files for this profile so the dir doesn't grow unbounded.
+    local old
+    for old in $cache_dir/$safe_profile.*(N); do
+      [[ $old == $cache_file ]] || rm -f $old
     done
+    print -r -- $acct > $cache_file 2>/dev/null
+    _ajilty_aws_account_id=$acct
   }
 
+  # Register the precmd hook once. Re-sourcing ~/.p10k.zsh redefines the function
+  # in place but won't add duplicate entries to precmd_functions.
+  (( ${precmd_functions[(Ie)_ajilty_aws_precmd]} )) || precmd_functions+=(_ajilty_aws_precmd)
+
+  # Conditional segment display is now handled by p10k's built-in *_SHOW_ON_UPGLOB
+  # and *_SHOW_ON_COMMAND options (see the per-segment config above). The previous
+  # p10k-on-post-widget function had two bugs: it never hid segments once shown
+  # (the else branch was `continue`), and it only globbed the current directory
+  # rather than walking up to the project root.
 
   # User-defined prompt segments may optionally provide an instant_prompt_* function. Its job
   # is to generate the prompt segment for display in instant prompt. See
