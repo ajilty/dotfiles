@@ -140,6 +140,73 @@ jobs:
 
           HOME="$SANDBOX" bash "$SANDBOX/test/run.sh"
 
+      - name: Measure base-branch startup time (for delta comparison)
+        # On pull_request events, also measure interactive zsh startup on
+        # the BASE branch -- so the PR comment can show "+150ms vs main"
+        # if the PR slowed things down. Skipped on workflow_dispatch (no
+        # base to compare against). Never gates CI: we only emit a number.
+        id: base_speed
+        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+        continue-on-error: true
+        run: |
+          set -uo pipefail
+          base_sha="${{ github.event.pull_request.base.sha }}"
+          base_ref="${{ github.event.pull_request.base.ref }}"
+          echo "Measuring startup time on base ($base_ref @ $base_sha)..."
+
+          BASE_DIR="$RUNNER_TEMP/base-checkout"
+          mkdir -p "$BASE_DIR"
+          git clone --quiet --shared . "$BASE_DIR"
+          git -C "$BASE_DIR" checkout --quiet "$base_sha"
+
+          # Mirror the main job's sandbox setup against the base checkout.
+          umask 022
+          BASE_SANDBOX=$(cd "$BASE_DIR" && bash test/in-sandbox.sh \
+            && cd "$BASE_DIR/$(ls -td test/sandbox-* | head -1)" && pwd)
+          chmod -R go-w "$BASE_SANDBOX" 2>/dev/null || true
+          chmod go-w "${RUNNER_WORKSPACE:-}" "${GITHUB_WORKSPACE:-}" 2>/dev/null || true
+          sed -i 's/zicompinit;/compinit -u -d "${ZINIT[ZCOMPDUMP_PATH]:-$HOME\/.zcompdump}" 2>\/dev\/null;/g' \
+            "$BASE_SANDBOX/.zshrc" 2>/dev/null || true
+
+          # Warmup so plugin install doesn't pollute the timing measurement.
+          HOME="$BASE_SANDBOX" timeout 120 \
+            script -qec 'zsh -i -c "sleep 60; exit"' /dev/null </dev/null \
+            >/dev/null 2>&1 || true
+
+          # 10 timed runs, median (same logic as 20-speed-test.sh).
+          times=()
+          for _ in $(seq 1 10); do
+            s=$(date +%s%N)
+            HOME="$BASE_SANDBOX" script -qec 'zsh -i -c exit' /dev/null \
+              >/dev/null 2>&1 || true
+            e=$(date +%s%N)
+            times+=("$(( (e - s) / 1000000 ))")
+          done
+          IFS=$'\n' sorted=($(sort -n <<<"${times[*]}"))
+          unset IFS
+          base_median=$(( (sorted[4] + sorted[5]) / 2 ))
+          echo "base_ms=$base_median" >>"$GITHUB_OUTPUT"
+          echo "base startup median: ${base_median}ms"
+
+      - name: Build PR comment markdown
+        # Combine status table + startup time (current + base delta) +
+        # rendered-prompt details into one markdown file. The sticky-
+        # comment action posts it.
+        id: comment
+        if: ${{ !cancelled() && steps.tests.outputs.sandbox != '' }}
+        continue-on-error: true
+        run: |
+          set -uo pipefail
+          SANDBOX="${{ steps.tests.outputs.sandbox }}"
+          DOTFILES_TEST_LOG_DIR="$SANDBOX/test-logs" \
+          DOTFILES_TEST_BASE_MS="${{ steps.base_speed.outputs.base_ms }}" \
+            bash "$SANDBOX/test/prompt/build-comment.sh" \
+              "$SANDBOX/test-logs/prompt-report.md" \
+              > "$SANDBOX/test-logs/pr-comment.md"
+          echo "comment_path=$SANDBOX/test-logs/pr-comment.md" >>"$GITHUB_OUTPUT"
+          echo "--- comment preview ---"
+          head -30 "$SANDBOX/test-logs/pr-comment.md"
+
       - name: Upload test logs
         if: always()
         uses: actions/upload-artifact@v4
@@ -149,12 +216,12 @@ jobs:
           if-no-files-found: warn
 
       - name: Post or update PR comment
-        # Always attempt the comment, even when tests failed. The rendered
-        # prompt is the most useful debugging signal when something broke,
-        # and the report is written before assertions run. `continue-on-
-        # error` keeps a missing report (e.g. test crashed before the render
-        # step) from masking the underlying test failure.
-        if: ${{ !cancelled() && github.event_name == 'pull_request' && steps.tests.outputs.sandbox != '' }}
+        # Always attempt the comment, even when tests failed. The status
+        # table itself is the most useful signal -- ❌ rows tell you what
+        # broke at a glance. `continue-on-error` keeps a missing comment
+        # file (e.g. tests crashed before any logs were written) from
+        # masking the underlying test failure.
+        if: ${{ !cancelled() && github.event_name == 'pull_request' && steps.comment.outputs.comment_path != '' }}
         continue-on-error: true
         # StepSecurity's hardened fork of marocchino/sticky-pull-request-
         # comment. Same API, separately-audited supply chain. Pinned by
@@ -164,4 +231,4 @@ jobs:
         uses: step-security/sticky-pull-request-comment@f062e9edbd7a1cf1661c5863f76b8dc3fcbdce70 # v3.0.4
         with:
           header: prompt-render
-          path: ${{ steps.tests.outputs.sandbox }}/test-logs/prompt-report.md
+          path: ${{ steps.comment.outputs.comment_path }}

@@ -18,12 +18,20 @@ if [ ${#tests[@]} -eq 0 ]; then
 fi
 
 failures=()
+# Per-test status files live in $LOG_DIR/status/ so the workflow can build
+# a summary table for the PR comment. Each file is one of: pass | fail.
+status_dir="$DOTFILES_TEST_LOG_DIR/status"
+mkdir -p "$status_dir"
 
 for test_script in "${tests[@]}"; do
-  info "Running $(basename "$test_script")"
-  if ! bash "$test_script"; then
-    echo "Test $(basename "$test_script") failed" >&2
-    failures+=("$(basename "$test_script")")
+  name="$(basename "$test_script")"
+  info "Running $name"
+  if bash "$test_script"; then
+    echo "pass" > "$status_dir/$name"
+  else
+    echo "fail" > "$status_dir/$name"
+    echo "Test $name failed" >&2
+    failures+=("$name")
   fi
 done
 
