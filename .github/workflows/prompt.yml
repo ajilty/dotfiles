@@ -156,7 +156,12 @@ jobs:
         # step) from masking the underlying test failure.
         if: ${{ !cancelled() && github.event_name == 'pull_request' && steps.tests.outputs.sandbox != '' }}
         continue-on-error: true
-        uses: step-security/sticky-pull-request-comment@v3
+        # StepSecurity's hardened fork of marocchino/sticky-pull-request-
+        # comment. Same API, separately-audited supply chain. Pinned by
+        # SHA for immutability (tags are mutable; GitHub allows force-
+        # moving them, so `@v3` today could point to a different commit
+        # tomorrow). The trailing comment tracks the tag for readability.
+        uses: step-security/sticky-pull-request-comment@f062e9edbd7a1cf1661c5863f76b8dc3fcbdce70 # v3.0.4
         with:
           header: prompt-render
           path: ${{ steps.tests.outputs.sandbox }}/test-logs/prompt-report.md
