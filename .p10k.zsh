@@ -1371,9 +1371,10 @@
   typeset -g POWERLEVEL9K_TERRAFORM_VERSION_VISUAL_IDENTIFIER_EXPANSION='tf:'
 
   #[ aws: aws profile (https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-profiles.html) ]#
-  # Show aws only when the command you are typing invokes one of these tools, or when *.tf files are nearby.
-  typeset -g POWERLEVEL9K_AWS_SHOW_ON_COMMAND='aws|awless|terraform|tofu|pulumi|terragrunt'
-  typeset -g POWERLEVEL9K_AWS_SHOW_ON_UPGLOB='*.tf|*.tofu'
+  # No SHOW_ON_COMMAND / SHOW_ON_UPGLOB gates: the segment's natural trigger is
+  # $AWS_PROFILE / $AWS_VAULT / $AWS_DEFAULT_PROFILE being set in env, which is
+  # an explicit per-session signal we want to surface. Compare with azure/gcloud
+  # below, whose context is persistent global config and so is gated by command.
 
   # POWERLEVEL9K_AWS_CLASSES is an array with even number of elements. The first element
   # in each pair defines a pattern against which the current AWS profile gets matched.
