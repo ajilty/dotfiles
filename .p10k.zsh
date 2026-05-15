@@ -1410,11 +1410,15 @@
   typeset -g POWERLEVEL9K_AWS_DEFAULT_FOREGROUND=208
   typeset -g POWERLEVEL9K_AWS_DEFAULT_VISUAL_IDENTIFIER_EXPANSION='aws:'
 
-  # AWS segment format. The following parameters are available within the expansion.
+  # AWS segment format: <profile>(<region>:<account-id>) when all three are
+  # known; gracefully degrades to <profile>(<region>), <profile>(<account>), or
+  # just <profile> as fields drop out.
   #
-  # - P9K_AWS_PROFILE  The name of the current AWS profile.
-  # - P9K_AWS_REGION   The region associated with the current AWS profile.
-  typeset -g POWERLEVEL9K_AWS_CONTENT_EXPANSION='${P9K_AWS_PROFILE//\%/%%}${P9K_AWS_REGION:+ ${P9K_AWS_REGION//\%/%%}}'
+  # Available parameters:
+  #   - P9K_AWS_PROFILE         set by p10k (env or $AWS_CONFIG_FILE)
+  #   - P9K_AWS_REGION          set by p10k (env or $AWS_CONFIG_FILE)
+  #   - _ajilty_aws_account_id  set by _ajilty_aws_precmd below; cached per profile
+  typeset -g POWERLEVEL9K_AWS_CONTENT_EXPANSION='${P9K_AWS_PROFILE//\%/%%}${${P9K_AWS_REGION:+(${P9K_AWS_REGION//\%/%%}${_ajilty_aws_account_id:+:${_ajilty_aws_account_id}})}:-${_ajilty_aws_account_id:+(${_ajilty_aws_account_id})}}'
 
   #[ aws_eb_env: aws elastic beanstalk environment (https://aws.amazon.com/elasticbeanstalk/) ]#
   # AWS Elastic Beanstalk environment color.
@@ -1680,6 +1684,55 @@
       p10k segment -f 208 -t "Git Override (${GIT_DIR})"
     fi
   }
+
+  ##################[ AWS account-id resolver for the aws segment ]####################
+  # Resolves the account-id for the current AWS profile from $AWS_CONFIG_FILE
+  # (falling back to ~/.aws/config). The result is exposed in
+  # $_ajilty_aws_account_id and consumed by POWERLEVEL9K_AWS_CONTENT_EXPANSION
+  # above. Per-profile cache means the awk parse runs at most once per profile
+  # per session — re-source ~/.p10k.zsh to bust the cache after editing config.
+  typeset -gA _ajilty_aws_account_cache=()
+  typeset -g  _ajilty_aws_account_id=''
+  typeset -g  _ajilty_aws_last_profile='__unset__'
+
+  function _ajilty_aws_precmd() {
+    emulate -L zsh
+    local profile=${AWS_VAULT:-${AWS_PROFILE:-${AWS_DEFAULT_PROFILE:-}}}
+    [[ $profile == $_ajilty_aws_last_profile ]] && return
+    _ajilty_aws_last_profile=$profile
+    _ajilty_aws_account_id=''
+    [[ -z $profile ]] && return
+    if (( ${+_ajilty_aws_account_cache[$profile]} )); then
+      _ajilty_aws_account_id=${_ajilty_aws_account_cache[$profile]}
+      return
+    fi
+    local cfg=${AWS_CONFIG_FILE:-$HOME/.aws/config} acct=''
+    if [[ -r $cfg ]]; then
+      acct=$(awk -v p="$profile" '
+        BEGIN { hdr = (p == "default" ? "default" : "profile " p) }
+        /^[[:space:]]*\[.*\][[:space:]]*$/ {
+          s = $0
+          sub(/^[[:space:]]*\[[[:space:]]*/, "", s)
+          sub(/[[:space:]]*\][[:space:]]*$/, "", s)
+          gsub(/[[:space:]]+/, " ", s)
+          in_section = (s == hdr)
+          next
+        }
+        in_section && /^[[:space:]]*(sso_account_id|aws_account_id)[[:space:]]*=/ {
+          sub(/^[^=]*=[[:space:]]*/, "")
+          sub(/[[:space:]].*$/, "")
+          gsub(/"/, "")
+          print; exit
+        }
+      ' "$cfg" 2>/dev/null)
+    fi
+    _ajilty_aws_account_cache[$profile]=$acct
+    _ajilty_aws_account_id=$acct
+  }
+
+  # Register the precmd hook once. Re-sourcing ~/.p10k.zsh redefines the function
+  # in place but won't add duplicate entries to precmd_functions.
+  (( ${precmd_functions[(Ie)_ajilty_aws_precmd]} )) || precmd_functions+=(_ajilty_aws_precmd)
 
   # Conditional segment display is now handled by p10k's built-in *_SHOW_ON_UPGLOB
   # and *_SHOW_ON_COMMAND options (see the per-segment config above). The previous
