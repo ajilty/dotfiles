@@ -156,7 +156,7 @@ jobs:
         # step) from masking the underlying test failure.
         if: ${{ !cancelled() && github.event_name == 'pull_request' && steps.tests.outputs.sandbox != '' }}
         continue-on-error: true
-        uses: marocchino/sticky-pull-request-comment@v2
+        uses: step-security/sticky-pull-request-comment@v3
         with:
           header: prompt-render
           path: ${{ steps.tests.outputs.sandbox }}/test-logs/prompt-report.md
