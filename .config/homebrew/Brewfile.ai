@@ -12,6 +12,8 @@ cask "claude-code"
 cask "copilot-cli"
 cask "codex"
 brew "gemini-cli"
+brew "opencode"
+cask "claude-code@latest"
 
 # MCP
 brew "playwright-cli"

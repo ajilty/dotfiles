@@ -9,7 +9,7 @@ Modular shell function library organized by domain.
 | **git.sh** | git, git-unstage, git-discard, git-quick, git-pr | Git workflows and PR management |
 | **navigation.sh** | n, cd, try, keep | Directory navigation and workspace management |
 | **whoami.sh** | whoami-aws, whoami-python | Context and environment information |
-| **brew-sync.sh** | brew-sync | Categorized Homebrew package management |
+| **brew-sync.sh** | brew, brew-sync | brew install wrapper + Brewfile reconciliation |
 | **env.sh** | env, env-* | On-demand environment preset loading |
 | **skills.sh** | skills | AI skills wrapper |
 

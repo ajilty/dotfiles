@@ -19,12 +19,14 @@ brew "virtualenv"
 brew "docutils"
 brew "pipenv"
 brew "pipx"
+brew "poetry"
 
-## JS
+## Javascript
 brew "yarn"
 brew "node"
+brew "pnpm"
 
-## .Net
+## .NET
 cask "dotnet-runtime"
 
 ## yaml
@@ -79,3 +81,6 @@ brew "ansible"
 
 # Secrets
 brew "hashicorp/tap/vault"
+
+## Microsoft
+brew "powershell"
