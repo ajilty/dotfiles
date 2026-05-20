@@ -13,3 +13,7 @@ cask "spotify"
 cask "thunderbird"
 cask "obsidian"
 
+tap "atlassian/acli"
+brew "atlassian/acli/acli"
+cask "flux-markdown"
+cask "ghostty"
