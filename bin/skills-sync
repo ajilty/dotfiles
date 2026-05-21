@@ -1,0 +1,49 @@
+#!/bin/bash
+# skills-sync: sync homegrown skills from ~/skills/ into the canonical
+# store at ~/.agents/skills/ via `npx skills add`.
+#
+# Usage:
+#   skills-sync              - sync every ~/skills/<name>/SKILL.md
+#   skills-sync <name>...    - sync only the named skills
+#
+# See ~/skills/README.md for workspace conventions and the development
+# loop (edit source, sync, `dotfiles add`, commit).
+
+set -e
+
+src="${HOME}/skills"
+names=()
+
+if [[ $# -gt 0 ]]; then
+  names=("$@")
+else
+  if [[ ! -d "$src" ]]; then
+    echo "skills-sync: $src does not exist; nothing to sync"
+    exit 0
+  fi
+  for d in "$src"/*/; do
+    [[ -f "$d/SKILL.md" ]] && names+=("$(basename "$d")")
+  done
+fi
+
+if [[ ${#names[@]} -eq 0 ]]; then
+  echo "skills-sync: no skills found under $src"
+  exit 0
+fi
+
+args=()
+for n in "${names[@]}"; do
+  if [[ ! -f "$src/$n/SKILL.md" ]]; then
+    echo "skills-sync: skipping $n (no SKILL.md at $src/$n/)" >&2
+    continue
+  fi
+  args+=(-s "$n")
+done
+
+if [[ ${#args[@]} -eq 0 ]]; then
+  echo "skills-sync: nothing to sync"
+  exit 0
+fi
+
+echo "skills-sync: installing ${names[*]}"
+npx skills add "$src" "${args[@]}" -g -a claude-code -y

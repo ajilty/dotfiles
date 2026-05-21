@@ -46,6 +46,14 @@ git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME fetch --all
 git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME reset --hard
 git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME submodule update --force --recursive --init --remote
 
+# Sync homegrown skill sources into the canonical store. No-op on a clean
+# bootstrap (the canonical store under ~/.agents/skills/ is already restored
+# by the dotfiles checkout); meaningful if ~/skills/ has been restored from
+# a backup or another machine. See ~/skills/README.md.
+if [ -x "$HOME/bin/skills-sync" ]; then
+    "$HOME/bin/skills-sync" || true
+fi
+
 # Restart terminal
 if [ "${DOTFILES_NO_EXEC_ZSH:-0}" != "1" ]; then
     exec zsh

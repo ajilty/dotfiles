@@ -2,13 +2,14 @@
 
 Operational notes for this dotfiles repo have moved to the `dotfiles-repo` skill at [`.agents/skills/dotfiles-repo/SKILL.md`](.agents/skills/dotfiles-repo/SKILL.md). Agents with skill auto-discovery (Claude Code, Codex, Gemini CLI, Copilot CLI) load it on demand; the description triggers on bare-repo cues, the `dotfiles` alias, inverse-allowlist `.gitignore`, the `ajilty <github@ajilty.com>` pre-commit identity hook, and `dotfiles pull` rebase/autostash conflicts.
 
-**First-time bootstrap on a new machine** (or after any homegrown-skill source/install drift — see the source at [`skills/dotfiles-repo/`](skills/dotfiles-repo/)): the linked path under `.agents/skills/` is *gitignored* and populated by an explicit install step. Run once:
+**Homegrown skills.** Source-of-truth lives at `~/skills/<name>/SKILL.md` (gitignored), canonical install at `~/.agents/skills/<name>/SKILL.md` (tracked, restored by the dotfiles checkout). Sync source → canonical with the `skills-sync` helper (`~/bin/skills-sync`, on `PATH`):
 
 ```sh
-npx skills add ~/skills -s dotfiles-repo -g -a claude-code -y
+skills-sync              # sync every ~/skills/<name>/SKILL.md
+skills-sync <name>...    # sync specific skills
 ```
 
-Repeat with `-s <name>` for every other homegrown skill under `~/skills/`. Without this, the auto-discovery list may still advertise the skill (some harnesses scan `~/skills/` for descriptions), but invocation fails because the canonical store at `~/.agents/skills/<name>/` is empty.
+`bin/setup-dotfiles.sh` calls it once during bootstrap. See [`skills/README.md`](skills/README.md) for workspace conventions, the edit→sync→commit loop, and the layout rationale.
 
 Quick digest for tools that auto-load `AGENTS.md` but don't read skills:
 
