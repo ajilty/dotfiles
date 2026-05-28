@@ -55,10 +55,11 @@ copy-on-select = clipboard
 clipboard-trim-trailing-spaces = true
 mouse-hide-while-typing = true
 
-# --- SSH: make remotes understand xterm-ghostty ---
-# ssh-terminfo: on first SSH to a host, install the xterm-ghostty terminfo
-#               into the remote's ~/.terminfo via `infocmp | ssh ... tic`.
-# ssh-env:      forward TERM (and other ghostty env hints) so the remote
-#               picks up the right terminfo entry instead of falling back.
-# Defaults (cursor, sudo, title) are preserved by listing them explicitly.
-shell-integration-features = cursor, sudo, title, ssh-env, ssh-terminfo
+# --- SSH shell integration ---
+# Intentionally NO ssh-env / ssh-terminfo here. See the NOTE near term=
+# above: ssh-terminfo re-forwards TERM=xterm-ghostty on every ssh after the
+# first connect, overriding term=xterm-256color and re-breaking sudo on
+# remotes (and it emits "Warning: Failed to install terminfo." when the
+# remote lacks tic). Reintroduced once via a cross-machine merge (48f53ea);
+# don't let it back in. Keep only the cursor/sudo/title defaults.
+shell-integration-features = cursor, sudo, title
