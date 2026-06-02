@@ -63,3 +63,6 @@ mouse-hide-while-typing = true
 # remote lacks tic). Reintroduced once via a cross-machine merge (48f53ea);
 # don't let it back in. Keep only the cursor/sudo/title defaults.
 shell-integration-features = cursor, sudo, title
+
+# --- Theme: follow macOS light/dark appearance ---
+theme = dark:Builtin Pastel Dark,light:Builtin Light
