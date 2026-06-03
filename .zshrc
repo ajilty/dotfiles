@@ -27,6 +27,24 @@ then
   export FPATH="$(brew --prefix)/share/zsh/site-functions:${FPATH}"
 fi
 
+# History
+###############################
+# Set synchronously at init -- NOT via zinit turbo. These govern the one-time
+# read of $HISTFILE into memory that happens when zsh starts; deferring them to
+# a post-prompt callback means that read already happened under the small
+# /etc/zshrc defaults (HISTSIZE=2000/SAVEHIST=1000). Mirrors what OMZL::history.zsh
+# intended to set, but explicit and dependency-free.
+HISTFILE="$HOME/.zsh_history"
+HISTSIZE=50000          # in-memory history; keep >= SAVEHIST
+SAVEHIST=10000          # lines persisted to $HISTFILE
+
+setopt extended_history       # record command timestamps in $HISTFILE
+setopt hist_expire_dups_first # trim duplicates first when HISTFILE exceeds limit
+setopt hist_ignore_dups       # don't record an immediately repeated command
+setopt hist_ignore_space      # don't record commands starting with a space
+setopt hist_verify            # confirm history expansion before running it
+setopt share_history          # live shared history across all open sessions
+
 # Zinit
 ###############################
 
@@ -39,7 +57,7 @@ source "${ZINIT_HOME}/zinit.zsh"
 
 # Oh My Zsh! Customizations
 COMPLETION_WAITING_DOTS="true"
-# HIST_* settings are mostly set by OMZL::history.zsh
+# HIST_* settings are configured synchronously above (see the History section).
 
 
 # ===  Completions, Plugins and Theme Installation with Zinit  ===
@@ -56,7 +74,6 @@ zinit wait lucid for \
     OMZL::functions.zsh \
     OMZL::termsupport.zsh \
     OMZL::directories.zsh \
-    OMZL::history.zsh \
     OMZP::aws \
     OMZP::azure \
     OMZP::gcloud \
