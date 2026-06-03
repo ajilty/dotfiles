@@ -40,8 +40,10 @@ SAVEHIST=10000          # lines persisted to $HISTFILE
 
 setopt extended_history       # record command timestamps in $HISTFILE
 setopt hist_expire_dups_first # trim duplicates first when HISTFILE exceeds limit
-setopt hist_ignore_dups       # don't record an immediately repeated command
+setopt hist_ignore_all_dups   # if a command duplicates an older one, drop the older
 setopt hist_ignore_space      # don't record commands starting with a space
+setopt hist_find_no_dups      # don't show a dup in history search/up-arrow nav
+setopt hist_save_no_dups      # don't write older duplicates to $HISTFILE
 setopt hist_verify            # confirm history expansion before running it
 setopt share_history          # live shared history across all open sessions
 
