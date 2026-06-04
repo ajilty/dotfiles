@@ -22,9 +22,10 @@ fi
 # Load profile
 source "$HOME/.profile"
 
-if type brew &>/dev/null
-then
-  export FPATH="$(brew --prefix)/share/zsh/site-functions:${FPATH}"
+if [ -n "$HOMEBREW_PREFIX" ]; then
+  # site-functions holds brew-linked completions; HOMEBREW_PREFIX is set early
+  # by profile.d/01-homebrew.sh, so no `brew --prefix` subprocess needed here.
+  export FPATH="$HOMEBREW_PREFIX/share/zsh/site-functions:${FPATH}"
 fi
 
 # History
