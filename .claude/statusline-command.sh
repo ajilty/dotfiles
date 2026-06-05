@@ -12,7 +12,9 @@ eval "$(echo "$input" | jq -r '
   "session_id=" + (.session_id // "default" | @sh),
   "used_pct="   + ((.context_window.used_percentage // empty) | if . then tostring else "" end),
   "cost_usd="   + ((.cost.total_cost_usd // empty) | if . then tostring else "" end),
-  "dur_ms="     + ((.cost.total_duration_ms // empty) | if . then tostring else "" end)
+  "dur_ms="     + ((.cost.total_duration_ms // empty) | if . then tostring else "" end),
+  "effort_lvl=" + (.effort.level // "" | @sh),
+  "fast_mode="  + ((.fast_mode // false) | tostring | @sh)
 ')"
 
 # --- ANSI colours ---
@@ -24,6 +26,7 @@ YELLOW='\033[33m'
 RED='\033[31m'
 CYAN='\033[36m'
 WHITE='\033[37m'
+MAGENTA='\033[35m'
 
 # ------------------------------------------------------------------ #
 # Git info — cached in /tmp keyed by session_id, 5-second TTL
@@ -104,8 +107,21 @@ fi
 # ------------------------------------------------------------------ #
 dir_name=$(basename "$cwd")
 
+# Compact model name: drop the verbose " (1M context)" suffix, show "1M" badge instead
+model_short=$(printf '%s' "$model" | sed 's/ *(1M context)//')
+ctx_badge=""
+case "$model" in *"1M context"*) ctx_badge=" ${DIM}1M${RESET}" ;; esac
+
+# Effort tag — always shown when the model reports an effort level
+effort_tag=""
+[ -n "$effort_lvl" ] && effort_tag=" ${DIM}·${RESET}${MAGENTA}${effort_lvl}${RESET}"
+
+# Fast-mode flag
+fast_tag=""
+[ "$fast_mode" = "true" ] && fast_tag=" ${YELLOW}fast${RESET}"
+
 # Line 1
-line1="${BOLD}${CYAN}${model}${RESET}  ${WHITE}${dir_name}${RESET}"
+line1="${BOLD}${CYAN}${model_short}${RESET}${ctx_badge}${effort_tag}${fast_tag}  ${WHITE}${dir_name}${RESET}"
 if [ -n "$git_info" ]; then
   line1="${line1}  ${DIM}git:${RESET}${git_info}"
 fi
