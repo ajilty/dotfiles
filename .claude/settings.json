@@ -30,38 +30,44 @@
       "mcp__plugin_context7_context7__*",
       "mcp__ajilty__datacommons_search_indicators",
       "mcp__ajilty__datacommons_get_observations",
-      "mcp__plugin_atlassian_atlassian__get*",
-      "mcp__plugin_atlassian_atlassian__search*",
-      "mcp__plugin_atlassian_atlassian__atlassianUserInfo",
-      "mcp__plugin_atlassian_atlassian__fetch",
-      "mcp__plugin_atlassian_atlassian__lookupJiraAccountId",
-      "mcp__plugin_slack_slack__slack_read_*",
-      "mcp__plugin_slack_slack__slack_search_*",
-      "mcp__wiz__list_*",
-      "mcp__wiz__get_*",
-      "mcp__wiz__graph_search",
-      "mcp__falcon-mcp__falcon_search_*",
+      "mcp__plugin_atlassian_atlassian__*",
+      "mcp__plugin_slack_slack__*",
+      "mcp__wiz__*",
+      "mcp__falcon-mcp__*",
       "Read(~/.claude/skills/**)"
     ],
     "defaultMode": "auto"
   },
-  "model": "opus[1m]",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash '/var/home/ajilty/.claude/hooks/herdr-agent-state.sh' session",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  },
   "statusLine": {
     "type": "command",
     "command": "bash ~/.claude/statusline-command.sh",
     "refreshInterval": 5
   },
   "enabledPlugins": {
+    "atlassian@claude-plugins-official": true,
+    "claude-code-setup@claude-plugins-official": true,
+    "claude-md-management@claude-plugins-official": true,
+    "context7@claude-plugins-official": true,
+    "explanatory-output-style@claude-plugins-official": true,
     "github@claude-plugins-official": true,
     "playwright@claude-plugins-official": true,
-    "claude-md-management@claude-plugins-official": true,
-    "claude-code-setup@claude-plugins-official": true,
-    "ralph-loop@claude-plugins-official": true,
-    "explanatory-output-style@claude-plugins-official": true,
-    "atlassian@claude-plugins-official": true,
-    "slack@claude-plugins-official": true,
     "plugin-dev@claude-plugins-official": true,
-    "context7@claude-plugins-official": true
+    "ralph-loop@claude-plugins-official": true,
+    "slack@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "claude-plugins-official": {
@@ -77,11 +83,12 @@
       }
     }
   },
-  "effortLevel": "medium",
   "voice": {
     "enabled": true,
     "mode": "hold"
   },
+  "skipWorkflowUsageWarning": true,
+  "agentPushNotifEnabled": true,
   "voiceEnabled": true,
-  "agentPushNotifEnabled": true
+  "effortLevel": "medium"
 }
