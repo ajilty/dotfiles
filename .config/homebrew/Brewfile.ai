@@ -17,3 +17,6 @@ cask "claude-code@latest"
 
 # MCP
 brew "playwright-cli"
+
+## tui
+brew "herdr"
