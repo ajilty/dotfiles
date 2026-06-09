@@ -1,62 +1,6 @@
 {
-  "permissions": {
-    "allow": [
-      "Bash(ls:*)",
-      "Bash(pwd)",
-      "Bash(whoami)",
-      "Bash(echo:*)",
-      "Bash(cat:*)",
-      "Bash(head:*)",
-      "Bash(tail:*)",
-      "Bash(grep:*)",
-      "Bash(rg:*)",
-      "Bash(find:*)",
-      "Bash(git status:*)",
-      "Bash(git diff:*)",
-      "Bash(git log:*)",
-      "Bash(git show:*)",
-      "Bash(gh api:*)",
-      "Bash(gh repo:*)",
-      "Bash(gh auth:*)",
-      "Bash(gh pr:*)",
-      "Bash(gh search:*)",
-      "Bash(jq:*)",
-      "Bash(mkdir:*)",
-      "Bash(which:*)",
-      "Bash(acli jira:*)",
-      "Bash(acli confluence:*)",
-      "WebFetch(domain:registry.npmjs.org)",
-      "WebFetch(domain:api.github.com)",
-      "mcp__plugin_context7_context7__*",
-      "mcp__ajilty__datacommons_search_indicators",
-      "mcp__ajilty__datacommons_get_observations",
-      "mcp__plugin_atlassian_atlassian__*",
-      "mcp__plugin_slack_slack__*",
-      "mcp__wiz__*",
-      "mcp__falcon-mcp__*",
-      "Read(~/.claude/skills/**)"
-    ],
-    "defaultMode": "auto"
-  },
-  "hooks": {
-    "SessionStart": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash '/var/home/ajilty/.claude/hooks/herdr-agent-state.sh' session",
-            "timeout": 10
-          }
-        ]
-      }
-    ]
-  },
-  "statusLine": {
-    "type": "command",
-    "command": "bash ~/.claude/statusline-command.sh",
-    "refreshInterval": 5
-  },
+  "agentPushNotifEnabled": true,
+  "effortLevel": "high",
   "enabledPlugins": {
     "atlassian@claude-plugins-official": true,
     "claude-code-setup@claude-plugins-official": true,
@@ -72,8 +16,8 @@
   "extraKnownMarketplaces": {
     "claude-plugins-official": {
       "source": {
-        "source": "github",
-        "repo": "anthropics/claude-plugins-official"
+        "repo": "anthropics/claude-plugins-official",
+        "source": "github"
       }
     },
     "knowledge-work-plugins": {
@@ -83,12 +27,35 @@
       }
     }
   },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "command": "bash \"$HOME/.claude/hooks/herdr-agent-state.sh\" session",
+            "timeout": 10,
+            "type": "command"
+          }
+        ],
+        "matcher": "*"
+      }
+    ]
+  },
+  "model": "opus[1m]",
+  "permissions": {
+    "allow": [],
+    "defaultMode": "auto"
+  },
+  "skipAutoPermissionPrompt": true,
+  "skipWorkflowUsageWarning": true,
+  "statusLine": {
+    "command": "bash ~/.claude/statusline-command.sh",
+    "refreshInterval": 5,
+    "type": "command"
+  },
   "voice": {
     "enabled": true,
     "mode": "hold"
   },
-  "skipWorkflowUsageWarning": true,
-  "agentPushNotifEnabled": true,
-  "voiceEnabled": true,
-  "effortLevel": "medium"
+  "voiceEnabled": true
 }
