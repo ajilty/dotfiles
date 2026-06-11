@@ -65,4 +65,4 @@ mouse-hide-while-typing = true
 shell-integration-features = cursor, sudo, title
 
 # --- Theme: follow macOS light/dark appearance ---
-theme = dark:Builtin Pastel Dark,light:Builtin Light
+theme = dark:Builtin Pastel Dark,light:GitHub Light Default 
