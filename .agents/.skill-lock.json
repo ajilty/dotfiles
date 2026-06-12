@@ -251,7 +251,28 @@
       "skillFolderHash": "80e8c7d3be99d55d5d76c9516cc45a1e7f48f281",
       "installedAt": "2026-05-15T21:31:13.168Z",
       "updatedAt": "2026-05-15T21:31:13.168Z"
+    },
+    "herdr": {
+      "source": "ogulcancelik/herdr",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/ogulcancelik/herdr.git",
+      "skillPath": "SKILL.md",
+      "skillFolderHash": "0f92b2f02752fcdff099dae72915cd1cc85f7fc4",
+      "installedAt": "2026-06-05T16:10:09.061Z",
+      "updatedAt": "2026-06-05T16:10:09.061Z"
     }
   },
-  "dismissed": {}
+  "dismissed": {
+    "findSkillsPrompt": true
+  },
+  "lastSelectedAgents": [
+    "amp",
+    "cline",
+    "codex",
+    "cursor",
+    "gemini-cli",
+    "github-copilot",
+    "kimi-cli",
+    "opencode"
+  ]
 }
