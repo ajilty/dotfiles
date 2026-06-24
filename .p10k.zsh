@@ -796,7 +796,17 @@
   ###############################[ ram_perc: RAM usage (percent) ]###############################
   # Color (matches the stock `ram` segment). p10k applies this automatically
   # because prompt_ram_perc doesn't pass an explicit -f.
-  typeset -g POWERLEVEL9K_RAM_PERC_FOREGROUND=66
+  # Threshold coloring mirrors the load segment. Unlike load, the MEM percent
+  # is already a direct usage percentage (not core-normalized), so these PCTs
+  # compare against used-RAM directly.
+  # Color when usage is under WARNING_PCT (80%).
+  typeset -g POWERLEVEL9K_RAM_PERC_NORMAL_FOREGROUND=66
+  # Color between WARNING_PCT (80%) and CRITICAL_PCT (95%).
+  typeset -g POWERLEVEL9K_RAM_PERC_WARNING_FOREGROUND=178
+  # Color at/above CRITICAL_PCT (95%).
+  typeset -g POWERLEVEL9K_RAM_PERC_CRITICAL_FOREGROUND=166
+  typeset -g POWERLEVEL9K_RAM_PERC_WARNING_PCT=80
+  typeset -g POWERLEVEL9K_RAM_PERC_CRITICAL_PCT=95
   # Label shown before the percentage. p10k applies it automatically since
   # prompt_ram_perc doesn't pass an explicit -i.
   typeset -g POWERLEVEL9K_RAM_PERC_VISUAL_IDENTIFIER_EXPANSION='MEM'
@@ -810,11 +820,11 @@
   ######################################[ load: CPU load ]######################################
   # Show average CPU load over this many last minutes. Valid values are 1, 5 and 15.
   typeset -g POWERLEVEL9K_LOAD_WHICH=5
-  # Load color when load is under 50%.
+  # Load color when load is under POWERLEVEL9K_LOAD_WARNING_PCT (80%).
   typeset -g POWERLEVEL9K_LOAD_NORMAL_FOREGROUND=66
-  # Load color when load is between 50% and 70%.
+  # Load color between WARNING_PCT (80%) and CRITICAL_PCT (95%).
   typeset -g POWERLEVEL9K_LOAD_WARNING_FOREGROUND=178
-  # Load color when load is over 70%.
+  # Load color at/above CRITICAL_PCT (95%).
   typeset -g POWERLEVEL9K_LOAD_CRITICAL_FOREGROUND=166
   # Label shown before the load value (replaces the default "L" glyph).
   typeset -g POWERLEVEL9K_LOAD_VISUAL_IDENTIFIER_EXPANSION='CPU'
@@ -1718,7 +1728,11 @@
     # Used-RAM percent, rounded to nearest integer with pure integer math
     # (round(a/b) == (2a + b) / (2b)); avoids needing zsh/mathfunc for int().
     local -i pct=$(( (200 * (total - avail) + total) / (2 * total) ))
-    p10k segment -t "${pct}%%"
+    # Pick color by usage, same NORMAL/WARNING/CRITICAL scheme as load.
+    local -i fg=$POWERLEVEL9K_RAM_PERC_NORMAL_FOREGROUND
+    (( pct >= POWERLEVEL9K_RAM_PERC_WARNING_PCT ))  && fg=$POWERLEVEL9K_RAM_PERC_WARNING_FOREGROUND
+    (( pct >= POWERLEVEL9K_RAM_PERC_CRITICAL_PCT )) && fg=$POWERLEVEL9K_RAM_PERC_CRITICAL_FOREGROUND
+    p10k segment -f $fg -t "${pct}%%"
   }
 
   ##################[ AWS account-id resolver for the aws segment ]####################
