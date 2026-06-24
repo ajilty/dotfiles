@@ -797,8 +797,9 @@
   # Color (matches the stock `ram` segment). p10k applies this automatically
   # because prompt_ram_perc doesn't pass an explicit -f.
   typeset -g POWERLEVEL9K_RAM_PERC_FOREGROUND=66
-  # Custom icon.
-  # typeset -g POWERLEVEL9K_RAM_PERC_VISUAL_IDENTIFIER_EXPANSION='⭐'
+  # Label shown before the percentage. p10k applies it automatically since
+  # prompt_ram_perc doesn't pass an explicit -i.
+  typeset -g POWERLEVEL9K_RAM_PERC_VISUAL_IDENTIFIER_EXPANSION='MEM'
 
   #####################################[ swap: used swap ]######################################
   # Swap color.
@@ -815,8 +816,8 @@
   typeset -g POWERLEVEL9K_LOAD_WARNING_FOREGROUND=178
   # Load color when load is over 70%.
   typeset -g POWERLEVEL9K_LOAD_CRITICAL_FOREGROUND=166
-  # Custom icon.
-  # typeset -g POWERLEVEL9K_LOAD_VISUAL_IDENTIFIER_EXPANSION='⭐'
+  # Label shown before the load value (replaces the default "L" glyph).
+  typeset -g POWERLEVEL9K_LOAD_VISUAL_IDENTIFIER_EXPANSION='CPU'
 
   typeset -g POWERLEVEL9K_LOAD_WARNING_PCT=80
   typeset -g POWERLEVEL9K_LOAD_CRITICAL_PCT=95
@@ -1690,8 +1691,8 @@
   # Replaces the stock `ram` segment (which shows free RAM in GB) with used-RAM
   # as a percentage. Cross-platform: Linux reads /proc/meminfo, macOS/BSD use
   # sysctl + vm_stat. Units cancel in the ratio so kB vs bytes doesn't matter.
-  # Reuses the built-in RAM_ICON and POWERLEVEL9K_RAM_PERC_FOREGROUND so it
-  # looks identical to the old segment, just rendered as "NN%".
+  # Color and the "MEM" label come from POWERLEVEL9K_RAM_PERC_* above; the
+  # segment just emits "NN%".
   function prompt_ram_perc() {
     emulate -L zsh
     local -i total avail
@@ -1717,11 +1718,7 @@
     # Used-RAM percent, rounded to nearest integer with pure integer math
     # (round(a/b) == (2a + b) / (2b)); avoids needing zsh/mathfunc for int().
     local -i pct=$(( (200 * (total - avail) + total) / (2 * total) ))
-    local -a iconarg=()
-    typeset -g _p9k__ret=
-    (( $+functions[_p9k_get_icon] )) && _p9k_get_icon prompt_ram_perc RAM_ICON 2>/dev/null
-    [[ -n $_p9k__ret ]] && iconarg=(-i $_p9k__ret)
-    p10k segment $iconarg -t "${pct}%%"
+    p10k segment -t "${pct}%%"
   }
 
   ##################[ AWS account-id resolver for the aws segment ]####################
