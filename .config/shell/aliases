@@ -6,7 +6,7 @@
 # Sane dotfiles management inspired by https://www.atlassian.com/git/tutorials/dotfiles
 alias config='/usr/bin/git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME'
 alias dotfiles='/usr/bin/git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME'
-alias dotfiles-tracked='dotfiles ls-tree -r master --name-only'
+alias dotfiles-tracked='dotfiles ls-tree -r --full-tree master --name-only'
 alias dotfiles-update='dotfiles pull; zinit update --all'
 # Identity is set automatically via includeIf "gitdir:~/.dotfiles" in
 # ~/.config/git/config -> ~/.config/git/dotfiles.config. The pre-commit hook
