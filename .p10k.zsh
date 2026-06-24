@@ -111,7 +111,7 @@
     # =========================[ Line #2 ]=========================
     newline
     load                  # CPU load
-    ram                   # free RAM
+    ram_perc              # RAM usage (percent)
     newline
     # ip                    # ip address and bandwidth usage for a specified network interface
     # proxy                 # system-wide http/https/ftp proxy
@@ -793,11 +793,12 @@
   # Custom icon.
   # typeset -g POWERLEVEL9K_DISK_USAGE_VISUAL_IDENTIFIER_EXPANSION='⭐'
 
-  ######################################[ ram: free RAM ]#######################################
-  # RAM color.
-  typeset -g POWERLEVEL9K_RAM_FOREGROUND=66
+  ###############################[ ram_perc: RAM usage (percent) ]###############################
+  # Color (matches the stock `ram` segment). p10k applies this automatically
+  # because prompt_ram_perc doesn't pass an explicit -f.
+  typeset -g POWERLEVEL9K_RAM_PERC_FOREGROUND=66
   # Custom icon.
-  # typeset -g POWERLEVEL9K_RAM_VISUAL_IDENTIFIER_EXPANSION='⭐'
+  # typeset -g POWERLEVEL9K_RAM_PERC_VISUAL_IDENTIFIER_EXPANSION='⭐'
 
   #####################################[ swap: used swap ]######################################
   # Swap color.
@@ -1683,6 +1684,44 @@
     if [[ -n $GIT_DIR && $GIT_DIR != .git ]]; then
       p10k segment -f 208 -t "Git Override (${GIT_DIR})"
     fi
+  }
+
+  ##############[ ram_perc: RAM usage as a percentage instead of free GB ]##############
+  # Replaces the stock `ram` segment (which shows free RAM in GB) with used-RAM
+  # as a percentage. Cross-platform: Linux reads /proc/meminfo, macOS/BSD use
+  # sysctl + vm_stat. Units cancel in the ratio so kB vs bytes doesn't matter.
+  # Reuses the built-in RAM_ICON and POWERLEVEL9K_RAM_PERC_FOREGROUND so it
+  # looks identical to the old segment, just rendered as "NN%".
+  function prompt_ram_perc() {
+    emulate -L zsh
+    local -i total avail
+    if [[ $OSTYPE == linux* ]]; then
+      local line; local -a kv
+      for line in ${(f)"$(</proc/meminfo)"}; do
+        kv=(${(z)line})
+        case $kv[1] in
+          MemTotal:)     total=$kv[2];;   # kB
+          MemAvailable:) avail=$kv[2];;   # kB
+        esac
+      done
+    elif [[ $OSTYPE == (darwin|freebsd|openbsd|netbsd)* ]]; then
+      total=$(sysctl -n hw.memsize 2>/dev/null)
+      local psize=$(sysctl -n hw.pagesize 2>/dev/null); (( psize )) || psize=4096
+      local vm=$(vm_stat 2>/dev/null) free inact spec
+      free=${${(M)${(f)vm}:#Pages free:*}//[^0-9]/}
+      inact=${${(M)${(f)vm}:#Pages inactive:*}//[^0-9]/}
+      spec=${${(M)${(f)vm}:#Pages speculative:*}//[^0-9]/}
+      (( avail = (${free:-0} + ${inact:-0} + ${spec:-0}) * psize ))
+    fi
+    (( total > 0 )) || return
+    # Used-RAM percent, rounded to nearest integer with pure integer math
+    # (round(a/b) == (2a + b) / (2b)); avoids needing zsh/mathfunc for int().
+    local -i pct=$(( (200 * (total - avail) + total) / (2 * total) ))
+    local -a iconarg=()
+    typeset -g _p9k__ret=
+    (( $+functions[_p9k_get_icon] )) && _p9k_get_icon prompt_ram_perc RAM_ICON 2>/dev/null
+    [[ -n $_p9k__ret ]] && iconarg=(-i $_p9k__ret)
+    p10k segment $iconarg -t "${pct}%%"
   }
 
   ##################[ AWS account-id resolver for the aws segment ]####################
