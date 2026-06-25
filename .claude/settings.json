@@ -33,7 +33,9 @@
     "playwright@claude-plugins-official": true,
     "plugin-dev@claude-plugins-official": true,
     "ralph-loop@claude-plugins-official": true,
-    "slack@claude-plugins-official": true
+    "slack@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": true,
+    "orchestrate@ajilty-agent-skills": true
   },
   "extraKnownMarketplaces": {
     "claude-plugins-official": {
@@ -47,15 +49,29 @@
         "source": "git",
         "url": "https://github.com/anthropics/knowledge-work-plugins.git"
       }
+    },
+    "chrome-devtools-plugins": {
+      "source": {
+        "source": "github",
+        "repo": "ChromeDevTools/chrome-devtools-mcp"
+      }
+    },
+    "ajilty-agent-skills": {
+      "source": {
+        "source": "github",
+        "repo": "ajilty/agent-skills"
+      }
     }
   },
   "effortLevel": "high",
+  "fastMode": true,
+  "tui": "fullscreen",
   "voice": {
     "enabled": true,
     "mode": "hold"
   },
   "skipWorkflowUsageWarning": true,
-  "theme": "auto",
+  "theme": "light",
   "agentPushNotifEnabled": true,
   "skipAutoPermissionPrompt": true,
   "voiceEnabled": true
