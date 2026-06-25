@@ -16,7 +16,15 @@ alias dotfiles-shell='export GIT_DIR=$HOME/.dotfiles; export GIT_WORK_TREE=$HOME
 alias ls='ls --color=auto'
 alias ll='ls -aslhtc --color=auto'
 
-alias grep='grep --color=auto'
+# Prefer ugrep as a drop-in grep when installed (-G = grep-compatible BRE mode);
+# fall back to system grep otherwise. Aliases only affect interactive shells,
+# so scripts still use the real grep on PATH. Both honour --color=auto.
+if command -v ug &> /dev/null
+then
+    alias grep='ug -G --color=auto'
+else
+    alias grep='grep --color=auto'
+fi
 
 # Get into gits and list them
 alias gits='cd ~/gits; tree -d -x -C -L 3 ~/gits'
