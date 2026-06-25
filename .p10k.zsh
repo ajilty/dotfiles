@@ -111,7 +111,7 @@
     # =========================[ Line #2 ]=========================
     newline
     load                  # CPU load
-    ram                   # free RAM
+    ram_perc              # RAM usage (percent)
     newline
     # ip                    # ip address and bandwidth usage for a specified network interface
     # proxy                 # system-wide http/https/ftp proxy
@@ -793,11 +793,23 @@
   # Custom icon.
   # typeset -g POWERLEVEL9K_DISK_USAGE_VISUAL_IDENTIFIER_EXPANSION='⭐'
 
-  ######################################[ ram: free RAM ]#######################################
-  # RAM color.
-  typeset -g POWERLEVEL9K_RAM_FOREGROUND=66
-  # Custom icon.
-  # typeset -g POWERLEVEL9K_RAM_VISUAL_IDENTIFIER_EXPANSION='⭐'
+  ###############################[ ram_perc: RAM usage (percent) ]###############################
+  # Color (matches the stock `ram` segment). p10k applies this automatically
+  # because prompt_ram_perc doesn't pass an explicit -f.
+  # Threshold coloring mirrors the load segment. Unlike load, the MEM percent
+  # is already a direct usage percentage (not core-normalized), so these PCTs
+  # compare against used-RAM directly.
+  # Color when usage is under WARNING_PCT (80%).
+  typeset -g POWERLEVEL9K_RAM_PERC_NORMAL_FOREGROUND=66
+  # Color between WARNING_PCT (80%) and CRITICAL_PCT (95%).
+  typeset -g POWERLEVEL9K_RAM_PERC_WARNING_FOREGROUND=178
+  # Color at/above CRITICAL_PCT (95%).
+  typeset -g POWERLEVEL9K_RAM_PERC_CRITICAL_FOREGROUND=166
+  typeset -g POWERLEVEL9K_RAM_PERC_WARNING_PCT=80
+  typeset -g POWERLEVEL9K_RAM_PERC_CRITICAL_PCT=95
+  # Label shown before the percentage. p10k applies it automatically since
+  # prompt_ram_perc doesn't pass an explicit -i.
+  typeset -g POWERLEVEL9K_RAM_PERC_VISUAL_IDENTIFIER_EXPANSION='MEM'
 
   #####################################[ swap: used swap ]######################################
   # Swap color.
@@ -808,14 +820,14 @@
   ######################################[ load: CPU load ]######################################
   # Show average CPU load over this many last minutes. Valid values are 1, 5 and 15.
   typeset -g POWERLEVEL9K_LOAD_WHICH=5
-  # Load color when load is under 50%.
+  # Load color when load is under POWERLEVEL9K_LOAD_WARNING_PCT (80%).
   typeset -g POWERLEVEL9K_LOAD_NORMAL_FOREGROUND=66
-  # Load color when load is between 50% and 70%.
+  # Load color between WARNING_PCT (80%) and CRITICAL_PCT (95%).
   typeset -g POWERLEVEL9K_LOAD_WARNING_FOREGROUND=178
-  # Load color when load is over 70%.
+  # Load color at/above CRITICAL_PCT (95%).
   typeset -g POWERLEVEL9K_LOAD_CRITICAL_FOREGROUND=166
-  # Custom icon.
-  # typeset -g POWERLEVEL9K_LOAD_VISUAL_IDENTIFIER_EXPANSION='⭐'
+  # Label shown before the load value (replaces the default "L" glyph).
+  typeset -g POWERLEVEL9K_LOAD_VISUAL_IDENTIFIER_EXPANSION='CPU'
 
   typeset -g POWERLEVEL9K_LOAD_WARNING_PCT=80
   typeset -g POWERLEVEL9K_LOAD_CRITICAL_PCT=95
@@ -1683,6 +1695,44 @@
     if [[ -n $GIT_DIR && $GIT_DIR != .git ]]; then
       p10k segment -f 208 -t "Git Override (${GIT_DIR})"
     fi
+  }
+
+  ##############[ ram_perc: RAM usage as a percentage instead of free GB ]##############
+  # Replaces the stock `ram` segment (which shows free RAM in GB) with used-RAM
+  # as a percentage. Cross-platform: Linux reads /proc/meminfo, macOS/BSD use
+  # sysctl + vm_stat. Units cancel in the ratio so kB vs bytes doesn't matter.
+  # Color and the "MEM" label come from POWERLEVEL9K_RAM_PERC_* above; the
+  # segment just emits "NN%".
+  function prompt_ram_perc() {
+    emulate -L zsh
+    local -i total avail
+    if [[ $OSTYPE == linux* ]]; then
+      local line; local -a kv
+      for line in ${(f)"$(</proc/meminfo)"}; do
+        kv=(${(z)line})
+        case $kv[1] in
+          MemTotal:)     total=$kv[2];;   # kB
+          MemAvailable:) avail=$kv[2];;   # kB
+        esac
+      done
+    elif [[ $OSTYPE == (darwin|freebsd|openbsd|netbsd)* ]]; then
+      total=$(sysctl -n hw.memsize 2>/dev/null)
+      local psize=$(sysctl -n hw.pagesize 2>/dev/null); (( psize )) || psize=4096
+      local vm=$(vm_stat 2>/dev/null) free inact spec
+      free=${${(M)${(f)vm}:#Pages free:*}//[^0-9]/}
+      inact=${${(M)${(f)vm}:#Pages inactive:*}//[^0-9]/}
+      spec=${${(M)${(f)vm}:#Pages speculative:*}//[^0-9]/}
+      (( avail = (${free:-0} + ${inact:-0} + ${spec:-0}) * psize ))
+    fi
+    (( total > 0 )) || return
+    # Used-RAM percent, rounded to nearest integer with pure integer math
+    # (round(a/b) == (2a + b) / (2b)); avoids needing zsh/mathfunc for int().
+    local -i pct=$(( (200 * (total - avail) + total) / (2 * total) ))
+    # Pick color by usage, same NORMAL/WARNING/CRITICAL scheme as load.
+    local -i fg=$POWERLEVEL9K_RAM_PERC_NORMAL_FOREGROUND
+    (( pct >= POWERLEVEL9K_RAM_PERC_WARNING_PCT ))  && fg=$POWERLEVEL9K_RAM_PERC_WARNING_FOREGROUND
+    (( pct >= POWERLEVEL9K_RAM_PERC_CRITICAL_PCT )) && fg=$POWERLEVEL9K_RAM_PERC_CRITICAL_FOREGROUND
+    p10k segment -f $fg -t "${pct}%%"
   }
 
   ##################[ AWS account-id resolver for the aws segment ]####################
