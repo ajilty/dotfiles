@@ -33,8 +33,13 @@ gits-find() {
     find ~/gits -type d -iname "*$1*"
 }
 
-# Better local copies
-alias cp='rsync --archive --partial --progress'
+# Fast resumable copy with progress; kept off `cp` so cp-style flags
+# (-n no-clobber, -i interactive, -f force) don't silently change meaning
+# under rsync (-n=dry-run, -i=itemize, -f=filter). Guarded for portability.
+if command -v rsync &> /dev/null
+then
+    alias rcp='rsync --archive --partial --info=progress2 --human-readable'
+fi
 
 # GitHub Copilot CLI 
 alias '??'='gh copilot suggest -t shell'
