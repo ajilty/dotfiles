@@ -12,6 +12,7 @@ Modular shell function library organized by domain.
 | **brew-sync.sh** | brew, brew-sync | brew install wrapper + Brewfile reconciliation |
 | **env.sh** | env, env-* | On-demand environment preset loading |
 | **skills.sh** | skills | AI skills wrapper |
+| **herdr.sh** | herdr-update | brew-upgrade herdr + live-handoff (no session pause) |
 
 ## Small Utilities (in main functions file)
 
