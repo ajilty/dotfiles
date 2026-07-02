@@ -160,6 +160,20 @@ zi for \
    
   #  zsh-users/zsh-autosuggestions \
 
+# Custom keybindings that must override zsh-autocomplete.
+# The plugin binds many keys in a DEFERRED async init that runs *after* zinit's atload, so a
+# one-shot bindkey -- even a doc-style `wait'0b'` atload -- gets clobbered (verified by test).
+# Re-assert our binds each prompt via this precmd hook so they always win. Use `-M emacs`
+# (main is aliased to emacs) per the plugin's "Reassign keys" docs.
+# To add a keybinding that fights zsh-autocomplete, add a `bindkey` line inside the function.
+# (Binds the plugin doesn't touch can just go as a plain `bindkey` anywhere in this file.)
+autoload -Uz add-zsh-hook
+_ajilty_keybindings() {
+  bindkey -M emacs "^[[1;3A" beginning-of-line   # Option+Up
+  bindkey -M emacs "^[[1;3B" end-of-line         # Option+Down
+}
+add-zsh-hook precmd _ajilty_keybindings
+
 # Powerlevel10k Instant Prompt
 (( ! ${+functions[p10k]} )) || p10k finalize
 
