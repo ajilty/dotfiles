@@ -112,6 +112,7 @@
     newline
     load                  # CPU load
     ram_perc              # RAM usage (percent)
+    disk_usage            # disk usage (percent)
     newline
     # ip                    # ip address and bandwidth usage for a specified network interface
     # proxy                 # system-wide http/https/ftp proxy
@@ -781,17 +782,20 @@
   # typeset -g POWERLEVEL9K_CHEZMOI_SHELL_VISUAL_IDENTIFIER_EXPANSION='⭐'
 
   ##################################[ disk_usage: disk usage ]##################################
-  # Colors for different levels of disk usage.
-  typeset -g POWERLEVEL9K_DISK_USAGE_NORMAL_FOREGROUND=35
-  typeset -g POWERLEVEL9K_DISK_USAGE_WARNING_FOREGROUND=220
-  typeset -g POWERLEVEL9K_DISK_USAGE_CRITICAL_FOREGROUND=160
-  # Thresholds for different levels of disk usage (percentage points).
+  # Colors aligned with the load/ram_perc segments (teal / gold / red) so the
+  # CPU/MEM/DISK trio reads consistently.
+  typeset -g POWERLEVEL9K_DISK_USAGE_NORMAL_FOREGROUND=66
+  typeset -g POWERLEVEL9K_DISK_USAGE_WARNING_FOREGROUND=178
+  typeset -g POWERLEVEL9K_DISK_USAGE_CRITICAL_FOREGROUND=166
+  # Thresholds for different levels of disk usage (percentage points). Disk fills
+  # differently than CPU/RAM, so these stay at p10k's 90/95 rather than 80/95.
   typeset -g POWERLEVEL9K_DISK_USAGE_WARNING_LEVEL=90
   typeset -g POWERLEVEL9K_DISK_USAGE_CRITICAL_LEVEL=95
-  # If set to true, hide disk usage when below $POWERLEVEL9K_DISK_USAGE_WARNING_LEVEL percent.
+  # Show disk usage at all levels (not just when high), matching CPU/MEM which
+  # are always visible.
   typeset -g POWERLEVEL9K_DISK_USAGE_ONLY_WARNING=false
-  # Custom icon.
-  # typeset -g POWERLEVEL9K_DISK_USAGE_VISUAL_IDENTIFIER_EXPANSION='⭐'
+  # Label shown before the percentage (matches the CPU/MEM text labels).
+  typeset -g POWERLEVEL9K_DISK_USAGE_VISUAL_IDENTIFIER_EXPANSION='DISK'
 
   ###############################[ ram_perc: RAM usage (percent) ]###############################
   # Color (matches the stock `ram` segment). p10k applies this automatically
