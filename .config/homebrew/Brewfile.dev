@@ -84,3 +84,8 @@ brew "hashicorp/tap/vault"
 
 ## Microsoft
 brew "powershell"
+
+## IDE
+brew "fresh-editor"
+brew "neovim"
+brew "tree-sitter-cli" # neovim syntax highlighting engine
