@@ -32,7 +32,8 @@ map({ "n", "i", "v" }, "<C-`>", function()
 end, { desc = "Toggle Terminal (VSCode Ctrl+`)" })
 map("t", "<C-`>", "<cmd>close<cr>", { desc = "Hide Terminal (VSCode Ctrl+`)" })
 
--- Ctrl+B: toggle the file explorer sidebar (overrides vim's page-up)
-map("n", "<C-b>", function()
+-- Alt+B: toggle the file explorer sidebar. VSCode uses Ctrl+B, but herdr's
+-- prefix key swallows that before nvim sees it, so Alt it is.
+map("n", "<M-b>", function()
   Snacks.explorer()
-end, { desc = "Toggle Explorer (VSCode Ctrl+B)" })
+end, { desc = "Toggle Explorer (VSCode Ctrl+B, remapped for herdr)" })

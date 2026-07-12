@@ -23,7 +23,7 @@ Open this anytime: `nvim ~/.config/nvim/CHEATSHEET.md`
 | `Ctrl+Shift+P` | same | Command palette |
 | `Ctrl+/` | same | Toggle comment |
 | ``Ctrl+` `` | same | Toggle terminal |
-| `Ctrl+B` | same | Toggle file explorer sidebar |
+| `Ctrl+B` | `Alt+B` | Toggle file explorer sidebar (herdr owns Ctrl+B); `Space e` also works |
 | Mouse | same | Click, drag-select, scroll, resize splits, right-click menu |
 
 ## VSCode habit → the nvim way
