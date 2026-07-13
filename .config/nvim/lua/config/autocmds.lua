@@ -6,3 +6,9 @@
 --
 -- Or remove existing autocmds by their group name (which is prefixed with `lazyvim_` for the defaults)
 -- e.g. vim.api.nvim_del_augroup_by_name("lazyvim_wrap_spell")
+
+-- Warn at startup if any external dependency is missing (this file already
+-- loads on VeryLazy; deferred so the notifier UI is up first)
+vim.defer_fn(function()
+  require("config.health").notify_missing()
+end, 200)
