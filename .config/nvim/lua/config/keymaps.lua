@@ -32,6 +32,11 @@ map({ "n", "i", "v" }, "<C-`>", function()
 end, { desc = "Toggle Terminal (VSCode Ctrl+`)" })
 map("t", "<C-`>", "<cmd>close<cr>", { desc = "Hide Terminal (VSCode Ctrl+`)" })
 
+-- :Cheat opens the VSCode-to-nvim cheatsheet (shell equivalent: `cheat`)
+vim.api.nvim_create_user_command("Cheat", function()
+  vim.cmd.edit(vim.fn.stdpath("config") .. "/CHEATSHEET.md")
+end, { desc = "Open the nvim cheatsheet" })
+
 -- Alt+B: toggle the file explorer sidebar. VSCode uses Ctrl+B, but herdr's
 -- prefix key swallows that before nvim sees it, so Alt it is.
 map("n", "<M-b>", function()

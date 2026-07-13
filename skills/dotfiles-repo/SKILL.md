@@ -162,8 +162,7 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
 - **Runtime state is NOT tracked** and never should be: `~/.local/share/nvim/` (plugins, treesitter parsers, Mason tools), `~/.local/state/nvim/`, `~/.cache/nvim/`. On a fresh machine it all regenerates from `lazy-lock.json` on first launch, or headlessly via `nvim --headless "+Lazy! sync" +qa`.
 - **`lazy-lock.json` is a lockfile.** `:Lazy update`/`sync` rewrites it; stage with `dotfiles add -u .config/nvim/lazy-lock.json` and commit it like any lockfile so machines get identical plugin versions.
 - **New files need `-f`.** A new plugin spec under `lua/plugins/` is invisible to `dotfiles status` until `dotfiles add -f` (inverse-allowlist, same as everywhere).
-- **Brew deps:** `neovim` and `tree-sitter-cli` in `Brewfile.dev`. The CLI is a separate formula — brew's `tree-sitter` formula is only the C library and does NOT ship the binary nvim-treesitter needs.
-- **Keybinding constraints:** herdr owns `Ctrl+B` as its prefix, so nvim never sees it (explorer toggle lives on `Alt+B`). `Ctrl+Shift+P` and ``Ctrl+` `` require the kitty keyboard protocol — fine in Ghostty, silently dead in legacy terminals.
+- **Brew deps:** `neovim`, `tree-sitter-cli`, `fd`, and `lazygit` in `Brewfile.dev`. `tree-sitter-cli` is a separate formula — brew's `tree-sitter` is only the C library and does NOT ship the binary nvim-treesitter needs. `fd` is required by the Snacks explorer's typed filter (it hardcodes `cmd = "fd"`; without it the filter silently returns nothing).
 
 ## What lives where
 
