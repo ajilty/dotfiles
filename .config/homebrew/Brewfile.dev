@@ -89,5 +89,6 @@ brew "powershell"
 brew "fresh-editor"
 brew "neovim"
 brew "tree-sitter-cli" # neovim syntax highlighting engine
+brew "ripgrep" # fast text search; nvim project grep requires it
 brew "fd" # fast file finder; nvim explorer/picker search requires it
 brew "lazygit" # git TUI; nvim <Space>gg

@@ -7,6 +7,7 @@ local deps = {
   { bin = "fd", why = "explorer typed filter and file pickers" },
   { bin = "lazygit", why = "git UI (Space g g)" },
   { bin = "tree-sitter", why = "building syntax-highlighting parsers" },
+  -- cc is OS-provided (Bluefin base image), not a Brewfile entry
   { bin = "cc", why = "compiling tree-sitter parsers" },
 }
 
