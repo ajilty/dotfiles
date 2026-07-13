@@ -3,7 +3,7 @@
     "allow": [],
     "defaultMode": "auto"
   },
-  "model": "opus[1m]",
+  "model": "claude-fable-5[1m]",
   "hooks": {
     "SessionStart": [
       {
@@ -35,7 +35,8 @@
     "ralph-loop@claude-plugins-official": true,
     "slack@claude-plugins-official": true,
     "superpowers@claude-plugins-official": true,
-    "orchestrate@ajilty-agent-skills": true
+    "orchestrate@ajilty-agent-skills": true,
+    "context7@context7-marketplace": true
   },
   "extraKnownMarketplaces": {
     "claude-plugins-official": {
@@ -61,9 +62,15 @@
         "source": "github",
         "repo": "ajilty/agent-skills"
       }
+    },
+    "context7-marketplace": {
+      "source": {
+        "source": "github",
+        "repo": "upstash/context7"
+      }
     }
   },
-  "effortLevel": "high",
+  "effortLevel": "medium",
   "fastMode": true,
   "tui": "fullscreen",
   "voice": {

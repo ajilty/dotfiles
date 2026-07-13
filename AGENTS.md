@@ -11,6 +11,8 @@ skills-sync <name>...    # sync specific skills
 
 `bin/setup-dotfiles.sh` calls it once during bootstrap. See [`skills/README.md`](skills/README.md) for workspace conventions, the edit→sync→commit loop, and the layout rationale.
 
+**Secrets and env presets.** Never hardcode secrets or `op run --env-file=...` invocations. Use `with-secrets <preset> [--] <command>` (`~/bin/with-secrets`, on `PATH`): it resolves `<preset>.env` from `~/.local/config/shell/env.d/` (work, untracked) then `~/.config/shell/env.d/` (personal, tracked) and execs the command through 1Password `op run`, so `op://` references never land in configs. This is the standard for anything that spawns a command with credentials: MCP server entries (`"command": "with-secrets", "args": ["<preset>", ...]`), cron jobs, one-off runs. Interactive shells use the `env <preset>` function to source the same files. To add a credential: create/extend a preset file with `export VAR="op://vault/item/field"`.
+
 Quick digest for tools that auto-load `AGENTS.md` but don't read skills:
 
 - Bare repo at `~/.dotfiles`, worktree `$HOME`. Use the `dotfiles` alias, never plain `git`.
