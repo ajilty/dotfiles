@@ -20,7 +20,12 @@
 .agents/**/.DS_Store
 .agents/**/__pycache__/
 skills/**/.DS_Store
+# Skill authoring workspaces (eval artifacts, drafts, snapshots) stay
+# local — only ~/skills/<name>/ sources are tracked (see skills/README.md).
+skills/*-workspace/
 # Re-ignore homegrown skills under .agents/skills/ — they're locally
 # installed by `npx skills add ~/skills -s <name>` from the authoritative
 # copy in ~/skills/<name>/. Adding a new homegrown skill? Add it here.
 .agents/skills/dotfiles-repo/
+.agents/skills/asking-user-questions/
+.agents/skills/grill-me/
