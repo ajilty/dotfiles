@@ -1,6 +1,6 @@
 ---
 name: dotfiles-repo
-description: Use when working in the ajilty dotfiles bare git repo at ~/.dotfiles (worktree $HOME, `dotfiles` alias / dotfiles-shell). Triggers include `dotfiles add` warning paths-are-ignored on tracked files, the pre-commit hook rejecting commits whose author is not ajilty (github@ajilty.com), `dotfiles pull` leaving UU/DU paths or mid-rebase --autostash state with `.dotfiles/rebase-merge/`, "WARN dotfiles blocklist not initialized" on a fresh machine, or unfamiliarity with the inverse-allowlist .gitignore pattern (`*` plus `!.agents/**`) and why `git add` complains about already-tracked files.
+description: Use when working in the ajilty dotfiles bare git repo at ~/.dotfiles (worktree $HOME, `dotfiles` alias / dotfiles-shell). Triggers include `dotfiles add` warning paths-are-ignored on tracked files, the pre-commit hook rejecting commits whose author is not ajilty (github@ajilty.com), `dotfiles pull` leaving UU/DU paths or mid-rebase --autostash state with `.dotfiles/rebase-merge/`, "WARN dotfiles blocklist not initialized" on a fresh machine, or unfamiliarity with the inverse-allowlist .gitignore pattern (`*` plus `!.agents/**`) and why `git add` complains about already-tracked files. Also covers committing the tracked Neovim config at ~/.config/nvim (lazy-lock.json staging, what nvim state stays untracked).
 ---
 
 # dotfiles-repo
@@ -154,6 +154,17 @@ End the message with the standard co-author trailer when an LLM contributed:
 Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
 ```
 
+## Neovim config
+
+`~/.config/nvim/` is a LazyVim-based config, tracked since 2026-07-12. Operational notes:
+
+- **Tracked set:** `init.lua`, `lua/**`, `stylua.toml`, `lazy-lock.json`, `CHEATSHEET.md`. It began as a `LazyVim/starter` clone with its `.git` deliberately removed — never re-clone the starter over it or `git init` inside it.
+- **Runtime state is NOT tracked** and never should be: `~/.local/share/nvim/` (plugins, treesitter parsers, Mason tools), `~/.local/state/nvim/`, `~/.cache/nvim/`. On a fresh machine it all regenerates from `lazy-lock.json` on first launch, or headlessly via `nvim --headless "+Lazy! sync" +qa`.
+- **`lazy-lock.json` is a lockfile.** `:Lazy update`/`sync` rewrites it; stage with `dotfiles add -u .config/nvim/lazy-lock.json` and commit it like any lockfile so machines get identical plugin versions.
+- **New files need `-f`.** A new plugin spec under `lua/plugins/` is invisible to `dotfiles status` until `dotfiles add -f` (inverse-allowlist, same as everywhere).
+- **Brew deps:** `neovim` and `tree-sitter-cli` in `Brewfile.dev`. The CLI is a separate formula — brew's `tree-sitter` formula is only the C library and does NOT ship the binary nvim-treesitter needs.
+- **Keybinding constraints:** herdr owns `Ctrl+B` as its prefix, so nvim never sees it (explorer toggle lives on `Alt+B`). `Ctrl+Shift+P` and ``Ctrl+` `` require the kitty keyboard protocol — fine in Ghostty, silently dead in legacy terminals.
+
 ## What lives where
 
 - `~/.gitignore` — repo-level ignores (the inverse-allowlist).
@@ -162,6 +173,7 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
 - `~/.dotfiles-hooks/` — the hooks dir referenced by the includeIf above.
 - `~/.agents/skills/` — vendored agent skills tree (the canonical location), intentionally tracked despite the global `*` ignore. `~/.claude/skills` is a symlink into here. New skills installed via `npx skills add` show up in `git status` automatically; see the "Installing agent skills" section above.
 - `~/.agents/.skill-lock.json` — manifest of every CLI-installed skill (source repo, commit SHA, install timestamp). Tracked. The homegrown `dotfiles-repo` skill is not listed here.
+- `~/.config/nvim/` — Neovim config (tracked; see "Neovim config" section above). Runtime state in `~/.local/{share,state}/nvim` stays untracked.
 - `~/.claude/settings.json` — Claude Code user settings (tracked).
 - `~/.claude/settings.local.json` — local-only overrides (gitignored globally via `**/.claude/settings.local.json` in `~/.config/git/ignore`).
 
