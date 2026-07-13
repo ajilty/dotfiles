@@ -1,6 +1,6 @@
 # Neovim cheatsheet (for the VSCode brain)
 
-Open this anytime: `nvim ~/.config/nvim/CHEATSHEET.md`
+Open this anytime: `:Cheat` inside nvim (popup, `q` closes), or right-click for a menu with shortcuts labeled.
 
 ## Survival basics
 

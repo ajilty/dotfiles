@@ -32,10 +32,33 @@ map({ "n", "i", "v" }, "<C-`>", function()
 end, { desc = "Toggle Terminal (VSCode Ctrl+`)" })
 map("t", "<C-`>", "<cmd>close<cr>", { desc = "Hide Terminal (VSCode Ctrl+`)" })
 
--- :Cheat opens the VSCode-to-nvim cheatsheet (shell equivalent: `cheat`)
+-- :Cheat pops the VSCode-to-nvim cheatsheet over the current window; q closes
 vim.api.nvim_create_user_command("Cheat", function()
-  vim.cmd.edit(vim.fn.stdpath("config") .. "/CHEATSHEET.md")
-end, { desc = "Open the nvim cheatsheet" })
+  Snacks.win({
+    file = vim.fn.stdpath("config") .. "/CHEATSHEET.md",
+    width = 0.8,
+    height = 0.85,
+    border = "rounded",
+    title = " Cheatsheet (q to close) ",
+    title_pos = "center",
+    bo = { modifiable = false },
+    keys = { q = "close" },
+  })
+end, { desc = "Open the nvim cheatsheet in a popup" })
+
+-- Right-click menu: GUI-style entries with their keyboard shortcuts spelled
+-- out, so the mouse path teaches the keys. Appended to nvim's built-in
+-- PopUp menu (mousemodel=popup_setpos shows it on right-click).
+vim.cmd([[
+  anoremenu PopUp.-Sep2- <Nop>
+  anoremenu PopUp.Find\ File\ \ (Ctrl+P) <cmd>lua Snacks.picker.files()<CR>
+  anoremenu PopUp.Command\ Palette\ \ (Ctrl+Shift+P) <cmd>lua Snacks.picker.commands()<CR>
+  anoremenu PopUp.File\ Explorer\ \ (Alt+B) <cmd>lua Snacks.explorer()<CR>
+  anoremenu PopUp.Terminal\ \ (Ctrl+`) <cmd>lua Snacks.terminal()<CR>
+  anoremenu PopUp.Git\ UI\ \ (Space\ g\ g) <cmd>lua Snacks.lazygit()<CR>
+  anoremenu PopUp.Toggle\ Comment\ \ (Ctrl+/) <cmd>normal gcc<CR>
+  anoremenu PopUp.Cheatsheet\ \ (:Cheat) <cmd>Cheat<CR>
+]])
 
 -- Alt+B: toggle the file explorer sidebar. VSCode uses Ctrl+B, but herdr's
 -- prefix key swallows that before nvim sees it, so Alt it is.
