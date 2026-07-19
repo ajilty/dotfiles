@@ -17,24 +17,36 @@ function herdr-update() {
         return 1
     fi
 
-    local old_ver new_ver herdr_bin
-    old_ver="$(herdr --version 2>/dev/null | awk '{print $NF}')"
+    local server_ver new_ver herdr_bin
 
-    echo "herdr-update: upgrading herdr via Homebrew..."
-    if ! { brew update && brew upgrade herdr; }; then
-        echo "herdr-update: brew upgrade failed." >&2
-        return 1
-    fi
+    # Best-effort upgrade. brew failures must NOT block reconciling a server
+    # that's already behind the on-disk binary (e.g. herdr was bumped by a
+    # blanket `brew upgrade`/`brew-sync`), so a hiccup here only warns and we
+    # fall through to the version-skew handoff below. That makes this function
+    # idempotent and self-healing however herdr got upgraded.
+    echo "herdr-update: upgrading herdr via Homebrew (best-effort)..."
+    brew update >/dev/null 2>&1 || \
+        echo "herdr-update: 'brew update' failed; continuing to reconcile." >&2
+    brew upgrade herdr 2>&1 || \
+        echo "herdr-update: 'brew upgrade herdr' failed; reconciling against current binary." >&2
 
     herdr_bin="$(command -v herdr)"
     new_ver="$("$herdr_bin" --version 2>/dev/null | awk '{print $NF}')"
+    # Gate on the RUNNING SERVER's version, not the binary's pre-upgrade
+    # version: the binary may have been upgraded outside this function
+    # (blanket `brew upgrade`, another session), leaving a stale server.
+    server_ver="$("$herdr_bin" status server 2>/dev/null | awk '/^version:/ {print $2}')"
 
-    if [[ "$old_ver" == "$new_ver" ]]; then
-        echo "herdr-update: already on ${new_ver}; no live handoff needed."
+    if [[ -z "$server_ver" ]]; then
+        echo "herdr-update: binary at ${new_ver}; no server running, nothing to hand off."
+        return 0
+    fi
+    if [[ "$server_ver" == "$new_ver" ]]; then
+        echo "herdr-update: server already on ${new_ver}; no live handoff needed."
         return 0
     fi
 
-    echo "herdr-update: ${old_ver} -> ${new_ver}; handing off live panes to the new server..."
+    echo "herdr-update: server ${server_ver} -> ${new_ver}; handing off live panes to the new server..."
     if herdr server live-handoff --import-exe "$herdr_bin" --expected-version "$new_ver"; then
         echo "herdr-update: live handoff complete."
         herdr status server
