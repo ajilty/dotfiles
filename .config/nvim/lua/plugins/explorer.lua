@@ -1,11 +1,8 @@
--- Show dotfiles (hidden files) in the explorer and pickers by default.
--- `H` still toggles them off; `I` toggles gitignored files (left off here
--- so $HOME's inverse-allowlist doesn't flood the tree with untracked files).
---
--- `include` globs force-show specific paths regardless of gitignore, so
--- dotfolders with no tracked contents (e.g. ~/.aws) still appear without
--- flipping `ignored` on globally. Add a folder by listing both its dir and
--- its contents: "**/.foo" and "**/.foo/**".
+-- Show all files in the explorer and pickers by default: both hidden
+-- (dotfiles) and gitignored. `H` toggles hidden off, `I` toggles ignored
+-- off if you ever want a cleaner view. Note: in $HOME the inverse-allowlist
+-- gitignore means ignored=true surfaces every untracked file (Downloads,
+-- caches, etc.), which is the intended "see everything" behavior here.
 return {
   "folke/snacks.nvim",
   opts = {
@@ -13,10 +10,7 @@ return {
       sources = {
         explorer = {
           hidden = true,
-          include = {
-            "**/.aws",
-            "**/.aws/**",
-          },
+          ignored = true,
         },
       },
     },
