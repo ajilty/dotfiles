@@ -5,6 +5,17 @@
   },
   "model": "claude-fable-5[1m]",
   "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$HOME/.claude/hooks/validate-syntax.sh\""
+          }
+        ]
+      }
+    ],
     "SessionStart": [
       {
         "matcher": "*",
