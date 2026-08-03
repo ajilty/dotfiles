@@ -83,7 +83,7 @@ Gotchas:
 
 ## What lives where
 
-- `~/bin/dotfiles` — the management command (script; `dotfiles help` for the contract). Its `hook` subcommand is the agent guard, registered as a PreToolUse hook in `~/.claude/settings.json`: reminds agents once per session when they touch managed config or run brew installs. Informational only, never blocks.
+- `~/bin/dotfiles` — the management command (script; `dotfiles help` for the contract). Its `hook` subcommand is the agent guard, registered as a PreToolUse hook in `~/.claude/settings.json`: reminds agents once per session when they touch managed config, run brew installs, or handle credentials outside `with-secrets`. Informational only, never blocks.
 - `~/.gitignore` — repo-level inverse allowlist. `~/.config/git/ignore` — global ignores (tracked; short-circuited inside this repo, see above).
 - `~/.config/git/dotfiles.config` — hooksPath + identity, included via `[includeIf "gitdir:~/.dotfiles/"]`; hooks live in `~/.dotfiles-hooks/`.
 - `~/.agents/skills/` — canonical skills tree (tracked); `~/.claude/skills` symlinks to it; `~/.agents/.skill-lock.json` — CLI-install manifest (tracked).

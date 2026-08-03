@@ -35,8 +35,10 @@ SUBCOMMANDS
   update            Pull (rebase + autostash), then `zinit update --all`.
   hook              Agent-harness guard: reads a PreToolUse JSON payload on
                     stdin and emits a once-per-session reminder when a tool
-                    call touches dotfiles-managed config or runs brew
-                    install/uninstall. Informational, never blocks.
+                    call touches dotfiles-managed config, runs brew
+                    install/uninstall, or handles credentials outside
+                    with-secrets (MCP registration, op run, token
+                    literals). Informational, never blocks.
                     Registered in ~/.claude/settings.json (Claude Code);
                     portable to any harness that pipes the same JSON.
 
@@ -111,6 +113,10 @@ EOF
 Heads-up: packages on this machine are dotfiles-managed. After brew changes, record them: `brew-sync save <category> <pkg>` (categories = ~/.config/homebrew/Brewfile.*) or `brew-sync ignore <pkg>` for one-offs, then review with `dotfiles diff ~/.config/homebrew/`. See `brew-sync help`. (This reminder fires once per session.)
 EOF
 )"
+    secrets_msg="$(cat <<'EOF'
+Heads-up: credentials on this machine flow through `with-secrets <preset> -- <cmd>` (1Password op run; presets resolve from ~/.local/config/shell/env.d/ work, then ~/.config/shell/env.d/ personal). Never hardcode secrets, tokens, or `op run --env-file` invocations in commands or configs; MCP server entries use "command": "with-secrets". To add a credential: extend a preset file with export VAR="op://vault/item/field". Full contract in ~/AGENTS.md. (This reminder fires once per session.)
+EOF
+)"
 
     case "$tool_name" in
         Edit|Write|MultiEdit)
@@ -143,6 +149,14 @@ EOF
             # firing on `brew install` appearing as prose in echo/grep args.
             if grep -Eq '(^|[;&|(])[[:space:]]*brew[[:space:]]+(install|reinstall|uninstall|remove|rm|tap|untap)([[:space:]]|$)' <<<"$cmd"; then
                 remind brew "$brew_msg"
+            fi
+            # Credential-shaped commands: MCP server registration, direct
+            # `op run`, op:// refs, or well-known token literals. A command
+            # already routed through with-secrets is doing the right thing.
+            if ! grep -q 'with-secrets' <<<"$cmd" && grep -Eq \
+                'claude[[:space:]]+mcp[[:space:]]+add|(^|[[:space:];&|(])op[[:space:]]+run([[:space:]]|$)|op://|(sk|rk)-[A-Za-z0-9_-]{20,}|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|xox[baprs]-[A-Za-z0-9-]{10,}|AKIA[0-9A-Z]{16}' \
+                <<<"$cmd"; then
+                remind secrets "$secrets_msg"
             fi
             ;;
     esac
