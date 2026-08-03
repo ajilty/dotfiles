@@ -1,9 +1,39 @@
 {
+  "model": "fable",
+  "effortLevel": "high",
+  "outputStyle": "ajilty",
+
+  "theme": "dark",
+  "tui": "fullscreen",
+  "statusLine": {
+    "type": "command",
+    "command": "bash ~/.claude/statusline-command.sh",
+    "refreshInterval": 5
+  },
+  "footerLinksRegexes": [
+    {
+      "type": "regex",
+      "pattern": "https://github\\.com/(?<owner>[\\w.-]+)/(?<repo>[\\w.-]+)/pull/(?<num>\\d+)",
+      "url": "https://github.com/{owner}/{repo}/pull/{num}",
+      "label": "PR #{num} ({repo})"
+    }
+  ],
+
+  "voice": {
+    "enabled": true,
+    "mode": "hold"
+  },
+  "voiceEnabled": true,
+  "preferredNotifChannel": "auto",
+  "agentPushNotifEnabled": true,
+
   "permissions": {
     "allow": [],
     "defaultMode": "auto"
   },
-  "model": "claude-fable-5[1m]",
+  "skipAutoPermissionPrompt": true,
+  "skipWorkflowUsageWarning": true,
+
   "hooks": {
     "SessionStart": [
       {
@@ -15,41 +45,133 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/var/home/ajilty/.local/bin/moshi-hook' claude-hook",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/var/home/ajilty/.local/bin/moshi-hook' claude-hook",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "AskUserQuestion",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/var/home/ajilty/.local/bin/moshi-hook' claude-hook",
+            "async": true
+          }
+        ]
+      },
+      {
+        "matcher": "ExitPlanMode",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/var/home/ajilty/.local/bin/moshi-hook' claude-hook",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "AskUserQuestion",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/var/home/ajilty/.local/bin/moshi-hook' claude-hook",
+            "async": true
+          }
+        ]
+      },
+      {
+        "matcher": "ExitPlanMode",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/var/home/ajilty/.local/bin/moshi-hook' claude-hook",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/var/home/ajilty/.local/bin/moshi-hook' claude-hook",
+            "timeout": 300,
+            "async": false
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/var/home/ajilty/.local/bin/moshi-hook' claude-hook",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/var/home/ajilty/.local/bin/moshi-hook' claude-hook",
+            "async": true
+          }
+        ]
       }
     ]
   },
-  "statusLine": {
-    "type": "command",
-    "command": "bash ~/.claude/statusline-command.sh",
-    "refreshInterval": 5
-  },
+
   "enabledPlugins": {
     "atlassian@claude-plugins-official": true,
     "claude-code-setup@claude-plugins-official": true,
     "claude-md-management@claude-plugins-official": true,
+    "cloudflare@cloudflare": true,
+    "codex@openai-codex": true,
     "context7@claude-plugins-official": false,
-    "explanatory-output-style@claude-plugins-official": true,
+    "context7@context7-marketplace": true,
+    "explanatory-output-style@claude-plugins-official": false,
     "github@claude-plugins-official": true,
+    "orchestrate@ajilty-agent-skills": true,
     "playwright@claude-plugins-official": true,
     "plugin-dev@claude-plugins-official": true,
     "ralph-loop@claude-plugins-official": true,
     "slack@claude-plugins-official": true,
     "superpowers@claude-plugins-official": true,
-    "orchestrate@ajilty-agent-skills": true,
-    "context7@context7-marketplace": true
+    "syntax-guard@ajilty-agent-skills": true
   },
   "extraKnownMarketplaces": {
-    "claude-plugins-official": {
+    "ajilty-agent-skills": {
       "source": {
         "source": "github",
-        "repo": "anthropics/claude-plugins-official"
-      }
-    },
-    "knowledge-work-plugins": {
-      "source": {
-        "source": "git",
-        "url": "https://github.com/anthropics/knowledge-work-plugins.git"
-      }
+        "repo": "ajilty/agent-skills"
+      },
+      "autoUpdate": true
     },
     "chrome-devtools-plugins": {
       "source": {
@@ -57,10 +179,16 @@
         "repo": "ChromeDevTools/chrome-devtools-mcp"
       }
     },
-    "ajilty-agent-skills": {
+    "claude-plugins-official": {
       "source": {
         "source": "github",
-        "repo": "ajilty/agent-skills"
+        "repo": "anthropics/claude-plugins-official"
+      }
+    },
+    "cloudflare": {
+      "source": {
+        "source": "github",
+        "repo": "cloudflare/skills"
       }
     },
     "context7-marketplace": {
@@ -68,18 +196,12 @@
         "source": "github",
         "repo": "upstash/context7"
       }
+    },
+    "knowledge-work-plugins": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/anthropics/knowledge-work-plugins.git"
+      }
     }
-  },
-  "effortLevel": "medium",
-  "fastMode": true,
-  "tui": "fullscreen",
-  "voice": {
-    "enabled": true,
-    "mode": "hold"
-  },
-  "skipWorkflowUsageWarning": true,
-  "theme": "light",
-  "agentPushNotifEnabled": true,
-  "skipAutoPermissionPrompt": true,
-  "voiceEnabled": true
+  }
 }
