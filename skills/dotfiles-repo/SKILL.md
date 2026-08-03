@@ -1,93 +1,46 @@
 ---
 name: dotfiles-repo
-description: Use when working in the ajilty dotfiles bare git repo at ~/.dotfiles (worktree $HOME, `dotfiles` alias / dotfiles-shell). Triggers include `dotfiles add` warning paths-are-ignored on tracked files, the pre-commit hook rejecting commits whose author is not ajilty (github@ajilty.com), `dotfiles pull` leaving UU/DU paths or mid-rebase --autostash state with `.dotfiles/rebase-merge/`, "WARN dotfiles blocklist not initialized" on a fresh machine, or unfamiliarity with the inverse-allowlist .gitignore pattern (`*` plus `!.agents/**`) and why `git add` complains about already-tracked files. Also covers committing the tracked Neovim config at ~/.config/nvim (lazy-lock.json staging, what nvim state stays untracked).
+description: >-
+  Use BEFORE changing any user-level config on this machine and when working in the ajilty dotfiles bare git repo at ~/.dotfiles (worktree $HOME, `dotfiles` command). Intent triggers: editing shell config or anything under ~/.config, ~/.claude, ~/bin, ~/.agents, or ~/skills; creating new user config files; installing or removing Homebrew packages (brew-sync flow); tracking new dotfiles. Symptom triggers: `dotfiles add` warning paths-are-ignored on tracked files, the pre-commit hook rejecting commits whose author is not ajilty (github@ajilty.com), `dotfiles pull` leaving UU/DU paths or mid-rebase --autostash state with `.dotfiles/rebase-merge/`, "WARN dotfiles blocklist not initialized" on a fresh machine, or confusion at the inverse-allowlist .gitignore pattern (`*` plus `!` rules). Also covers committing the tracked Neovim config at ~/.config/nvim.
 ---
 
 # dotfiles-repo
 
-Operational notes for LLM agents working in the ajilty dotfiles repo. Read this *before* poking at git state — the conventions here are non-obvious and a few will look like bugs if you don't know them.
+Operational notes for LLM agents working with the ajilty dotfiles system: a bare git repo at `~/.dotfiles/` with `$HOME` as the work tree, managed through the `dotfiles` command. The conventions are non-obvious and a few will look like bugs if you don't know them.
 
-## Overview
+**First stop: run `dotfiles help`.** The command (a script at `~/bin/dotfiles`, works in non-interactive shells, bash and zsh alike) documents day-to-day usage itself: staging rules (`add -u` vs `track`), identity rules, commit mechanics, the pull-recovery quickstart, and subcommands (`tracked`, `track`, `update`). Unrecognized subcommands pass through to git with the right `--git-dir`/`--work-tree`. Never use plain `git` against `$HOME`. This file only covers what the help screen can't: recovery depth, skill management, and system layout.
 
-This skill applies when the working tree is `$HOME` and git operations target the bare repo at `~/.dotfiles/`. Every git invocation must point at both — the `dotfiles` shell alias handles this. The `.gitignore` is an inverse allowlist, identity is enforced by a pre-commit hook, and `dotfiles pull` is a rebase with autostash that can leave the repo mid-rebase. Each of these surprises has a documented resolution path below.
+## Improve this system when it fails you
 
-## Checklist
+If you hit a gap, a wrong instruction, or an undocumented edge (in this skill, in `dotfiles help`, or in the `dotfiles hook` guard), propose a concrete fix in your wrap-up: the exact text or code change, and where it goes. Prefer moving day-to-day facts into `dotfiles help` (the tool documents itself); reserve this skill for recovery procedures and conventions. Don't silently work around a documentation failure: the workaround dies with your session, the fix compounds.
 
-- Always use the `dotfiles` alias (or `dotfiles-shell`), never plain `git`.
-- For *new* files use `dotfiles add -f <path>`; for *tracked* files prefer `dotfiles add -u <path>` to suppress the "paths are ignored" warning.
-- Never `--no-verify`, never `--author=`, never `GIT_AUTHOR_*` — fix the includeIf instead.
-- Commit multi-line messages via `dotfiles commit -F <file>`; end LLM-assisted commits with the `Co-Authored-By:` trailer.
+## Gitignore mechanics beyond the help screen
 
-## Repo shape
+`.gitignore` is an inverse allowlist: `*` ignores everything, `!` rules re-include whole trees (`!.agents/**`, `!skills/**`), and re-ignore rules filter cruft back out inside them. Two consequences `dotfiles help` doesn't cover:
 
-This is a **bare git repo** at `~/.dotfiles/` with `$HOME` as the work tree. There is no `.git` directory in `~`. Every command must specify both:
+1. **Global `~/.config/git/ignore` is short-circuited inside this repo.** The repo-level `*` matches before git consults the global file, and `!.agents/**` re-includes everything under `.agents/` including cruft your global ignore would normally filter. Cruft filters for `.agents/` must live in this repo's `.gitignore`.
+2. **`track` (add -f) vs editing `.gitignore` solve opposite problems.** To *include* a new file hidden by `*`: `dotfiles track` (never a one-off `!` rule; the existing `!` rules cover whole trees deliberately). To *exclude* something an allowlist rule re-included (cruft, or an installed duplicate of a homegrown skill): add a line to the re-ignore block in `~/.gitignore`, and if the path is already tracked, also `dotfiles rm -r --cached <path>` (ignore rules alone never untrack).
 
-```bash
-git --git-dir=$HOME/.dotfiles --work-tree=$HOME <subcommand>
-```
+## `dotfiles pull` recovery (deep)
 
-The `dotfiles` shell alias expands to exactly that. `~/.zshrc` defines it; in non-interactive contexts (where aliases don't expand) you must spell it out, or use `dotfiles-shell` which exports `GIT_DIR` and `GIT_WORK_TREE` for the rest of the shell.
+`dotfiles pull` is `git pull --rebase --autostash`. While any path is `UU`/`DU`/`UD`, git refuses every commit, including unrelated ones. Two conflict flavors that look similar:
 
-Useful aliases (defined in `~/.zshrc` / `~/.config/shell/`):
-- `dotfiles` — the bare-repo git wrapper
-- `dotfiles-tracked` — `git ls-tree -r master --name-only`
-- `dotfiles-update` — `dotfiles pull; zinit update --all`
-- `dotfiles status` — passthrough to `git status` against the bare repo
+- **Autostash-pop conflict**: the rebase finished, but reapplying the pre-pull dirty worktree conflicts. No `.dotfiles/rebase-merge/` metadata.
+- **Real replay conflict**: a local commit replayed onto the fetched tip conflicts. `.dotfiles/rebase-merge/` exists (`msgnum`/`end`/`onto`/`stopped-sha`) and `git branch` reports `(no branch, rebasing master)`.
 
-## Gitignore mechanics (the #1 source of agent confusion)
+Resolution:
 
-`.gitignore` uses an **inverse-allowlist pattern**:
+1. Inspect: `dotfiles status`, `cat .dotfiles/rebase-merge/{stopped-sha,message}` if present, `dotfiles show <stopped-sha>`.
+2. Resolve each path: `add -f <file>` for modify-modify; `dotfiles rm -f <file>` to accept upstream's deletion, but **always check whether content moved before assuming data loss**: `dotfiles grep <keyword> <upstream-tip> -- <related-dir>/`.
+3. `dotfiles -c core.editor=true rebase --continue` (the `-c` skips the editor prompt in non-interactive contexts).
 
-```
-*                # ignore everything
-!.agents/        # ...except the agent skills tree
-!.agents/**
-.agents/**/.DS_Store      # but re-ignore cruft inside it
-.agents/**/__pycache__/
-```
+**Gotcha: `rebase --continue` refuses with "you must edit all merge conflicts" though nothing is unmerged.** Check `git update-index --refresh`: if it lists an unrelated dirty path as `needs update` (commonly `.claude/settings.json`), that unstaged file blocks the next commit step. Park it (`cp` aside, `dotfiles checkout -- <file>`, continue, restore).
 
-Three consequences you will hit:
+**Gotcha: stray top-level `MERGE_MSG` from a prior failed pull** looks like an active merge but is leftover. Safe to `rm` if there's no `MERGE_HEAD` beside it and `.dotfiles/rebase-merge/` has its own `message`.
 
-1. **`git add` warns "paths are ignored" even for already-tracked files.** Because `*` matches everything, files like `.claude/settings.json` and `.config/ghostty/config.ghostty` look ignored to git's add-warning system *even though they're tracked*. Use one of:
-   - `dotfiles add -u <path>` — only updates already-tracked files, no warning.
-   - `dotfiles add -f <path>` — force-add, needed when adding a *new* file in an ignored directory.
-2. **Global `~/.config/git/ignore` is short-circuited inside this repo.** The repo-level `*` matches before git consults the global file. So a file like `__pycache__/foo.pyc` is *not* filtered by your global ignore once it lands under `.agents/` — the `!.agents/**` allowlist re-includes it. Cruft filters under `.agents/` must live in this repo's `.gitignore`, not the global file.
-3. **Any new file needs `-f` (or an explicit `!` rule).** Not just top-level — also new files inside already-tracked subtrees like `.ssh/config.d/`, `.claude/`, `.config/...`. `git status` will silently omit them until you force-add. Pattern: `dotfiles add -f .ssh/config.d/<newfile>`. README.md, AGENTS.md, etc. are tracked because they were force-added once.
+## Content guard (blocklist) bootstrap
 
-**When to `add -f` vs when to edit `.gitignore`.** These solve opposite problems — don't mix them up:
-
-- To *include* something the `*` rule hides (a new tracked file): use `dotfiles add -f`. Never add a `!` allowlist rule for a one-off file; the existing `!` rules (`!.agents/**`, `!skills/**`) cover whole trees deliberately.
-- To *exclude* something an allowlist rule re-included (cruft or duplicates under `.agents/` or `skills/`): edit the re-ignore block in `~/.gitignore`. This is the documented convention, not a workaround — e.g. each homegrown skill's installed copy gets a `.agents/skills/<name>/` line, and authoring workspaces are kept local by `skills/*-workspace/`. When you add a re-ignore rule for an already-tracked path, also `dotfiles rm -r --cached <path>` to untrack it (gitignore alone never untracks).
-
-## Identity is enforced by a pre-commit hook
-
-`core.hooksPath = ~/.dotfiles-hooks` (set in `.config/git/dotfiles.config`, included via `[includeIf "gitdir:~/.dotfiles/"]` in `~/.config/git/config`). The `pre-commit` hook refuses any commit whose author or committer isn't `ajilty <github@ajilty.com>`.
-
-- **Don't `--no-verify`.** If the hook trips, the includeIf isn't matching — usually because `GIT_DIR` is unset or the user-level git config isn't loaded. Diagnose with `dotfiles config --show-origin user.email`.
-- **Don't pass `--author=` or set `GIT_AUTHOR_*` env vars** to "fix" identity at commit time. Fix the include block instead.
-
-## `dotfiles pull` can leave merge state
-
-`dotfiles pull` is `git pull --rebase --autostash` (`pull.rebase=true`, `rebase.autostash=true` are set per-repo). Two flavors of conflict are possible and they look similar but behave differently:
-
-- **Autostash-pop conflict** — the rebase finished, but reapplying the pre-pull dirty worktree conflicts. No active rebase metadata in `.dotfiles/rebase-merge/`.
-- **Real rebase replay conflict** — a local commit replayed onto the fetched tip conflicts. `.dotfiles/rebase-merge/` exists with `msgnum`/`end`/`onto`/`orig-head`/`stopped-sha` and `git branch` reports `(no branch, rebasing master)`.
-
-While any path is `UU`/`DU`/`UD`, **git refuses every commit, including unrelated ones**. Resolution:
-
-1. Inspect: `dotfiles status`, `cat .dotfiles/rebase-merge/{stopped-sha,message}` if present, and `git show <stopped-sha>` to see what the replay was trying to apply.
-2. Resolve each path. `add -f <file>` for modify-modify; `dotfiles rm -f <file>` to accept upstream's deletion (e.g. when upstream restructured — **always check whether content moved before assuming data loss**: `git grep <keyword> <upstream-tip> -- <related-dir>/`).
-3. Continue: `dotfiles rebase --continue` (use `-c core.editor=true` from non-interactive contexts to skip the editor prompt).
-
-**Gotcha — `rebase --continue` refuses with "you must edit all merge conflicts" even when nothing is unmerged.** Check `git update-index --refresh` output — if it lists an unrelated path as `needs update` (commonly `.claude/settings.json`), the dirty unstaged file is blocking the next commit step. Park it (`cp` it aside, `dotfiles checkout -- <file>`, continue rebase, restore the copy) and retry.
-
-**Gotcha — stray top-level `MERGE_MSG` from a prior failed pull.** It can confuse diagnostics (looks like an active merge), but it's only a leftover. Safe to `rm` if there's no `MERGE_HEAD` next to it and `.dotfiles/rebase-merge/` has its own `message`.
-
-## Content guard (blocklist) needs bootstrap per machine
-
-The `pre-commit` hook also scans the staged diff against a private blocklist fetched from a gist. On a fresh machine you'll see `WARN: dotfiles blocklist not initialized` — the commit still goes through (warn, not block), but the content scan is skipped.
-
-One-time setup on each new machine:
+The pre-commit hook scans staged diffs against a private blocklist fetched from a gist. On a fresh machine, `WARN: dotfiles blocklist not initialized` means the scan is skipped (commits still pass). One-time setup:
 
 ```bash
 mkdir -p ~/.local/config/dotfiles
@@ -96,89 +49,53 @@ chmod 600 ~/.local/config/dotfiles/gist-id
 dotfiles-blocklist-sync
 ```
 
-The gist must contain a file literally named `dotfiles-blocklist.txt`. After 30 days the local copy is considered stale (warns but still scans); re-run `dotfiles-blocklist-sync` to refresh.
+The gist must contain a file literally named `dotfiles-blocklist.txt`. After 30 days the local copy goes stale (warns, still scans); re-run `dotfiles-blocklist-sync`.
 
 ## Installing agent skills
 
-Skills are managed by the `npx skills` CLI (vercel-labs/skills). The canonical store is `~/.agents/skills/`; `~/.claude/skills` is a symlink to it (`~/.claude/skills -> ../.agents/skills`), so a single install is visible to every agent that reads from `~/.claude/skills/`. There are no per-agent duplicate copies.
-
-Install pattern:
+Skills are managed by the `npx skills` CLI (vercel-labs/skills). Canonical store: `~/.agents/skills/`; `~/.claude/skills` is a symlink to it, so one install serves every agent. Lockfile `~/.agents/.skill-lock.json` (tracked) records source repo, SHA, and install time for CLI-installed skills.
 
 ```bash
 npx skills add <owner/repo> -g -s <skill-name> -a claude-code -y
-# multiple skills from the same repo: REPEAT -s, never comma-separate
-npx skills add obra/superpowers -g -s brainstorming -s writing-plans -a claude-code -y
+# multiple skills from one repo: REPEAT -s, never comma-separate (comma silently fails)
+npx skills find <query> | npx skills ls -g | npx skills check | npx skills update | npx skills remove -g -s <name>
 ```
 
-Flags worth knowing: `-g` = user-global (writes to `~/.agents/`), `-a claude-code` = register with Claude Code (creates/maintains the `~/.claude/skills` symlink target), `-y` = skip prompts, `--list` (with `-g`) prints the available skills in a repo without installing.
+After install, `dotfiles status` shows lockfile `M` plus a new untracked skill dir. Stage with `dotfiles track .agents/skills/<name>` and `dotfiles add -u .agents/.skill-lock.json`.
 
-The lockfile at `~/.agents/.skill-lock.json` records source repo, commit SHA, and install time for every CLI-installed skill. It's tracked in this dotfiles repo; `npx skills check` / `npx skills update` use it to detect drift and refresh.
+Gotchas:
 
-After install you'll typically see three changes in `dotfiles status`: lockfile `M`, new skill dir untracked, and a new entry inside `.agents/.skill-lock.json`. Stage with `dotfiles add -f .agents/skills/<name>` (force, since the inverse-allowlist treats new files as ignored) and `dotfiles add -u .agents/.skill-lock.json`. Commit normally.
-
-Caveats and gotchas:
-
-- **Reinstall to register an existing skill.** If a skill is on disk but missing from `.skill-lock.json` (e.g. it was added by a different installer like `obra/superpowers`'s own bootstrap, or a manual `git clone`), `rm -rf` both `~/.agents/skills/<name>` and `~/.claude/skills/<name>` first, then `npx skills add` — that ensures a clean install and populates the lockfile entry. Skip the `rm` step and the CLI may complain about an existing directory.
-- **Comma-separated `-s` silently fails.** `npx skills add ... -s a,b` reports "no matching skills found" and dumps the full repo skill list. Always repeat the flag: `-s a -s b`.
-- **Stale lockfile entries** (skill in `.skill-lock.json` but not on disk) don't auto-clean. Edit `.skill-lock.json` directly with a tiny Python one-liner: `python3 -c "import json, os; p=os.path.expanduser('~/.agents/.skill-lock.json'); d=json.load(open(p)); d['skills'].pop('<name>'); json.dump(d, open(p,'w'), indent=2)"` and then add a trailing newline.
-- **Homegrown skills live in `~/skills/<name>/`** (the authoring root, tracked in this repo via a dedicated `!skills/**` allowlist rule). They're installed locally with `npx skills add ~/skills -s <name> -g -a claude-code -y` — a local-path install. The CLI doesn't write a `.skill-lock.json` entry for local-path installs (treated as ephemeral), so homegrown skills won't appear in the lockfile. Each homegrown skill's *installed* copy at `~/.agents/skills/<name>/` is re-ignored by an explicit `.gitignore` rule (otherwise dotfiles would track a duplicate of the source). To distribute a homegrown skill to other machines or people, push `~/skills/` to a standalone GitHub repo and install via `npx skills add <owner>/skills -s <name>` from there — that path *does* populate the lockfile.
-- **Adding a new homegrown skill.** Create `~/skills/<name>/SKILL.md`, run `npx skills add ~/skills -s <name> -g -a claude-code -y` (this populates `~/.agents/skills/<name>/`), then add a corresponding `.agents/skills/<name>/` line to the re-ignore block in `~/.gitignore`. Stage `skills/<name>/` and the gitignore change in dotfiles.
-- **Authoring workspaces stay local.** `~/skills/<name>-workspace/` dirs (eval artifacts, drafts, snapshots — no `SKILL.md`) are excluded by the `skills/*-workspace/` re-ignore rule and must not be committed, per `skills/README.md`. If one shows up in `dotfiles status`, the rule is missing — restore it rather than force-adding the workspace.
-- **Editing a homegrown skill.** Edit in `~/skills/<name>/SKILL.md`; the install at `~/.agents/skills/<name>/` is a *copy*, not a symlink, so edits aren't live until you re-run `npx skills add ~/skills -s <name> -g -a claude-code -y` to refresh. Commit only the `~/skills/<name>/` change in dotfiles.
-- **The CLI's "symlinked: Claude Code" output is about the parent dir**, not each skill. Don't expect `readlink ~/.claude/skills/<name>` to return anything.
-- **Heavy skills** (e.g. `xlsx` from `anthropics/skills` bundles the full OOXML XSD tree, ~MB) bloat the dotfiles repo. Worth confirming with the user before installing if the size is non-trivial.
-- **Security ratings vary** between Gen / Socket / Snyk in the CLI's install summary. Treat "High Risk" from one scanner as a prompt to skim `SKILL.md` before committing, not an automatic block — false positives on benign skills (e.g. `open <file>.html`) are common.
-
-Commands worth remembering:
-
-```bash
-npx skills find <query>         # search the registry (interactive)
-npx skills add ... --list       # list a repo's skills without installing
-npx skills ls -g                # list installed global skills
-npx skills check                # check for updates
-npx skills update               # update all
-npx skills remove -g -s <name>  # uninstall
-```
-
-## Commit messages
-
-Pre-commit doesn't block on message content, but the hook runs `set -euo pipefail`, so commit via `-F <file>` (heredoc into a temp file) for multi-line messages — inline `$(cat <<'EOF' ... EOF)` heredocs interact badly with the wrapper alias in some shells.
-
-```bash
-dotfiles commit -F /tmp/msg.txt
-```
-
-End the message with the standard co-author trailer when an LLM contributed:
-
-```
-Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
-```
+- **Reinstall to register an existing skill**: if a skill is on disk but missing from the lockfile, `rm -rf` both `~/.agents/skills/<name>` and `~/.claude/skills/<name>` first, then `npx skills add`.
+- **Stale lockfile entries** (in lockfile, not on disk) don't auto-clean; edit `.skill-lock.json` directly.
+- **Authored skills have two lanes.** Portable skills are authored in the agentic repo (`~/gits/github.com/ajilty/agentic/skills/`) and distributed as plugins via the ajilty marketplace; that repo's guards plugin lints frontmatter on write. Machine-specific skills (like this one) stay in `~/skills/<name>/SKILL.md` (tracked via `!skills/**`) and are synced to `~/.agents/skills/<name>/` with `skills-sync` (`~/bin/skills-sync`). The installed copy is a *copy*, not a symlink: edits aren't live until re-synced. Each such installed copy gets a `.agents/skills/<name>/` re-ignore line in `~/.gitignore` so only the source is tracked; local-path installs never appear in the lockfile.
+- **New machine-specific skill**: create `~/skills/<name>/SKILL.md`, run `skills-sync <name>`, add the `.agents/skills/<name>/` re-ignore line, stage `skills/<name>/` and the gitignore change. Portable skills go to the agentic repo instead.
+- **Authoring workspaces stay local**: `~/skills/<name>-workspace/` dirs are excluded by the `skills/*-workspace/` re-ignore rule; if one shows up in `dotfiles status`, restore the rule, don't force-add.
+- **Heavy skills** (multi-MB doc bundles) bloat the repo; confirm with the user before installing. Security scanner ratings in the install summary vary; treat "High Risk" as a prompt to skim the SKILL.md, not an automatic block.
 
 ## Neovim config
 
-`~/.config/nvim/` is a LazyVim-based config, tracked since 2026-07-12. Operational notes:
+`~/.config/nvim/` is a LazyVim-based config, tracked. It began as a `LazyVim/starter` clone with `.git` removed: never re-clone the starter over it or `git init` inside it.
 
-- **Tracked set:** `init.lua`, `lua/**`, `stylua.toml`, `lazy-lock.json`, `CHEATSHEET.md`. It began as a `LazyVim/starter` clone with its `.git` deliberately removed — never re-clone the starter over it or `git init` inside it.
-- **Runtime state is NOT tracked** and never should be: `~/.local/share/nvim/` (plugins, treesitter parsers, Mason tools), `~/.local/state/nvim/`, `~/.cache/nvim/`. On a fresh machine it all regenerates from `lazy-lock.json` on first launch, or headlessly via `nvim --headless "+Lazy! sync" +qa`.
-- **`lazy-lock.json` is a lockfile.** `:Lazy update`/`sync` rewrites it; stage with `dotfiles add -u .config/nvim/lazy-lock.json` and commit it like any lockfile so machines get identical plugin versions.
-- **New files need `-f`.** A new plugin spec under `lua/plugins/` is invisible to `dotfiles status` until `dotfiles add -f` (inverse-allowlist, same as everywhere).
-- **Brew deps:** `neovim`, `tree-sitter-cli`, `fd`, and `lazygit` in `Brewfile.dev`. `tree-sitter-cli` is a separate formula — brew's `tree-sitter` is only the C library and does NOT ship the binary nvim-treesitter needs. `fd` is required by the Snacks explorer's typed filter (it hardcodes `cmd = "fd"`; without it the filter silently returns nothing). `:checkhealth config` verifies every external binary the config needs.
+- Tracked: `init.lua`, `lua/**`, `stylua.toml`, `lazy-lock.json`, `CHEATSHEET.md`. New plugin specs under `lua/plugins/` need `dotfiles track` like any new file.
+- NOT tracked, never should be: `~/.local/share/nvim/`, `~/.local/state/nvim/`, `~/.cache/nvim/`. Regenerates from `lazy-lock.json` (`nvim --headless "+Lazy! sync" +qa`).
+- `lazy-lock.json` is a lockfile: stage with `add -u` and commit so machines pin identical plugin versions.
+- Brew deps in `Brewfile.dev`: `neovim`, `tree-sitter-cli` (the `tree-sitter` formula is only the C library, no binary), `fd` (Snacks explorer hardcodes it), `lazygit`. `:checkhealth config` verifies.
 
 ## What lives where
 
-- `~/.gitignore` — repo-level ignores (the inverse-allowlist).
-- `~/.config/git/ignore` — global ignores (consulted only when no repo-level rule matches; tracked in this repo so it deploys to every machine).
-- `~/.config/git/dotfiles.config` — per-repo overrides (hooksPath + identity), included via `[includeIf "gitdir:~/.dotfiles/"]`.
-- `~/.dotfiles-hooks/` — the hooks dir referenced by the includeIf above.
-- `~/.agents/skills/` — vendored agent skills tree (the canonical location), intentionally tracked despite the global `*` ignore. `~/.claude/skills` is a symlink into here. New skills installed via `npx skills add` show up in `git status` automatically; see the "Installing agent skills" section above.
-- `~/.agents/.skill-lock.json` — manifest of every CLI-installed skill (source repo, commit SHA, install timestamp). Tracked. The homegrown `dotfiles-repo` skill is not listed here.
-- `~/.config/nvim/` — Neovim config (tracked; see "Neovim config" section above). Runtime state in `~/.local/{share,state}/nvim` stays untracked.
-- `~/.claude/settings.json` — Claude Code user settings (tracked).
-- `~/.claude/settings.local.json` — local-only overrides (gitignored globally via `**/.claude/settings.local.json` in `~/.config/git/ignore`).
+- `~/bin/dotfiles` — the management command (script; `dotfiles help` for the contract). Its `hook` subcommand is the agent guard, registered as a PreToolUse hook in `~/.claude/settings.json`: reminds agents once per session when they touch managed config or run brew installs. Informational only, never blocks.
+- `~/.gitignore` — repo-level inverse allowlist. `~/.config/git/ignore` — global ignores (tracked; short-circuited inside this repo, see above).
+- `~/.config/git/dotfiles.config` — hooksPath + identity, included via `[includeIf "gitdir:~/.dotfiles/"]`; hooks live in `~/.dotfiles-hooks/`.
+- `~/.agents/skills/` — canonical skills tree (tracked); `~/.claude/skills` symlinks to it; `~/.agents/.skill-lock.json` — CLI-install manifest (tracked).
+- `~/.config/homebrew/Brewfile.*` — categorized package manifests, maintained via `brew-sync`.
+- `~/.claude/settings.json` — tracked; `~/.claude/settings.local.json` — local-only (globally ignored).
+- `~/.local/config/` — work/local-only config (env presets, dotfiles gist-id); part of the system but intentionally untracked.
+- `dotfiles-shell` alias — exports `GIT_DIR`/`GIT_WORK_TREE` for a whole shell when that's more convenient than the wrapper.
 
 ## Anti-patterns
 
-- Don't `git init` anywhere under `~`. Subdirectories under `$HOME` are part of the dotfiles work tree.
-- Don't push without confirming with the user. The remote is public.
-- Don't commit `.agents/.claude/`, `.agents/**/.DS_Store`, or `.agents/**/__pycache__/` — they're filtered by re-ignore rules but can still be force-added by accident.
-- Don't trust `git status` from a subdirectory unless you've used the `dotfiles` alias or set `GIT_DIR`/`GIT_WORK_TREE`. Plain `git status` will look for a `.git` and find nothing useful.
+- Don't `git init` anywhere under `~`; subdirectories of `$HOME` are part of the dotfiles work tree (nested code checkouts like `~/gits/` have their own repos and are ignored, not part of this one).
+- Don't push without confirming with the user: the remote is public.
+- Don't `--no-verify`, `--author=`, or `GIT_AUTHOR_*`; if identity fails, diagnose with `dotfiles config --show-origin user.email`.
+- Don't trust plain `git status` anywhere under `~`: use `dotfiles`, or `dotfiles-shell` first.
+- Don't commit `.agents/.claude/`, `.DS_Store`, or `__pycache__` under `.agents/`; re-ignore rules filter them but force-adds bypass that.

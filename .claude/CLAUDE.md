@@ -1,9 +1,17 @@
 # User preferences
 
+## Dotfiles-managed machine
+
+- All user-level config on this machine is dotfiles-managed: shell config, ~/.config, ~/.claude, ~/bin, ~/.agents, package manifests. Before creating or editing any of it, run `dotfiles help` and follow it; the dotfiles-repo skill covers recovery and conventions.
+- Never plain `git` against $HOME: always the `dotfiles` command (bare repo ~/.dotfiles, worktree $HOME).
+- Package changes route through brew-sync: record installs with `brew-sync save <category> <pkg>` (manifests in ~/.config/homebrew/Brewfile.*), don't leave them unrecorded.
+- Secrets never land in configs: anything that spawns a command with credentials (MCP server entries, cron jobs, one-off runs) goes through `with-secrets <preset> -- <cmd>` (1Password `op run`; presets in ~/.local/config/shell/env.d/ work, ~/.config/shell/env.d/ personal). Details in ~/AGENTS.md.
+
 ## Writing style
 
 - **Never use em dashes.** Use colons, commas, or restructure the sentence.
 - Concise and decision-ready, not exploratory: get to the recommendation.
+- **Status updates read like reporting to a tech PM or peer implementer**: what changed, what's blocked, what's next. Deep technical detail and internal lingo only when it matters for a decision or direction.
 - Concise tables over prose for comparisons. Reshape to audience and altitude when asked (exec / non-technical / first-person); frame drafts as proposals for agreement.
 - Name things memorably; don't let placeholder names linger.
 
