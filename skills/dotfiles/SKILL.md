@@ -51,6 +51,8 @@ dotfiles-blocklist-sync
 
 The gist must contain a file literally named `dotfiles-blocklist.txt`. After 30 days the local copy goes stale (warns, still scans); re-run `dotfiles-blocklist-sync`.
 
+**History scan.** The hook only checks staged added lines, so a pattern added to the blocklist *after* a matching string was committed is never re-checked. `dotfiles-blocklist-scan` (run automatically after every `dotfiles-blocklist-sync`; both in `~/.config/shell/functions.d/dotfiles.sh`) greps the entire history, all refs, against the blocklist and fails loudly on a hit. On a hit: fix the worktree file first (or the string re-enters history on the next commit), then scrub with `git filter-repo --replace-text` on a fresh mirror clone, verify (`git log --all -S <pattern>` and `git grep -iF <pattern> $(git rev-list --all)` both empty), and force-push only with explicit user confirmation. GitHub keeps old SHAs and read-only `refs/pull/*` fetchable until a support purge; note that residual in the wrap-up.
+
 ## Installing agent skills
 
 Skills are managed by the `npx skills` CLI (vercel-labs/skills). Canonical store: `~/.agents/skills/`; `~/.claude/skills` is a symlink to it, so one install serves every agent. Lockfile `~/.agents/.skill-lock.json` (tracked) records source repo, SHA, and install time for CLI-installed skills.

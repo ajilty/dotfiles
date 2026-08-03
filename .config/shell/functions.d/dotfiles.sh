@@ -6,7 +6,13 @@
 #                             into ~/.local/config/dotfiles/blocklist. The
 #                             pre-commit hook scans staged diffs against this
 #                             file to block accidental publication of names,
-#                             emails, host paths, etc.
+#                             emails, host paths, etc. Runs
+#                             dotfiles-blocklist-scan after a successful fetch.
+#   dotfiles-blocklist-scan - Grep the FULL dotfiles history (all refs) against
+#                             the blocklist. The pre-commit hook only sees
+#                             staged diffs, so a pattern added after a string
+#                             was committed is never re-checked; this scan
+#                             closes that gap.
 
 function dotfiles-blocklist-sync() {
     local gist_id_file="$HOME/.local/config/dotfiles/gist-id"
@@ -57,4 +63,55 @@ function dotfiles-blocklist-sync() {
     local pattern_count
     pattern_count=$(grep -cv -E '^\s*(#|$)' "$out_file" || true)
     echo "blocklist synced ($pattern_count patterns) -> $out_file"
+
+    dotfiles-blocklist-scan
+}
+
+function dotfiles-blocklist-scan() {
+    # Optional arg: git dir to scan (default: the live dotfiles repo).
+    local git_dir="${1:-$HOME/.dotfiles}"
+    local blocklist="$HOME/.local/config/dotfiles/blocklist"
+
+    if [[ ! -f "$blocklist" ]]; then
+        echo "dotfiles-blocklist-scan: no blocklist at $blocklist. Run dotfiles-blocklist-sync first." >&2
+        return 1
+    fi
+
+    local patterns_tmp="${TMPDIR:-/tmp}/blocklist-scan.$$"
+    grep -v -E '^[[:space:]]*(#|$)' "$blocklist" > "$patterns_tmp"
+    if [[ ! -s "$patterns_tmp" ]]; then
+        rm -f "$patterns_tmp"
+        echo "dotfiles-blocklist-scan: blocklist has no patterns; nothing to scan."
+        return 0
+    fi
+
+    local -a revs
+    revs=($(git --git-dir="$git_dir" rev-list --all))
+
+    # -I skips binary blobs; match semantics mirror the pre-commit hook
+    # (case-insensitive fixed strings).
+    local hits
+    hits=$(git --git-dir="$git_dir" grep -I -l -i -F -f "$patterns_tmp" "${revs[@]}" 2>/dev/null)
+
+    if [[ -z "$hits" ]]; then
+        rm -f "$patterns_tmp"
+        echo "blocklist history scan clean (${#revs[@]} commits)"
+        return 0
+    fi
+
+    local n_commits
+    n_commits=$(echo "$hits" | cut -d: -f1 | sort -u | wc -l | tr -d ' ')
+    echo "ERROR: blocklist patterns found in committed history ($n_commits of ${#revs[@]} commits):" >&2
+    echo "  files:" >&2
+    echo "$hits" | sed 's/^[^:]*://' | sort -u | sed 's/^/    /' >&2
+    echo "  patterns:" >&2
+    local pattern
+    while IFS= read -r pattern; do
+        if git --git-dir="$git_dir" grep -q -I -i -F -e "$pattern" "${revs[@]}" 2>/dev/null; then
+            echo "    - $pattern" >&2
+        fi
+    done < "$patterns_tmp"
+    rm -f "$patterns_tmp"
+    echo "  History already public? Scrub with git-filter-repo + force push (see dotfiles skill)." >&2
+    return 1
 }
