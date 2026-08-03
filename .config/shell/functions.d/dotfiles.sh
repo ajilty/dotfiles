@@ -88,10 +88,10 @@ function dotfiles-blocklist-scan() {
     local -a revs
     revs=($(git --git-dir="$git_dir" rev-list --all))
 
-    # -I skips binary blobs; match semantics mirror the pre-commit hook
-    # (case-insensitive fixed strings).
+    # Match semantics mirror the pre-commit hook (case-insensitive fixed
+    # strings), but binaries are scanned too: .pyc and friends embed paths.
     local hits
-    hits=$(git --git-dir="$git_dir" grep -I -l -i -F -f "$patterns_tmp" "${revs[@]}" 2>/dev/null)
+    hits=$(git --git-dir="$git_dir" grep -l -i -F -f "$patterns_tmp" "${revs[@]}" 2>/dev/null)
 
     if [[ -z "$hits" ]]; then
         rm -f "$patterns_tmp"
@@ -107,7 +107,7 @@ function dotfiles-blocklist-scan() {
     echo "  patterns:" >&2
     local pattern
     while IFS= read -r pattern; do
-        if git --git-dir="$git_dir" grep -q -I -i -F -e "$pattern" "${revs[@]}" 2>/dev/null; then
+        if git --git-dir="$git_dir" grep -q -i -F -e "$pattern" "${revs[@]}" 2>/dev/null; then
             echo "    - $pattern" >&2
         fi
     done < "$patterns_tmp"
