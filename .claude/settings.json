@@ -3,7 +3,6 @@
   "effortLevel": "high",
   "fastMode": true,
   "outputStyle": "ajilty",
-
   "theme": "auto",
   "tui": "fullscreen",
   "showThinkingSummaries": true,
@@ -20,7 +19,6 @@
       "label": "PR #{num} ({repo})"
     }
   ],
-
   "voice": {
     "enabled": true,
     "mode": "hold"
@@ -28,14 +26,12 @@
   "voiceEnabled": true,
   "preferredNotifChannel": "auto",
   "agentPushNotifEnabled": true,
-
   "permissions": {
     "allow": [],
     "defaultMode": "auto"
   },
   "skipAutoPermissionPrompt": true,
   "skipWorkflowUsageWarning": true,
-
   "hooks": {
     "SessionStart": [
       {
@@ -294,11 +290,11 @@
       }
     ]
   },
-
   "enabledPlugins": {
-    "orchestrate@ajilty-agent-skills": true,
-    "syntax-guard@ajilty-agent-skills": true,
-
+    "orchestrate@agentic": true,
+    "guards@agentic": true,
+    "playbooks@agentic": true,
+    "edges@agentic": true,
     "atlassian@claude-plugins-official": true,
     "claude-code-setup@claude-plugins-official": true,
     "claude-md-management@claude-plugins-official": true,
@@ -311,16 +307,15 @@
     "ralph-loop@claude-plugins-official": true,
     "slack@claude-plugins-official": true,
     "superpowers@claude-plugins-official": true,
-
     "cloudflare@cloudflare": true,
     "codex@openai-codex": true,
     "context7@context7-marketplace": true
   },
   "extraKnownMarketplaces": {
-    "ajilty-agent-skills": {
+    "agentic": {
       "source": {
         "source": "github",
-        "repo": "ajilty/agent-skills"
+        "repo": "ajilty/agentic"
       },
       "autoUpdate": true
     },
