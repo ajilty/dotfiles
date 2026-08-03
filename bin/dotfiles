@@ -76,7 +76,7 @@ RELATED TOOLING
   Packages: `brew` is wrapped; installs are recorded per-category in
             ~/.config/homebrew/Brewfile.* via brew-sync
             (`brew-sync save <category> <pkg>`, `brew-sync help`).
-  Skills:   authored in ~/skills/<name>/, synced with `skills-sync`.
+  Skills:   machine-specific skills live tracked in ~/.agents/skills/<name>/; edit in place, add -u, commit.
   Secrets:  never inline; `with-secrets <preset> -- <cmd>`.
   Shell-wide git env: `dotfiles-shell` exports GIT_DIR/GIT_WORK_TREE.
 EOF
