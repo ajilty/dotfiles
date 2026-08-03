@@ -70,7 +70,7 @@ PULL / CONFLICT QUICKSTART
        upstream deletion, but check content moved before assuming loss).
     3. dotfiles -c core.editor=true rebase --continue
   Deep recovery (update-index gotcha, stray MERGE_MSG, blocklist
-  bootstrap): load the dotfiles-repo agent skill.
+  bootstrap): load the dotfiles agent skill.
 
 RELATED TOOLING
   Packages: `brew` is wrapped; installs are recorded per-category in
@@ -84,8 +84,9 @@ EOF
 
 # Agent-harness guard (the `hook` subcommand). Reads a PreToolUse JSON
 # payload on stdin; reminds the agent, once per session per category, when
-# it touches dotfiles-managed config (Edit/Write) or changes packages
-# (Bash + brew). Informational only: always exits 0, defers the permission
+# it touches dotfiles-managed config (Edit/Write), changes packages (Bash +
+# brew), or handles credentials outside with-secrets (Bash). Informational
+# only: always exits 0, defers the permission
 # decision, never blocks. Standalone-process semantics, so it behaves the
 # same whether the harness's shell is bash or zsh.
 run_hook() {
@@ -106,7 +107,7 @@ run_hook() {
 
     local config_msg brew_msg
     config_msg="$(cat <<'EOF'
-Heads-up: this path is part of this machine's dotfiles-managed user config (bare repo ~/.dotfiles, worktree $HOME; some areas like ~/.local/config are intentionally local-only). Run `dotfiles help` for the workflow before changing config. Stage tracked changes with `dotfiles add -u <path>`, start tracking new config with `dotfiles track <path>`, and never use plain `git` against $HOME. Recovery and conventions: load the dotfiles-repo skill. (This reminder fires once per session.)
+Heads-up: this path is part of this machine's dotfiles-managed user config (bare repo ~/.dotfiles, worktree $HOME; some areas like ~/.local/config are intentionally local-only). Run `dotfiles help` for the workflow before changing config. Stage tracked changes with `dotfiles add -u <path>`, start tracking new config with `dotfiles track <path>`, and never use plain `git` against $HOME. Recovery and conventions: load the dotfiles skill. (This reminder fires once per session.)
 EOF
 )"
     brew_msg="$(cat <<'EOF'
