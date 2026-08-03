@@ -1,37 +1,9 @@
 {
-  "model": "best",
-  "effortLevel": "high",
-  "fastMode": true,
-  "outputStyle": "ajilty",
-  "theme": "auto",
-  "tui": "fullscreen",
-  "showThinkingSummaries": true,
-  "statusLine": {
-    "type": "command",
-    "command": "bash ~/.claude/statusline-command.sh",
-    "refreshInterval": 5
-  },
-  "footerLinksRegexes": [
-    {
-      "type": "regex",
-      "pattern": "https://github\\.com/(?<owner>[\\w.-]+)/(?<repo>[\\w.-]+)/pull/(?<num>\\d+)",
-      "url": "https://github.com/{owner}/{repo}/pull/{num}",
-      "label": "PR #{num} ({repo})"
-    }
-  ],
-  "voice": {
-    "enabled": true,
-    "mode": "hold"
-  },
-  "voiceEnabled": true,
-  "preferredNotifChannel": "auto",
-  "agentPushNotifEnabled": true,
   "permissions": {
     "allow": [],
     "defaultMode": "auto"
   },
-  "skipAutoPermissionPrompt": true,
-  "skipWorkflowUsageWarning": true,
+  "model": "best",
   "hooks": {
     "SessionStart": [
       {
@@ -290,11 +262,20 @@
       }
     ]
   },
+  "statusLine": {
+    "type": "command",
+    "command": "bash ~/.claude/statusline-command.sh",
+    "refreshInterval": 5
+  },
+  "footerLinksRegexes": [
+    {
+      "type": "regex",
+      "pattern": "https://github\\.com/(?<owner>[\\w.-]+)/(?<repo>[\\w.-]+)/pull/(?<num>\\d+)",
+      "url": "https://github.com/{owner}/{repo}/pull/{num}",
+      "label": "PR #{num} ({repo})"
+    }
+  ],
   "enabledPlugins": {
-    "orchestrate@agentic": true,
-    "guards@agentic": true,
-    "playbooks@agentic": true,
-    "edges@agentic": true,
     "atlassian@claude-plugins-official": true,
     "claude-code-setup@claude-plugins-official": true,
     "claude-md-management@claude-plugins-official": true,
@@ -309,16 +290,13 @@
     "superpowers@claude-plugins-official": true,
     "cloudflare@cloudflare": true,
     "codex@openai-codex": true,
-    "context7@context7-marketplace": true
+    "context7@context7-marketplace": true,
+    "orchestrate@ajilty": true,
+    "guards@ajilty": true,
+    "playbooks@ajilty": true,
+    "edges@ajilty": true
   },
   "extraKnownMarketplaces": {
-    "agentic": {
-      "source": {
-        "source": "github",
-        "repo": "ajilty/agentic"
-      },
-      "autoUpdate": true
-    },
     "claude-plugins-official": {
       "source": {
         "source": "github",
@@ -354,6 +332,27 @@
         "source": "github",
         "repo": "openai/codex-plugin-cc"
       }
+    },
+    "ajilty": {
+      "source": {
+        "source": "github",
+        "repo": "ajilty/agentic"
+      }
     }
-  }
+  },
+  "outputStyle": "ajilty",
+  "effortLevel": "high",
+  "fastMode": true,
+  "tui": "fullscreen",
+  "voice": {
+    "enabled": true,
+    "mode": "hold"
+  },
+  "showThinkingSummaries": true,
+  "skipWorkflowUsageWarning": true,
+  "theme": "auto",
+  "preferredNotifChannel": "auto",
+  "agentPushNotifEnabled": true,
+  "skipAutoPermissionPrompt": true,
+  "voiceEnabled": true
 }
