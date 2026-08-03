@@ -353,6 +353,12 @@
         "source": "git",
         "url": "https://github.com/anthropics/knowledge-work-plugins.git"
       }
+    },
+    "openai-codex": {
+      "source": {
+        "source": "github",
+        "repo": "openai/codex-plugin-cc"
+      }
     }
   }
 }
