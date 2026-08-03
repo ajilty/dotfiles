@@ -17,6 +17,8 @@ cask "claude-code@latest"
 
 # MCP
 brew "playwright-cli"
+brew "ctx7"
+brew "playwright-mcp"
 
 ## tui
 brew "herdr"

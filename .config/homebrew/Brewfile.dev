@@ -40,6 +40,7 @@ brew "go"
 # Cloud
 
 brew "steampipe"
+brew "k3d"
 
 # github 
 brew "gh"
@@ -92,3 +93,9 @@ brew "tree-sitter-cli" # neovim syntax highlighting engine
 brew "ripgrep" # fast text search; nvim project grep requires it
 brew "fd" # fast file finder; nvim explorer/picker search requires it
 brew "lazygit" # git TUI; nvim <Space>gg
+brew "argocd"
+brew "kubeconform"
+brew "check-jsonschema"
+brew "shellcheck"
+brew "worktrunk"
+cask "tfswitch"
