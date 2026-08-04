@@ -13,6 +13,7 @@ Modular shell function library organized by domain.
 | **env.sh** | env, env-* | On-demand environment preset loading |
 | **skills.sh** | skills | AI skills wrapper |
 | **herdr.sh** | herdr-update | brew-upgrade herdr + live-handoff (no session pause) |
+| **dotfiles-nudge.sh** | _dotfiles_nudge (internal) | New-shell drift nudge: prints the cached `dotfiles sync-status` line at the first interactive prompt, refreshes it in a detached background job |
 
 ## Small Utilities (in main functions file)
 

@@ -15,6 +15,76 @@ df_git() {
     git --git-dir="$GIT_DIR_PATH" --work-tree="$HOME" "$@"
 }
 
+# Sync-status cache: one line describing drift from the remote, empty when
+# in sync. Written here by refresh_sync_status; read (a single file read,
+# no git) by the new-shell nudge in
+# ~/.config/shell/functions.d/dotfiles-nudge.sh.
+SYNC_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/sync-nudge"
+SYNC_FETCH_MAX_AGE_MIN=240
+
+refresh_sync_status() {
+    [ -d "$GIT_DIR_PATH" ] || return 0
+    mkdir -p "$(dirname "$SYNC_CACHE")"
+
+    local branch=""
+    branch="$(df_git symbolic-ref --short -q HEAD 2>/dev/null || true)"
+
+    # Fetch at most every SYNC_FETCH_MAX_AGE_MIN minutes, using FETCH_HEAD's
+    # mtime as the last-fetch stamp. The explicit refspec matters: the live
+    # repo is a plain `clone --bare` with no upstream config, so a bare
+    # `fetch origin` would update FETCH_HEAD only; this populates
+    # refs/remotes/origin/<branch> for the comparison below.
+    # Ahead/behind/uncommitted recompute on every run (local refs only,
+    # cheap) so the nudge clears right after a pull/push/commit instead of
+    # nagging until the next fetch window.
+    local fetch_head="$GIT_DIR_PATH/FETCH_HEAD"
+    if [ -n "$branch" ]; then
+        if [ ! -e "$fetch_head" ] || [ -n "$(find "$fetch_head" -mmin +"$SYNC_FETCH_MAX_AGE_MIN" 2>/dev/null)" ]; then
+            GIT_TERMINAL_PROMPT=0 df_git fetch -q origin \
+                "+refs/heads/$branch:refs/remotes/origin/$branch" >/dev/null 2>&1 </dev/null || true
+        fi
+    fi
+
+    local remote_ref behind=0 ahead=0 dirty
+    remote_ref="refs/remotes/origin/$branch"
+    if [ -n "$branch" ] && df_git rev-parse --verify -q "$remote_ref" >/dev/null 2>&1; then
+        read -r behind ahead <<<"$(df_git rev-list --left-right --count "$remote_ref...HEAD" 2>/dev/null || echo '0 0')"
+    fi
+    # -uno: skip untracked enumeration; the inverse-allowlist makes it huge.
+    dirty="$(df_git status --porcelain -uno 2>/dev/null | wc -l | tr -d ' ')"
+
+    local -a parts=()
+    [ "$behind" -gt 0 ] && parts+=("$behind behind")
+    [ "$ahead" -gt 0 ] && parts+=("$ahead ahead")
+    [ "$dirty" -gt 0 ] && parts+=("$dirty uncommitted")
+
+    local tmp="${SYNC_CACHE}.tmp.$$"
+    if [ "${#parts[@]}" -eq 0 ]; then
+        : > "$tmp"
+    else
+        local hint="dotfiles status"
+        if [ "$behind" -gt 0 ] && [ "$ahead" -gt 0 ]; then
+            hint="dotfiles pull, then dotfiles push"
+        elif [ "$behind" -gt 0 ]; then
+            hint="dotfiles pull"
+        elif [ "$ahead" -gt 0 ]; then
+            hint="dotfiles push"
+        fi
+        local part summary=""
+        for part in "${parts[@]}"; do
+            summary="${summary:+$summary, }$part"
+        done
+        printf 'dotfiles out of sync: %s (%s)\n' "$summary" "$hint" > "$tmp"
+    fi
+    mv "$tmp" "$SYNC_CACHE"
+}
+
+# Detached refresh after commands that change sync state; never blocks or
+# fails the foreground command.
+refresh_sync_status_bg() {
+    ( refresh_sync_status >/dev/null 2>&1 </dev/null & )
+}
+
 print_help() {
     cat <<'EOF'
 dotfiles - opinionated bare-repo management of your user config
@@ -33,6 +103,12 @@ SUBCOMMANDS
                     so new paths look ignored until force-added. Wraps
                     `add -f`.
   update            Pull (rebase + autostash), then `zinit update --all`.
+  sync-status       Recompute drift vs the remote (behind/ahead/uncommitted)
+                    and print one line, or "in sync". Backs the new-shell
+                    nudge: results cache at ~/.cache/dotfiles/sync-nudge,
+                    interactive shells print the cache at the first prompt
+                    and refresh it in a background job. Fetches origin at
+                    most every 4h; local counts recompute every run.
   hook              Agent-harness guard: reads a PreToolUse JSON payload on
                     stdin and emits a once-per-session reminder when a tool
                     call touches dotfiles-managed config, runs brew
@@ -203,11 +279,21 @@ case "${1:-help}" in
             exit 1
         fi
         df_git add -f -- "$@"
+        refresh_sync_status_bg
         echo "tracked and staged: $*"
         echo "next: dotfiles commit (multi-line: -F <file>)"
         ;;
+    sync-status)
+        refresh_sync_status
+        if [ -s "$SYNC_CACHE" ]; then
+            cat "$SYNC_CACHE"
+        else
+            echo "dotfiles in sync with remote"
+        fi
+        ;;
     update)
         df_git pull
+        refresh_sync_status_bg
         if command -v zsh >/dev/null 2>&1; then
             zsh -ic 'zinit update --all' || echo "zinit update failed; run 'zinit update --all' in an interactive shell" >&2
         else
@@ -218,11 +304,23 @@ case "${1:-help}" in
         shift
         guard_add "$@"
         df_git add "$@"
+        refresh_sync_status_bg
         ;;
     hook)
         run_hook
         ;;
     *)
-        exec git --git-dir="$GIT_DIR_PATH" --work-tree="$HOME" "$@"
+        case "$1" in
+            pull|push|commit|fetch|merge|rebase|stash|reset|checkout|switch|cherry-pick|revert|rm)
+                # Sync-affecting: run in-process so the nudge cache can
+                # refresh afterwards. set -e preserves git's exit code on
+                # failure (and skips the refresh).
+                df_git "$@"
+                refresh_sync_status_bg
+                ;;
+            *)
+                exec git --git-dir="$GIT_DIR_PATH" --work-tree="$HOME" "$@"
+                ;;
+        esac
         ;;
 esac
