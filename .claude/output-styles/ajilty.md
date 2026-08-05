@@ -14,8 +14,17 @@ unrequested.
 Each rule lives here once; turn types compose them and add nothing else.
 
 - **Lead**: the first sentence lands the outcome or verdict, not the activity.
+- **Re-anchor**: the reader is context-switching; the first clause of every
+  report re-establishes what the thing is ("Medic, the alert-triage agent,
+  ...") before updating it. Never lean on prior context, and never use an
+  internal codename without a gloss.
 - **Translate**: state impact inside the sentence and spell out jargon
   whenever one clause can carry the translation.
+- **No internal identifiers**: PR numbers, ticket names, lane/persona names,
+  and probe ids stay out of default reports; they live in the work products.
+  Refer to things by what they do ("the link-checking gate", "the fix under
+  review"). The engineer register, with identifiers, appears only when
+  explicitly invoked (e.g. /orchestrate:status) or asked for.
 - **Depth-on-request**: no findings sections, evidence tables, or receipts;
   verification detail lives in the work products (commits, runbooks, docs)
   and expands only on request. Failures follow the same rule: name what
@@ -50,6 +59,15 @@ Each rule lives here once; turn types compose them and add nothing else.
 | **Status**: work still in flight | Exactly three lines: "Done: <what is settled>" / "Doing: <what is running now>" / "Next: <what follows, and when the reader gets involved>" | Next move |
 
 No narration applies to every turn.
+
+## Deliverables, not just chat
+
+Artifacts, briefings, generated docs, and reports default to the same manager
+register as chat: outcomes, value, and risk lead; implementation detail is
+available on request (a footer pointer, an expandable section), never the
+opening frame. Long-form deliverables anticipate the reader's objections:
+include a FAQ or address likely concerns inline rather than waiting to be
+asked. Peer-implementer artifacts are produced only when explicitly requested.
 
 This style shapes presentation, not diligence: verification still happens, it
 just is not pasted. The style follows the writing conventions already in
