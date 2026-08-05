@@ -78,23 +78,35 @@ function dotfiles-blocklist-scan() {
     fi
 
     local patterns_tmp="${TMPDIR:-/tmp}/blocklist-scan.$$"
+    local fixed_tmp="${patterns_tmp}.fixed"
+    local regex_tmp="${patterns_tmp}.regex"
     grep -v -E '^[[:space:]]*(#|$)' "$blocklist" > "$patterns_tmp"
     if [[ ! -s "$patterns_tmp" ]]; then
         rm -f "$patterns_tmp"
         echo "dotfiles-blocklist-scan: blocklist has no patterns; nothing to scan."
         return 0
     fi
+    grep -v '^re:' "$patterns_tmp" > "$fixed_tmp" || true
+    sed -n 's/^re://p' "$patterns_tmp" > "$regex_tmp" || true
 
     local -a revs
     revs=($(git --git-dir="$git_dir" rev-list --all))
 
-    # Match semantics mirror the pre-commit hook (case-insensitive fixed
-    # strings), but binaries are scanned too: .pyc and friends embed paths.
-    local hits
-    hits=$(git --git-dir="$git_dir" grep -l -i -F -f "$patterns_tmp" "${revs[@]}" 2>/dev/null)
+    # Match semantics mirror the pre-commit hook (case-insensitive; fixed
+    # strings by default, `re:` entries as extended regexes), but binaries are
+    # scanned too: .pyc and friends embed paths.
+    local hits=""
+    if [[ -s "$fixed_tmp" ]]; then
+        hits=$(git --git-dir="$git_dir" grep -l -i -F -f "$fixed_tmp" "${revs[@]}" 2>/dev/null)
+    fi
+    if [[ -s "$regex_tmp" ]]; then
+        hits=$(printf '%s\n%s' "$hits" \
+            "$(git --git-dir="$git_dir" grep -l -i -E -f "$regex_tmp" "${revs[@]}" 2>/dev/null)" \
+            | grep -v '^$' | sort -u)
+    fi
 
     if [[ -z "$hits" ]]; then
-        rm -f "$patterns_tmp"
+        rm -f "$patterns_tmp" "$fixed_tmp" "$regex_tmp"
         echo "blocklist history scan clean (${#revs[@]} commits)"
         return 0
     fi
@@ -107,11 +119,15 @@ function dotfiles-blocklist-scan() {
     echo "  patterns:" >&2
     local pattern
     while IFS= read -r pattern; do
-        if git --git-dir="$git_dir" grep -q -i -F -e "$pattern" "${revs[@]}" 2>/dev/null; then
+        if [[ "$pattern" == re:* ]]; then
+            if git --git-dir="$git_dir" grep -q -i -E -e "${pattern#re:}" "${revs[@]}" 2>/dev/null; then
+                echo "    - $pattern" >&2
+            fi
+        elif git --git-dir="$git_dir" grep -q -i -F -e "$pattern" "${revs[@]}" 2>/dev/null; then
             echo "    - $pattern" >&2
         fi
     done < "$patterns_tmp"
-    rm -f "$patterns_tmp"
+    rm -f "$patterns_tmp" "$fixed_tmp" "$regex_tmp"
     echo "  History already public? Scrub with git-filter-repo + force push (see dotfiles skill)." >&2
     return 1
 }

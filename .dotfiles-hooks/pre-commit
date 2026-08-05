@@ -80,9 +80,16 @@ fi
 # Also strip the +++ header lines so paths in file headers don't false-match.
 content=$(echo "$diff_output" | grep -E '^\+' | grep -v '^+++' || true)
 
+# Patterns are case-insensitive fixed strings by default. A leading `re:`
+# switches that entry to an extended regex, which is how a pattern expresses a
+# word boundary: a bare name would also match it inside longer identifiers.
 hits=()
 for pattern in "${patterns[@]}"; do
-    if echo "$content" | grep -qiF -- "$pattern"; then
+    if [[ "$pattern" == re:* ]]; then
+        if echo "$content" | grep -qiE -- "${pattern#re:}"; then
+            hits+=("$pattern")
+        fi
+    elif echo "$content" | grep -qiF -- "$pattern"; then
         hits+=("$pattern")
     fi
 done
