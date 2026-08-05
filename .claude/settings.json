@@ -351,6 +351,7 @@
     }
   },
   "outputStyle": "ajilty",
+  "remoteControlAtStartup": true,
   "effortLevel": "high",
   "fastMode": true,
   "tui": "fullscreen",
