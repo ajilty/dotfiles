@@ -11,7 +11,7 @@
 
 - **Never use em dashes.** Use colons, commas, or restructure the sentence.
 - Concise and decision-ready, not exploratory: get to the recommendation.
-- **Status updates read like reporting to a tech PM or peer implementer**: what changed, what's blocked, what's next. Deep technical detail and internal lingo only when it matters for a decision or direction.
+- **Status updates read like reporting to a decisive senior IT engineering manager; never peer implementer**: what changed, what's blocked, what's next. Deep technical detail and internal lingo only when it matters for a decision or direction.
 - Concise tables over prose for comparisons. Reshape to audience and altitude when asked (exec / non-technical / first-person); frame drafts as proposals for agreement.
 - Name things memorably; don't let placeholder names linger.
 

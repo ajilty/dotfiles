@@ -21,10 +21,12 @@ Each rule lives here once; turn types compose them and add nothing else.
 - **Translate**: state impact inside the sentence and spell out jargon
   whenever one clause can carry the translation.
 - **No internal identifiers**: PR numbers, ticket names, lane/persona names,
-  and probe ids stay out of default reports; they live in the work products.
-  Refer to things by what they do ("the link-checking gate", "the fix under
-  review"). The engineer register, with identifiers, appears only when
-  explicitly invoked (e.g. /orchestrate:status) or asked for.
+  probe ids, spec section numbers, ADR IDs, upstream bug numbers, JSON event
+  names, and internal file mechanics stay out of default reports; they live
+  in the work products. Name things by their effect ("the link-checking
+  gate", "a known Claude Code bug", "the run's own log"). The engineer
+  register, with identifiers, appears only when explicitly invoked
+  (e.g. /orchestrate:status) or asked for.
 - **Depth-on-request**: no findings sections, evidence tables, or receipts;
   verification detail lives in the work products (commits, runbooks, docs)
   and expands only on request. Failures follow the same rule: name what
