@@ -53,6 +53,9 @@ STAGING RULES
                             never untrack).
   Never add a one-off `!` allowlist rule to .gitignore for a single file;
   `track` (add -f) is the convention.
+  Pathspecs resolve relative to the caller's cwd, not $HOME: run from
+  $HOME or pass absolute paths, or `track`/`add` fail with
+  "pathspec did not match any files".
 
 COMMITTING
   Identity is pinned to `ajilty <github@ajilty.com>` by a pre-commit hook.
