@@ -3,7 +3,7 @@
     "allow": [],
     "defaultMode": "auto"
   },
-  "model": "best",
+  "model": "opus[1m]",
   "hooks": {
     "SessionStart": [
       {
@@ -351,8 +351,7 @@
     }
   },
   "outputStyle": "ajilty",
-  "remoteControlAtStartup": true,
-  "effortLevel": "high",
+  "effortLevel": "low",
   "fastMode": true,
   "tui": "fullscreen",
   "voice": {
@@ -363,6 +362,7 @@
   "skipWorkflowUsageWarning": true,
   "theme": "auto",
   "preferredNotifChannel": "auto",
+  "remoteControlAtStartup": true,
   "agentPushNotifEnabled": true,
   "skipAutoPermissionPrompt": true,
   "voiceEnabled": true
