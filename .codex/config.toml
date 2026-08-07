@@ -1,4 +1,4 @@
-model = "gpt-5.5"
+model = "gpt-5.6-sol"
 model_reasoning_effort = "medium"
 personality = "pragmatic"
 approvals_reviewer = "guardian_subagent"
@@ -27,7 +27,7 @@ enabled = true
 
 [tui.model_availability_nux]
 "gpt-5.5" = 4
-"gpt-5.6-sol" = 1
+"gpt-5.6-sol" = 2
 
 [notice.model_migrations]
 "gpt-5.3-codex" = "gpt-5.4"
@@ -38,5 +38,20 @@ hooks = true
 [hooks.state]
 
 [hooks.state."/var/home/ajilty/.codex/hooks.json:session_start:0:0"]
-trusted_hash = "sha256:153ae9a2024ae8fe2519b9cd6a6aea906c3d68b63b32963dff3ab1c5dee1a19a"
+trusted_hash = "sha256:198e938ceebc0f330ba5572ad876b03e6f8f61e744cbb4d2de07ab4547f7007a"
 enabled = true
+
+[hooks.state."/var/home/ajilty/.codex/hooks.json:permission_request:0:0"]
+trusted_hash = "sha256:5cbfc586e2ea4be25b2d0f0f06f3497ccd91868a265d5629941b3bd90eb34ba4"
+
+[hooks.state."/var/home/ajilty/.codex/hooks.json:session_start:1:0"]
+trusted_hash = "sha256:153ae9a2024ae8fe2519b9cd6a6aea906c3d68b63b32963dff3ab1c5dee1a19a"
+
+[hooks.state."/var/home/ajilty/.codex/hooks.json:session_start:2:0"]
+trusted_hash = "sha256:4f0117dc6f684f5c01272eb7144dc032e154ed942c9c86c107ac28d23b84dd60"
+
+[hooks.state."/var/home/ajilty/.codex/hooks.json:user_prompt_submit:0:0"]
+trusted_hash = "sha256:ae724a2da4ba0c27f42eb214690cc0c27706daa61863cc95572d2213899abfd1"
+
+[hooks.state."/var/home/ajilty/.codex/hooks.json:stop:0:0"]
+trusted_hash = "sha256:7e6735df43ce3a5a8ce76bf5fb9704b53f053b68f824cd15def7c5a62e45754e"
