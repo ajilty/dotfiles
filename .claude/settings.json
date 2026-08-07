@@ -351,7 +351,7 @@
     }
   },
   "outputStyle": "ajilty",
-  "effortLevel": "low",
+  "effortLevel": "high",
   "fastMode": true,
   "tui": "fullscreen",
   "voice": {
