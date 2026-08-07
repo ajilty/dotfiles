@@ -1,0 +1,42 @@
+model = "gpt-5.5"
+model_reasoning_effort = "medium"
+personality = "pragmatic"
+approvals_reviewer = "guardian_subagent"
+service_tier = "default"
+[projects."/var/home/ajilty"]
+trust_level = "untrusted"
+
+[projects."/var/home/ajilty/gits/github.com/ajilty/infrastructure"]
+trust_level = "trusted"
+
+[mcp_servers.playwright]
+command = "npx"
+args = ["@playwright/mcp@latest", "--browser", "firefox"]
+
+[plugins."linear@openai-curated"]
+enabled = true
+
+[plugins."google-calendar@openai-curated"]
+enabled = true
+
+[plugins."gmail@openai-curated"]
+enabled = true
+
+[plugins."github@openai-curated"]
+enabled = true
+
+[tui.model_availability_nux]
+"gpt-5.5" = 4
+"gpt-5.6-sol" = 1
+
+[notice.model_migrations]
+"gpt-5.3-codex" = "gpt-5.4"
+
+[features]
+hooks = true
+
+[hooks.state]
+
+[hooks.state."/var/home/ajilty/.codex/hooks.json:session_start:0:0"]
+trusted_hash = "sha256:153ae9a2024ae8fe2519b9cd6a6aea906c3d68b63b32963dff3ab1c5dee1a19a"
+enabled = true

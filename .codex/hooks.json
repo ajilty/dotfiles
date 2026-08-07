@@ -1,0 +1,63 @@
+{
+  "hooks": {
+    "PermissionRequest": [
+      {
+        "hooks": [
+          {
+            "command": "'/var/home/ajilty/.local/bin/moshi-hook' codex-hook",
+            "timeout": 300,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "command": "'/var/home/ajilty/.local/bin/moshi-hook' codex-hook",
+            "type": "command"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "command": "bash '/var/home/ajilty/.codex/herdr-agent-state.sh' session",
+            "timeout": 10,
+            "type": "command"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "command": "awk 'NR==1&&/^---$/{f=1;next} f&&/^---$/{f=0;next} !f' '/var/home/ajilty/.agents/style.md'",
+            "timeout": 5,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "command": "'/var/home/ajilty/.local/bin/moshi-hook' codex-hook",
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "command": "'/var/home/ajilty/.local/bin/moshi-hook' codex-hook",
+            "type": "command"
+          }
+        ]
+      }
+    ]
+  }
+}

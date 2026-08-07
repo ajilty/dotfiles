@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+# agents-doctor: verify every agent harness still reads the canonical
+# preference and style files. Exits non-zero if any wiring has drifted.
+#
+# Canonical sources:
+#   ~/.agents/preferences.md  working agreements (how work is done)
+#   ~/.agents/style.md        register (how output reads)
+set -uo pipefail
+
+prefs="$HOME/.agents/preferences.md"
+style="$HOME/.agents/style.md"
+fail=0
+
+check() { # path, expected target
+    local got
+    got=$(readlink -f "$1" 2>/dev/null)
+    if [[ -n "$got" && "$got" == "$(readlink -f "$2")" ]]; then
+        printf '  ok      %s\n' "$1"
+    else
+        printf '  BROKEN  %s -> %s\n' "$1" "${got:-missing}"
+        fail=1
+    fi
+}
+
+for f in "$prefs" "$style"; do
+    [[ -f "$f" ]] || { printf 'BROKEN  canonical file missing: %s\n' "$f"; exit 1; }
+done
+
+echo "preferences:"
+check "$HOME/.claude/CLAUDE.md" "$prefs"
+check "$HOME/.codex/AGENTS.md" "$prefs"
+
+echo "style:"
+check "$HOME/.claude/output-styles/ajilty.md" "$style"
+
+echo "opencode:"
+for want in "~/.agents/preferences.md" "~/.agents/style.md"; do
+    if jq -e --arg w "$want" '[.instructions[]?] | index($w)' \
+         ~/.config/opencode/opencode.json >/dev/null 2>&1; then
+        printf '  ok      instructions[] lists %s\n' "$want"
+    else
+        printf '  BROKEN  instructions[] missing %s\n' "$want"
+        fail=1
+    fi
+done
+if [[ -e "$HOME/.config/opencode/AGENTS.md" ]]; then
+    echo "  BROKEN  ~/.config/opencode/AGENTS.md shadows the canonical file"
+    fail=1
+fi
+
+echo "codex:"
+if jq -e '[.hooks.SessionStart[]?.hooks[]?.command] | map(select(test("style\\.md"))) | length > 0' \
+     "$HOME/.codex/hooks.json" >/dev/null 2>&1; then
+    echo "  ok      SessionStart hook emits style.md"
+else
+    echo "  BROKEN  no SessionStart hook emits style.md"
+    fail=1
+fi
+
+echo "claude:"
+sel=$(jq -r '.outputStyle // "unset"' "$HOME/.claude/settings.json" 2>/dev/null)
+if [[ "$sel" == "ajilty" ]]; then
+    echo "  ok      settings.json outputStyle=$sel"
+else
+    echo "  BROKEN  settings.json outputStyle=$sel"
+    fail=1
+fi
+
+[[ $fail -eq 0 ]] && echo "all harness wiring intact"
+exit $fail
