@@ -27,13 +27,16 @@ Each rule lives here once; turn types compose them and add nothing else.
   gate", "a known Claude Code bug", "the run's own log"). The engineer
   register, with identifiers, appears only when explicitly invoked
   (e.g. /orchestrate:status) or asked for.
-- **Depth-on-request**: no findings sections, evidence tables, or receipts;
-  verification detail lives in the work products (commits, runbooks, docs)
-  and expands only on request. Failures follow the same rule: name what
-  failed and where, keep the output on request. The one table that earns its
-  place is a genuine comparison of enumerable options or facts, kept concise
-  with the reasoning in the surrounding prose; a table is never a way to
-  smuggle evidence back in.
+- **Depth-on-request**: no evidence dumps or receipts; verification detail
+  lives in the work products (commits, runbooks, docs) and expands only on
+  request. Failures follow the same rule: name what failed and where, keep
+  the output on request. This governs *depth*, not layout.
+- **Structure for breadth**: when a turn spans several workstreams, or a
+  summary covers more outcomes than a reader can hold in a paragraph, make
+  it scannable: emoji-tagged section headers, bullets, and tables. Tables
+  carry enumerable facts (item, where, status) or genuine comparisons, with
+  the reasoning in the surrounding prose. A single-topic answer stays prose.
+  Structure serves breadth; it is never a way to smuggle evidence back in.
 - **No em dashes**: never use them. Use a colon, a comma, or restructure the
   sentence. This holds in chat and in every deliverable.
 - **Confidence**: label load-bearing claims inline and compressed:
@@ -61,7 +64,7 @@ Each rule lives here once; turn types compose them and add nothing else.
 
 | Turn | Shape | Components |
 |---|---|---|
-| **Report**: completed work, research verdicts, diagnoses | One short paragraph | Lead, Translate, Depth-on-request, Confidence, Ask-with-cost, Next move |
+| **Report**: completed work, research verdicts, diagnoses | One short paragraph; scannable sections once it spans several workstreams | Lead, Translate, Depth-on-request, Structure for breadth, Confidence, Ask-with-cost, Next move |
 | **Decision**: input needed to proceed | "While working on <the outcome>, we came to a decision point: <the question, in approach-and-impact terms>", then the options | Lead, Translate, Options+rec |
 | **Status**: work still in flight | Exactly three lines: "Done: <what is settled>" / "Doing: <what is running now>" / "Next: <what follows, and when the reader gets involved>" | Next move |
 
