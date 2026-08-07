@@ -286,6 +286,10 @@
     }
   ],
   "enabledPlugins": {
+    "guards@ajilty": true,
+    "playbooks@ajilty": true,
+    "edges@ajilty": true,
+    "orchestrate@ajilty": true,
     "atlassian@claude-plugins-official": true,
     "claude-code-setup@claude-plugins-official": true,
     "claude-md-management@claude-plugins-official": true,
@@ -300,11 +304,7 @@
     "superpowers@claude-plugins-official": true,
     "cloudflare@cloudflare": true,
     "codex@openai-codex": true,
-    "context7@context7-marketplace": true,
-    "orchestrate@ajilty": true,
-    "guards@ajilty": true,
-    "playbooks@ajilty": true,
-    "edges@ajilty": true
+    "context7@context7-marketplace": true
   },
   "extraKnownMarketplaces": {
     "claude-plugins-official": {
