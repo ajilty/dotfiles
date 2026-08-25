@@ -32,7 +32,15 @@ SUBCOMMANDS
                     .gitignore is an inverse allowlist (`*` then `!` rules),
                     so new paths look ignored until force-added. Wraps
                     `add -f`.
-  update            Pull (rebase + autostash), then `zinit update --all`.
+  pull              Pull (rebase + autostash) behind a conflict preflight:
+                    fetches, predicts collisions from BOTH your unpushed
+                    commits and your uncommitted changes, and stops before
+                    anything moves. Clean pulls are silent and unchanged.
+                    A predicted conflict prompts at a terminal and refuses
+                    without one (agents, cron), exiting nonzero. Probes are
+                    read-only: merge-tree resolves in the object database,
+                    stash create never touches the worktree or stash list.
+  update            `pull` (same preflight), then `zinit update --all`.
   hook              Agent-harness guard: reads a PreToolUse JSON payload on
                     stdin and emits a once-per-session reminder when a tool
                     call touches dotfiles-managed config, edits the shared
@@ -67,8 +75,10 @@ COMMITTING
   Remote is public: never push without the owner's confirmation.
 
 PULL / CONFLICT QUICKSTART
-  `dotfiles pull` = pull --rebase --autostash. While any path is UU/DU/UD,
-  ALL commits are refused, even unrelated ones.
+  `dotfiles pull` = pull --rebase --autostash, gated by the preflight above,
+  so a predicted collision stops before it strands anything. If you pull past
+  the prompt (or hit the replay case the preview can't see): while any path is
+  UU/DU/UD, ALL commits are refused, even unrelated ones.
     1. dotfiles status; if .dotfiles/rebase-merge/ exists it's a real
        replay conflict, otherwise an autostash-pop conflict.
     2. Resolve each path (add -f modify-modify; rm -f to accept an
@@ -207,6 +217,87 @@ guard_add() {
     done
 }
 
+# Conflict preflight for `pull`. `pull --rebase --autostash` has two
+# independent ways to strand the worktree: replaying local commits onto the
+# fetched tip, and reapplying the autostashed dirty worktree afterwards. The
+# first sign of either is normally a half-finished pull that blocks every
+# commit in the repo, including unrelated ones, with the damage already done.
+#
+# Both are predictable before anything moves. `merge-tree --write-tree`
+# computes a merge entirely in the object database, and `stash create` records
+# the dirty worktree as a commit object without touching the worktree or the
+# stash list, so neither probe has side effects.
+#
+# The replay probe previews a merge rather than a literal commit-by-commit
+# rebase, so it is a strong predictor and not a simulation: a conflict that
+# only surfaces partway through a multi-commit replay can still slip past.
+
+# Git's own CONFLICT lines for a merge of $1 and $2, empty when it merges
+# clean. They name both the path and the kind of collision (content,
+# modify/delete, distinct types), which is more use than a bare path list:
+# the path list also carries git's `~HEAD` byproduct names, which aren't
+# real files.
+merge_conflicts() { # $1 = ours, $2 = theirs
+    { df_git merge-tree --write-tree --name-only "$1" "$2" 2>/dev/null || true; } \
+        | { grep '^CONFLICT ' || true; }
+}
+
+# Fetches, predicts, and either returns (safe to pull) or exits nonzero.
+# A clean prediction pulls exactly as before, silently. A predicted conflict
+# prompts when a terminal is attached and refuses otherwise: agents and cron
+# have no way to answer, and an unattended strand costs far more than a re-run.
+preflight_pull() {
+    local upstream snap commit_conflicts dirty_conflicts reply
+
+    # Guards for the cases with nothing to predict: no configured upstream,
+    # a git older than 2.38 (no `merge-tree --write-tree`), or an unreachable
+    # remote. Fall through and let git behave exactly as it does today.
+    upstream="$(df_git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null || true)"
+    [ -n "$upstream" ] || return 0
+    df_git merge-tree --write-tree HEAD HEAD >/dev/null 2>&1 || return 0
+    df_git fetch --quiet 2>/dev/null || return 0
+
+    commit_conflicts="$(merge_conflicts HEAD "$upstream")"
+
+    # The dirty worktree is the second surface, and the one a commits-only
+    # check misses. `stash create` prints nothing on a clean tree.
+    dirty_conflicts=""
+    snap="$(df_git stash create 2>/dev/null || true)"
+    [ -n "$snap" ] && dirty_conflicts="$(merge_conflicts "$upstream" "$snap")"
+
+    [ -z "$commit_conflicts" ] && [ -z "$dirty_conflicts" ] && return 0
+
+    {
+        echo "dotfiles: this pull would conflict. Nothing has been changed yet."
+        echo
+        if [ -n "$commit_conflicts" ]; then
+            echo "  replaying your commits onto $upstream:"
+            printf '%s\n' "$commit_conflicts" | sed 's/^/    /'
+        fi
+        if [ -n "$dirty_conflicts" ]; then
+            [ -n "$commit_conflicts" ] && echo
+            echo "  reapplying your uncommitted changes:"
+            printf '%s\n' "$dirty_conflicts" | sed 's/^/    /'
+        fi
+        echo
+    } >&2
+
+    if [ -t 0 ]; then
+        printf 'Pull anyway? [y/N] ' >&2
+        read -r reply || reply=""
+        reply="${reply%$'\r'}"   # ptys and pasted input carry a trailing CR
+        case "$reply" in
+            [yY]|[yY][eE][sS]) return 0 ;;
+        esac
+        echo "aborted; nothing pulled" >&2
+        exit 1
+    fi
+
+    echo "refusing: no terminal to confirm on. Re-run where you can answer," >&2
+    echo "or resolve the collision first (commit, stash, or drop one side)." >&2
+    exit 1
+}
+
 case "${1:-help}" in
     help|-h|--help)
         print_help
@@ -224,7 +315,13 @@ case "${1:-help}" in
         echo "tracked and staged: $*"
         echo "next: dotfiles commit (multi-line: -F <file>)"
         ;;
+    pull)
+        shift
+        preflight_pull
+        df_git pull "$@"
+        ;;
     update)
+        preflight_pull
         df_git pull
         if command -v zsh >/dev/null 2>&1; then
             zsh -ic 'zinit update --all' || echo "zinit update failed; run 'zinit update --all' in an interactive shell" >&2
