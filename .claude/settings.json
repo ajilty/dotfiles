@@ -3,7 +3,7 @@
     "allow": [],
     "defaultMode": "auto"
   },
-  "model": "opus[1m]",
+  "model": "fable",
   "hooks": {
     "SessionStart": [
       {
@@ -352,6 +352,11 @@
   },
   "outputStyle": "ajilty",
   "effortLevel": "high",
+  "modelSettings": {
+    "claude-fable-5": {
+      "effortLevel": "high"
+    }
+  },
   "fastMode": true,
   "tui": "fullscreen",
   "voice": {
