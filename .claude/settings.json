@@ -4,6 +4,9 @@
     "defaultMode": "auto"
   },
   "model": "fable",
+  "env": {
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "50"
+  },
   "hooks": {
     "SessionStart": [
       {
@@ -351,10 +354,11 @@
     }
   },
   "outputStyle": "ajilty",
+  "feedbackDrafts": "off",
   "effortLevel": "high",
   "modelSettings": {
     "claude-fable-5": {
-      "effortLevel": "high"
+      "effortLevel": "low"
     }
   },
   "fastMode": true,
