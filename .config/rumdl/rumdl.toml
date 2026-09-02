@@ -1,0 +1,10 @@
+# rumdl: personal Markdown lint defaults (https://github.com/rvben/rumdl).
+#
+# Found automatically by rumdl when a file's repo has no .rumdl.toml or
+# .markdownlint.* of its own (XDG_CONFIG_HOME/rumdl/rumdl.toml). Consumers:
+# the guards plugin's lint-markdown hook (Claude Code) and Neovim via nvim-lint.
+# Project-level config always wins over this file.
+
+[global]
+# Line length: prose wraps in the editor, not the file.
+disable = ["MD013"]
