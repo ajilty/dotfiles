@@ -1,2 +1,0 @@
-# markdownlint config (read by markdownlint-cli2, wired via LazyVim's nvim-lint)
-MD013: false # line-length
