@@ -4,22 +4,13 @@
       {
         "hooks": [
           {
-            "command": "'/var/home/ajilty/.local/bin/moshi-hook' codex-hook",
-            "timeout": 300,
+            "command": "h=\"$(command -v moshi-hook 2>/dev/null)\"; [ -n \"$h\" ] && \"$h\" codex-hook || true",
             "type": "command"
           }
         ]
       }
     ],
     "SessionStart": [
-      {
-        "hooks": [
-          {
-            "command": "'/var/home/ajilty/.local/bin/moshi-hook' codex-hook",
-            "type": "command"
-          }
-        ]
-      },
       {
         "hooks": [
           {
@@ -32,8 +23,16 @@
       {
         "hooks": [
           {
-            "command": "awk 'NR==1&&/^---$/{f=1;next} f&&/^---$/{f=0;next} !f' '/var/home/ajilty/.agents/style.md'",
+            "command": "awk 'NR==1\u0026\u0026/^---$/{f=1;next} f\u0026\u0026/^---$/{f=0;next} !f' '/var/home/ajilty/.agents/style.md'",
             "timeout": 5,
+            "type": "command"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "command": "h=\"$(command -v moshi-hook 2>/dev/null)\"; [ -n \"$h\" ] && \"$h\" codex-hook || true",
             "type": "command"
           }
         ]
@@ -43,7 +42,7 @@
       {
         "hooks": [
           {
-            "command": "'/var/home/ajilty/.local/bin/moshi-hook' codex-hook",
+            "command": "h=\"$(command -v moshi-hook 2>/dev/null)\"; [ -n \"$h\" ] && \"$h\" codex-hook || true",
             "type": "command"
           }
         ]
@@ -53,7 +52,7 @@
       {
         "hooks": [
           {
-            "command": "'/var/home/ajilty/.local/bin/moshi-hook' codex-hook",
+            "command": "h=\"$(command -v moshi-hook 2>/dev/null)\"; [ -n \"$h\" ] && \"$h\" codex-hook || true",
             "type": "command"
           }
         ]
