@@ -69,6 +69,8 @@ theme = dark:Builtin Pastel Dark,light:GitHub Light Default
 
 
 # --- Quake Keybind ---
+# NOTE: the quick terminal is a borderless panel regardless of
+# macos-titlebar-style; do not set "hidden" here, it applies to all windows.
 keybind = global:cmd+shift+backquote=toggle_quick_terminal
 
 # Controls window transparency (0.0 is invisible, 1.0 is completely solid)
@@ -77,8 +79,6 @@ background-opacity = 0.82
 # Applies native macOS glass blurring (Options: macos-glass-regular, macos-glass-clear, or a number like 20)
 background-blur = macos-glass-regular
 
-# Completely removes the top window window bar so it seamlessly drops over apps
-macos-titlebar-style = hidden
 
 # Changes how far down the screen it stretches (e.g., 40% of the screen height)
 quick-terminal-size = 60%
