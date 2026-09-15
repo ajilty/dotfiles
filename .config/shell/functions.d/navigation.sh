@@ -5,6 +5,8 @@
 #   n    - nnn file manager wrapper with cd-on-quit support
 #   cd   - Enhanced cd that launches nnn when used without arguments
 #   try  - Create temporary directories in ~/tries for experiments
+#   tries - List try directories, most recently active first
+#   retry - fzf picker over tries; Enter cd's into the chosen one
 #   keep - Convert a try directory into a proper git repository
 
 n ()
@@ -75,6 +77,15 @@ function tries() {
       | sort -rn | cut -d' ' -f2- \
       | { grep . || echo "No try directories found"; } \
       | if [ ! -t 1 ]; then cat; elif [ -n "$PAGER" ]; then eval "$PAGER"; else less -FRX; fi
+}
+
+# Interactive picker over tries (fzf): type to filter, arrows or click to
+# highlight, preview shows the folder's newest files, Enter cd's into it.
+# Ranking is preserved from `tries` (--no-sort). Esc leaves you where you are.
+function retry() {
+    local choice
+    choice=$(tries | fzf --no-sort --preview 'ls -lat ~/tries/{3..}') || return
+    cd ~/tries/"${choice#* * }" || return
 }
 
 function try() {
