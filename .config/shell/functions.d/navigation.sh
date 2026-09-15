@@ -59,7 +59,23 @@ function cd(){
 #     recently modified ~/tries/*<name>* if any partial match exists;
 #     else create ~/tries/<name>-YYYYMMDD-HHMMSS
 
-alias tries='ls -1d ~/tries/*/ 2>/dev/null && find ~/tries/*/ -mindepth 1 -maxdepth 1 -type d 2>/dev/null || echo "No try directories found"'
+# List ~/tries directories, most recently touched first. Rank = newest mtime
+# of anything inside the folder (node_modules and .git pruned as noise); an
+# empty folder ranks by its own mtime. One find pass; ~0.1s for ~60 tries.
+function tries() {
+    [ -d ~/tries ] || { echo "No try directories found"; return; }
+    (
+        cd ~/tries || exit
+        find . -mindepth 1 \( -name node_modules -o -name .git -o \( -depth 1 ! -type d \) \) -prune -o \
+            -exec stat -f '%m %Sm %N' -t '%Y-%m-%d %H:%M' {} + 2>/dev/null
+    ) | awk '{
+        match($0, /\.\/[^\/]+/); top = substr($0, RSTART + 2, RLENGTH - 2)
+        if (!(top in m) || $1 > m[top]) { m[top] = $1; when[top] = $2 " " $3 }
+    } END { for (t in m) print m[t], when[t], t }' \
+      | sort -rn | cut -d' ' -f2- \
+      | { grep . || echo "No try directories found"; } \
+      | if [ ! -t 1 ]; then cat; elif [ -n "$PAGER" ]; then eval "$PAGER"; else less -FRX; fi
+}
 
 function try() {
     mkdir -p ~/tries
