@@ -1,33 +1,15 @@
 {
+  "env": {
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "50",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-8[1m]"
+  },
   "permissions": {
     "allow": [],
     "defaultMode": "auto"
   },
   "model": "fable",
-  "env": {
-    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "50"
-  },
   "hooks": {
-    "SessionStart": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$HOME/.claude/hooks/herdr-agent-state.sh\" session",
-            "timeout": 10
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "h=\"$(command -v moshi-hook 2>/dev/null)\"; [ -n \"$h\" ] && \"$h\" claude-hook || true",
-            "async": true
-          }
-        ]
-      },
+    "ConfigChange": [
       {
         "hooks": [
           {
@@ -37,21 +19,32 @@
         ]
       }
     ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "h=\"$(command -v moshi-hook 2>/dev/null)\"; [ -n \"$h\" ] && \"$h\" claude-hook || true",
-            "async": true
-          }
-        ]
-      },
+    "InstructionsLoaded": [
       {
         "hooks": [
           {
             "type": "command",
             "command": "r=\"$HOME/.local/share/uv/tools/runlayer/bin/runlayer\"; [ -x \"$r\" ] && \"$r\" hook --client claude_code --no-enforcement || true"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "r=\"$HOME/.local/share/uv/tools/runlayer/bin/runlayer\"; [ -x \"$r\" ] && \"$r\" hook --client claude_code --no-enforcement || true"
+          }
+        ]
+      },
+      {
+        "matcher": "permission_prompt",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "h=\"$(command -v moshi-hook 2>/dev/null)\"; [ -n \"$h\" ] && \"$h\" claude-hook || true",
+            "async": true
           }
         ]
       }
@@ -61,12 +54,61 @@
         "hooks": [
           {
             "type": "command",
-            "command": "h=\"$(command -v moshi-hook 2>/dev/null)\"; [ -n \"$h\" ] && \"$h\" claude-hook || true",
-            "timeout": 300,
-            "async": false
+            "command": "r=\"$HOME/.local/share/uv/tools/runlayer/bin/runlayer\"; [ -x \"$r\" ] && \"$r\" hook --client claude_code --no-enforcement || true"
           }
         ]
       },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "h=\"$(command -v moshi-hook 2>/dev/null)\"; [ -n \"$h\" ] && \"$h\" claude-hook || true",
+            "async": false
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "r=\"$HOME/.local/share/uv/tools/runlayer/bin/runlayer\"; [ -x \"$r\" ] && \"$r\" hook --client claude_code --no-enforcement || true"
+          }
+        ]
+      },
+      {
+        "matcher": "AskUserQuestion",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "h=\"$(command -v moshi-hook 2>/dev/null)\"; [ -n \"$h\" ] && \"$h\" claude-hook || true",
+            "async": true
+          }
+        ]
+      },
+      {
+        "matcher": "ExitPlanMode",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "h=\"$(command -v moshi-hook 2>/dev/null)\"; [ -n \"$h\" ] && \"$h\" claude-hook || true",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "r=\"$HOME/.local/share/uv/tools/runlayer/bin/runlayer\"; [ -x \"$r\" ] && \"$r\" hook --client claude_code --no-enforcement || true"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
       {
         "hooks": [
           {
@@ -88,35 +130,13 @@
         ]
       },
       {
-        "matcher": "AskUserQuestion",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "h=\"$(command -v moshi-hook 2>/dev/null)\"; [ -n \"$h\" ] && \"$h\" claude-hook || true",
-            "async": true
-          }
-        ]
-      },
-      {
-        "matcher": "ExitPlanMode",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "h=\"$(command -v moshi-hook 2>/dev/null)\"; [ -n \"$h\" ] && \"$h\" claude-hook || true",
-            "async": true
-          }
-        ]
-      },
-      {
         "hooks": [
           {
             "type": "command",
             "command": "r=\"$HOME/.local/share/uv/tools/runlayer/bin/runlayer\"; [ -x \"$r\" ] && \"$r\" hook --client claude_code --no-enforcement || true"
           }
         ]
-      }
-    ],
-    "PostToolUse": [
+      },
       {
         "matcher": "AskUserQuestion",
         "hooks": [
@@ -136,6 +156,37 @@
             "async": true
           }
         ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "r=\"$HOME/.local/share/uv/tools/runlayer/bin/runlayer\"; [ -x \"$r\" ] && \"$r\" hook --client claude_code --no-enforcement || true"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "h=\"$(command -v moshi-hook 2>/dev/null)\"; [ -n \"$h\" ] && \"$h\" claude-hook || true",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$HOME/.claude/hooks/herdr-agent-state.sh\" session",
+            "timeout": 10
+          }
+        ]
       },
       {
         "hooks": [
@@ -144,14 +195,32 @@
             "command": "r=\"$HOME/.local/share/uv/tools/runlayer/bin/runlayer\"; [ -x \"$r\" ] && \"$r\" hook --client claude_code --no-enforcement || true"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "h=\"$(command -v moshi-hook 2>/dev/null)\"; [ -n \"$h\" ] && \"$h\" claude-hook || true",
+            "async": true
+          }
+        ]
       }
     ],
-    "PostToolUseFailure": [
+    "Stop": [
       {
         "hooks": [
           {
             "type": "command",
             "command": "r=\"$HOME/.local/share/uv/tools/runlayer/bin/runlayer\"; [ -x \"$r\" ] && \"$r\" hook --client claude_code --no-enforcement || true"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "h=\"$(command -v moshi-hook 2>/dev/null)\"; [ -n \"$h\" ] && \"$h\" claude-hook || true",
+            "async": true
           }
         ]
       }
@@ -176,55 +245,7 @@
         ]
       }
     ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "h=\"$(command -v moshi-hook 2>/dev/null)\"; [ -n \"$h\" ] && \"$h\" claude-hook || true",
-            "async": true
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "r=\"$HOME/.local/share/uv/tools/runlayer/bin/runlayer\"; [ -x \"$r\" ] && \"$r\" hook --client claude_code --no-enforcement || true"
-          }
-        ]
-      }
-    ],
-    "SessionEnd": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "h=\"$(command -v moshi-hook 2>/dev/null)\"; [ -n \"$h\" ] && \"$h\" claude-hook || true",
-            "async": true
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "r=\"$HOME/.local/share/uv/tools/runlayer/bin/runlayer\"; [ -x \"$r\" ] && \"$r\" hook --client claude_code --no-enforcement || true"
-          }
-        ]
-      }
-    ],
-    "PreCompact": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "r=\"$HOME/.local/share/uv/tools/runlayer/bin/runlayer\"; [ -x \"$r\" ] && \"$r\" hook --client claude_code --no-enforcement || true"
-          }
-        ]
-      }
-    ],
-    "Notification": [
+    "TaskCompleted": [
       {
         "hooks": [
           {
@@ -244,7 +265,7 @@
         ]
       }
     ],
-    "TaskCompleted": [
+    "UserPromptSubmit": [
       {
         "hooks": [
           {
@@ -252,24 +273,13 @@
             "command": "r=\"$HOME/.local/share/uv/tools/runlayer/bin/runlayer\"; [ -x \"$r\" ] && \"$r\" hook --client claude_code --no-enforcement || true"
           }
         ]
-      }
-    ],
-    "InstructionsLoaded": [
+      },
       {
         "hooks": [
           {
             "type": "command",
-            "command": "r=\"$HOME/.local/share/uv/tools/runlayer/bin/runlayer\"; [ -x \"$r\" ] && \"$r\" hook --client claude_code --no-enforcement || true"
-          }
-        ]
-      }
-    ],
-    "ConfigChange": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "r=\"$HOME/.local/share/uv/tools/runlayer/bin/runlayer\"; [ -x \"$r\" ] && \"$r\" hook --client claude_code --no-enforcement || true"
+            "command": "h=\"$(command -v moshi-hook 2>/dev/null)\"; [ -n \"$h\" ] && \"$h\" claude-hook || true",
+            "async": true
           }
         ]
       }
@@ -289,37 +299,44 @@
     }
   ],
   "enabledPlugins": {
-    "guards@ajilty": true,
-    "playbooks@ajilty": true,
-    "edges@ajilty": true,
-    "orchestrate@ajilty": true,
     "atlassian@claude-plugins-official": true,
     "claude-code-setup@claude-plugins-official": true,
     "claude-md-management@claude-plugins-official": true,
+    "cloudflare@cloudflare": true,
+    "codex@openai-codex": true,
     "context7@claude-plugins-official": false,
+    "context7@context7-marketplace": true,
+    "edges@ajilty": true,
     "explanatory-output-style@claude-plugins-official": false,
     "frontend-design@claude-plugins-official": true,
     "github@claude-plugins-official": true,
+    "guards@ajilty": true,
+    "orchestrate@ajilty": true,
+    "playbooks@ajilty": true,
     "playwright@claude-plugins-official": true,
     "plugin-dev@claude-plugins-official": true,
     "ralph-loop@claude-plugins-official": true,
     "slack@claude-plugins-official": true,
-    "superpowers@claude-plugins-official": true,
-    "cloudflare@cloudflare": true,
-    "codex@openai-codex": true,
-    "context7@context7-marketplace": true
+    "superpowers@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
-    "claude-plugins-official": {
+    "ajilty": {
       "source": {
         "source": "github",
-        "repo": "anthropics/claude-plugins-official"
-      }
+        "repo": "ajilty/agentic"
+      },
+      "autoUpdate": true
     },
     "chrome-devtools-plugins": {
       "source": {
         "source": "github",
         "repo": "ChromeDevTools/chrome-devtools-mcp"
+      }
+    },
+    "claude-plugins-official": {
+      "source": {
+        "source": "github",
+        "repo": "anthropics/claude-plugins-official"
       }
     },
     "cloudflare": {
@@ -345,20 +362,20 @@
         "source": "github",
         "repo": "openai/codex-plugin-cc"
       }
-    },
-    "ajilty": {
-      "source": {
-        "source": "github",
-        "repo": "ajilty/agentic"
-      }
     }
   },
   "outputStyle": "ajilty",
   "feedbackDrafts": "off",
   "effortLevel": "high",
   "modelSettings": {
-    "claude-fable-5": {
+    "claude-fable-5-1": {
       "effortLevel": "low"
+    },
+    "claude-opus-4-8": {
+      "effortLevel": "high"
+    },
+    "claude-sonnet-5": {
+      "effortLevel": "high"
     }
   },
   "fastMode": true,
