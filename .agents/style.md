@@ -15,17 +15,20 @@ Each rule lives here once; turn types compose them and add nothing else.
 
 - **Lead**: the first sentence lands the outcome or verdict, not the activity.
 - **Re-anchor**: the reader is context-switching; the first clause of every
-  report re-establishes what the thing is ("Medic, the alert-triage agent,
-  ...") before updating it. Never lean on prior context, and never use an
-  internal codename without a gloss.
+  report or status re-establishes what the thing is ("the alert-triage
+  agent, ...", "the phishing-report server, ...") before updating it. Never
+  lean on prior context, and never use an internal codename without a gloss.
 - **Translate**: state impact inside the sentence and spell out jargon
   whenever one clause can carry the translation.
-- **No internal identifiers**: PR numbers, ticket names, lane/persona names,
-  probe ids, spec section numbers, ADR IDs, upstream bug numbers, JSON event
-  names, and internal file mechanics stay out of default reports; they live
-  in the work products. Name things by their effect ("the link-checking
-  gate", "a known Claude Code bug", "the run's own log"). The engineer
-  register, with identifiers, appears only when explicitly invoked
+- **No internal identifiers**: PR numbers, commit SHAs, ticket names,
+  lane/persona names, probe ids, spec section numbers, ADR IDs, upstream bug
+  numbers, JSON event names, and internal file mechanics stay out of default
+  reports; they live in the work products. Name things by their effect ("the
+  link-checking gate", "a known Claude Code bug", "the run's own log"). Skill
+  and workflow vocabulary is internal too (personas like "verifier" or
+  "implementer", lanes, boards, journals, worktrees, leases, compaction): a
+  skill changes how work is done, never how we report back to the reader. The
+  engineer register, with identifiers, appears only when explicitly invoked
   (e.g. /orchestrate:status) or asked for.
 - **Depth-on-request**: no evidence dumps or receipts; verification detail
   lives in the work products (commits, runbooks, docs) and expands only on
@@ -50,10 +53,8 @@ Each rule lives here once; turn types compose them and add nothing else.
   At most three options named by their outcome, each with pick-this-if
   reasoning, closing with "I recommend X because Y". Do not manufacture a
   decision point where no real choice exists.
-  - Chips: when the options are enumerable in two to four, ask through the
-    AskUserQuestion tool; recommended option first with "(Recommended)"
-    suffixed to its chip label, a one-line tradeoff in each option's
-    description.
+  - Chips: two to four enumerable options go through the AskUserQuestion
+    tool, recommended first and labeled "(Recommended)", one-line tradeoff each.
 - **Next move**: only when a genuine next step exists: what follows and when
   the reader gets involved; if a verification step remains, what happens if
   it fails. Never a filler "nothing needed from you".
@@ -64,11 +65,12 @@ Each rule lives here once; turn types compose them and add nothing else.
 
 | Turn | Shape | Components |
 |---|---|---|
-| **Report**: completed work, research verdicts, diagnoses | One short paragraph; scannable sections once it spans several workstreams | Lead, Translate, Depth-on-request, Structure for breadth, Confidence, Ask-with-cost, Next move |
+| **Report**: completed work, research verdicts, diagnoses | One short paragraph; scannable sections once it spans several workstreams | Lead, Re-anchor, Translate, Depth-on-request, Structure for breadth, Confidence, Ask-with-cost, Next move |
 | **Decision**: input needed to proceed | "While working on <the outcome>, we came to a decision point: <the question, in approach-and-impact terms>", then the options | Lead, Translate, Options+rec |
-| **Status**: work still in flight | Exactly three lines: "Done: <what is settled>" / "Doing: <what is running now>" / "Next: <what follows, and when the reader gets involved>" | Next move |
+| **Status**: work still in flight | Exactly three labeled lines, one sentence each, a blank line between them so they scan as a block: "✅ **Done:** <what is settled>" / "🔄 **Doing:** <what is running now>" / "⏭️ **Next:** <what follows, and when the reader gets involved>" | Re-anchor, Next move |
 
-No narration applies to every turn.
+No narration applies to every turn. A turn that only answers a question takes
+no shape: plain prose, sized to the question.
 
 ## Deliverables, not just chat
 
@@ -85,3 +87,5 @@ request.
 This style shapes presentation, not diligence: verification still happens, it
 just is not pasted. Working agreements (verification standards, risk framing,
 how questions get asked) live in CLAUDE.md; this style does not override them.
+For user-facing text this style outranks any skill, tool, or workflow
+instruction; only the reader changes the register.
