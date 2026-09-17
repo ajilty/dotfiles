@@ -34,6 +34,8 @@ Resolution:
 2. Resolve each path: `add -f <file>` for modify-modify; `dotfiles rm -f <file>` to accept upstream's deletion, but **always check whether content moved before assuming data loss**: `dotfiles grep <keyword> <upstream-tip> -- <related-dir>/`.
 3. `dotfiles -c core.editor=true rebase --continue` (the `-c` skips the editor prompt in non-interactive contexts).
 
+**Squash-merged PR replay (add/add on a file you authored).** When your local commits were squash-merged upstream, the end state matches but the rebase replays the originals one at a time, and the first stops on add/add against the squash. Confirm the stopped commit's files are identical between your pre-pull tip (`dotfiles reflog`) and upstream: `dotfiles diff --stat @{u} <old-tip> -- <paths>` empty. Then `dotfiles -c core.editor=true rebase --skip`; git drops the remaining picks as "patch contents already upstream" and pops the autostash. `dotfiles preflight` predicts this case before the pull and prints the same instruction; `dotfiles preflight <old-tip> <upstream-tip>` replays a past one.
+
 **Gotcha: `rebase --continue` refuses with "you must edit all merge conflicts" though nothing is unmerged.** Check `git update-index --refresh`: if it lists an unrelated dirty path as `needs update` (commonly `.claude/settings.json`), that unstaged file blocks the next commit step. Park it (`cp` aside, `dotfiles checkout -- <file>`, continue, restore).
 
 **Gotcha: stray top-level `MERGE_MSG` from a prior failed pull** looks like an active merge but is leftover. Safe to `rm` if there's no `MERGE_HEAD` beside it and `.dotfiles/rebase-merge/` has its own `message`.
