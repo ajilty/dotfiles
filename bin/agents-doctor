@@ -66,5 +66,29 @@ else
     fail=1
 fi
 
+echo "hook portability:"
+# Vendor installers (moshi-hook, herdr) regenerate these files and bake in the
+# path the tool happened to live at that release. Those break on a new machine
+# and go stale on every upgrade. Hook commands must resolve at run time:
+# `command -v <bin>` for third-party tools, "$HOME/..." for our own scripts.
+for f in "$HOME/.claude/settings.json" "$HOME/.codex/hooks.json"; do
+    [[ -f "$f" ]] || continue
+    label="${f/#$HOME/\~}"
+    cmds=$(jq -r '[.hooks[]?[]?.hooks[]?.command // empty] | .[]' "$f" 2>/dev/null)
+    pinned=$( { # an absolute path to anyone's home or a versioned Cellar dir
+                grep -E '/Users/|/home/|/var/home/|/Cellar/' <<<"$cmds"
+                # ...and moshi-hook by path at all: even "$HOME/.local/bin"
+                # clears the rule above and still goes stale on reinstall.
+                grep -F 'moshi-hook' <<<"$cmds" | grep -vF 'command -v'
+              } | sort -u )
+    if [[ -z "$pinned" ]]; then
+        printf '  ok      %s hooks resolve at run time\n' "$label"
+    else
+        printf '  BROKEN  %s pins tool paths (an installer rewrote it):\n' "$label"
+        cut -c1-96 <<<"$pinned" | sed 's/^/            /'
+        fail=1
+    fi
+done
+
 [[ $fail -eq 0 ]] && echo "all harness wiring intact"
 exit $fail

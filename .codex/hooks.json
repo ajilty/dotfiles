@@ -14,7 +14,7 @@
       {
         "hooks": [
           {
-            "command": "bash '/var/home/ajilty/.codex/herdr-agent-state.sh' session",
+            "command": "s=\"$HOME/.codex/herdr-agent-state.sh\"; [ -f \"$s\" ] && bash \"$s\" session || true",
             "timeout": 10,
             "type": "command"
           }
@@ -23,7 +23,7 @@
       {
         "hooks": [
           {
-            "command": "awk 'NR==1\u0026\u0026/^---$/{f=1;next} f\u0026\u0026/^---$/{f=0;next} !f' '/var/home/ajilty/.agents/style.md'",
+            "command": "awk 'NR==1\u0026\u0026/^---$/{f=1;next} f\u0026\u0026/^---$/{f=0;next} !f' \"$HOME/.agents/style.md\"",
             "timeout": 5,
             "type": "command"
           }
