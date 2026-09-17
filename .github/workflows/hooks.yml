@@ -1,0 +1,81 @@
+name: hooks
+
+# Checks that no vendor installer (moshi-hook, herdr) has re-pinned a hook
+# command to an install-time path. The pre-commit guard already does this,
+# but it only fires on a machine that has the hook wired up: `core.hooksPath`
+# comes from an includeIf in ~/.config/git/config, so a fresh machine before
+# setup, a clone made elsewhere, or an agent session working in a plain
+# checkout all commit these files with nothing watching. That is not
+# hypothetical -- the commits that added this workflow were made that way.
+#
+# So this is the backstop for the backstop, not a duplicate: the hook catches
+# it on the machine, this catches it when it arrives from somewhere that had
+# no hook. Same rules either way, since both call `dotfiles doctor --hooks`.
+#
+# To reproduce locally:
+#
+#   bash bin/dotfiles doctor --hooks .claude/settings.json .codex/hooks.json
+
+on:
+  pull_request:
+    paths:
+      - '.claude/settings.json'
+      - '.codex/hooks.json'
+      - 'bin/dotfiles'
+      - '.dotfiles-hooks/pre-commit'
+      - '.github/workflows/hooks.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  hook-portability:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check hook portability
+        # `--hooks` deliberately sits ahead of the canonical-file check, so it
+        # vets the files it is handed without needing ~/.agents wiring that a
+        # runner will never have. jq is preinstalled on ubuntu-latest.
+        run: |
+          bash bin/dotfiles doctor --hooks \
+            .claude/settings.json \
+            .codex/hooks.json
+
+      - name: Prove the check still catches a re-pinned path
+        # A guard that silently stops guarding is worse than no guard. Feed it
+        # the two shapes we have actually been clobbered with and require a
+        # nonzero exit, so a refactor that neuters the rules fails here rather
+        # than going unnoticed until the next machine rebuild.
+        run: |
+          mkdir -p "$RUNNER_TEMP/bad"
+          cat > "$RUNNER_TEMP/bad/settings.json" <<'JSON'
+          {
+            "hooks": {
+              "SessionStart": [
+                {
+                  "hooks": [
+                    {
+                      "type": "command",
+                      "command": "h=\"$HOME/.local/bin/moshi-hook\"; [ -x \"$h\" ] && \"$h\" claude-hook || true"
+                    },
+                    {
+                      "type": "command",
+                      "command": "bash '/var/home/someone/.codex/herdr-agent-state.sh' session"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+          JSON
+
+          if bash bin/dotfiles doctor --hooks "$RUNNER_TEMP/bad/settings.json"; then
+            echo "::error::hook portability check passed a known re-pinned config; the rules have been neutered"
+            exit 1
+          fi
+          echo "ok: the check still rejects both re-pinned shapes"
