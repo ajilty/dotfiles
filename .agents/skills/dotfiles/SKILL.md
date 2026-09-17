@@ -98,8 +98,21 @@ explicit `moshi-hook install` rewrites them, and when it does it "rewrites the
 current hook set, removes retired events" rather than merging, so every
 hand-edit in its own entries is lost.
 
-Run it only when you actually want a changed event set, typically after the
-daemon logs `agent hooks missing or stale; rerun install`. Then re-normalize.
+**Ignore the stale-hooks nag. It is permanent and it is about us.** The daemon
+logs `agent hooks missing or stale; rerun install` by comparing the command
+*strings* it wrote against what is in the config, not the set of events. Our
+`command -v` rewrite will never match, so the warning fires forever and is not
+evidence that anything changed. Running install to silence it re-pins every
+path, which is the exact loop this section exists to break. Never run
+`moshi-hook install` just to clear that warning.
+
+Which leaves no signal for a genuinely changed event set, so treat it as
+deliberate maintenance rather than something to react to: after a moshi
+release that mentions new agent events, run `moshi-hook install`, read
+`dotfiles diff` to see every entry it rewrote, re-normalize each one to the
+canonical forms below, and let `dotfiles doctor` confirm. The guards make this
+safe to do on the live config: the commit is blocked until the re-pinning is
+undone, so a half-finished pass cannot reach the repo.
 
 Two things catch the drift, neither of which fixes it. `dotfiles doctor` reports
 it under "hook portability" whenever you run it. The pre-commit hook blocks the
