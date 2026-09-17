@@ -286,12 +286,20 @@ SUBCOMMANDS
                     stdin and emits a once-per-session reminder when a tool
                     call touches dotfiles-managed config, edits the shared
                     agent-harness wiring (~/.agents, ~/.claude, ~/.codex,
-                    ~/.config/opencode; run `agents-doctor` after), runs
+                    ~/.config/opencode; run `dotfiles doctor` after), runs
                     brew install/uninstall, or handles credentials outside
                     with-secrets (MCP registration, op run, token
                     literals). Informational, never blocks.
                     Registered in ~/.claude/settings.json (Claude Code);
                     portable to any harness that pipes the same JSON.
+  doctor            Verify the shared agent-harness wiring: that Claude
+                    Code, Codex, and opencode all still resolve
+                    ~/.agents/preferences.md and ~/.agents/style.md, and
+                    that no vendor installer has re-pinned a hook command
+                    to an install-time path. Exits nonzero on drift.
+                    `doctor --hooks <file>...` checks hook portability in
+                    the named files only; the pre-commit guard uses it to
+                    vet staged content without reading $HOME.
 
 STAGING RULES
   Tracked file changed   -> dotfiles add -u <path>   (avoids the bogus
@@ -374,7 +382,7 @@ Heads-up: packages on this machine are dotfiles-managed. After brew changes, rec
 EOF
 )"
     harness_msg="$(cat <<'EOF'
-Heads-up: this path is part of the shared agent-harness wiring. Working agreements live once in ~/.agents/preferences.md and register/presentation lives once in ~/.agents/style.md; Claude Code, Codex, and opencode all read both (symlinks at ~/.claude/CLAUDE.md and ~/.codex/AGENTS.md, a Codex SessionStart hook, and opencode's instructions list). A rule that changes how output READS belongs in style.md; a rule that changes how work is DONE, verified, or decided belongs in preferences.md. Never fork a harness-specific copy. After changing any wiring, run `agents-doctor` to confirm all three harnesses still resolve. (This reminder fires once per session.)
+Heads-up: this path is part of the shared agent-harness wiring. Working agreements live once in ~/.agents/preferences.md and register/presentation lives once in ~/.agents/style.md; Claude Code, Codex, and opencode all read both (symlinks at ~/.claude/CLAUDE.md and ~/.codex/AGENTS.md, a Codex SessionStart hook, and opencode's instructions list). A rule that changes how output READS belongs in style.md; a rule that changes how work is DONE, verified, or decided belongs in preferences.md. Never fork a harness-specific copy. After changing any wiring, run `dotfiles doctor` to confirm all three harnesses still resolve. (This reminder fires once per session.)
 EOF
 )"
     secrets_msg="$(cat <<'EOF'
@@ -597,6 +605,115 @@ preflight_pull() {
     exit 1
 }
 
+# --- doctor: agent-harness wiring -----------------------------------------
+# Canonical sources, read by every harness:
+#   ~/.agents/preferences.md  working agreements (how work is done)
+#   ~/.agents/style.md        register (how output reads)
+
+doctor_link() { # path, expected target
+    local got
+    got=$(readlink -f "$1" 2>/dev/null)
+    if [ -n "$got" ] && [ "$got" = "$(readlink -f "$2")" ]; then
+        printf '  ok      %s\n' "${1/#$HOME/\~}"
+    else
+        printf '  BROKEN  %s -> %s\n' "${1/#$HOME/\~}" "${got:-missing}"
+        fail=1
+    fi
+}
+
+# Vendor installers (moshi-hook, herdr) regenerate our harness configs and
+# bake in the path the tool lived at that release. Those break on a new
+# machine and go stale on every upgrade. Hook commands must resolve at run
+# time: `command -v <bin>` for third-party tools, "$HOME/..." for our own
+# scripts. These rules live here only; the pre-commit guard calls --hooks.
+doctor_hooks() {
+    local f label cmds pinned
+    for f in "$@"; do
+        [ -f "$f" ] || continue
+        label="${f/#$HOME/\~}"
+        cmds=$(jq -r '[.hooks[]?[]?.hooks[]?.command // empty] | .[]' "$f" 2>/dev/null)
+        pinned=$( { # an absolute path into anyone's home, or a versioned Cellar dir
+                    grep -E '/Users/|/home/|/var/home/|/Cellar/' <<<"$cmds"
+                    # ...and moshi-hook by path at all: even "$HOME/.local/bin"
+                    # clears the rule above and still breaks when the tool moves.
+                    grep -F 'moshi-hook' <<<"$cmds" | grep -vF 'command -v'
+                  } | sort -u )
+        if [ -z "$pinned" ]; then
+            printf '  ok      %s hooks resolve at run time\n' "$label"
+        else
+            printf '  BROKEN  %s pins tool paths (an installer rewrote it):\n' "$label"
+            cut -c1-96 <<<"$pinned" | sed 's/^/            /'
+            fail=1
+        fi
+    done
+}
+
+run_doctor() {
+    set +e   # a failed check reports drift; it must not abort the run
+    local prefs="$HOME/.agents/preferences.md"
+    local style="$HOME/.agents/style.md"
+    local want sel f
+    fail=0
+
+    # Ahead of the canonical-file check, so a fresh machine can still commit.
+    if [ "${1:-}" = "--hooks" ]; then
+        shift
+        echo "hook portability:"
+        doctor_hooks "$@"
+        exit $fail
+    fi
+
+    for f in "$prefs" "$style"; do
+        [ -f "$f" ] || { printf 'BROKEN  canonical file missing: %s\n' "$f"; exit 1; }
+    done
+
+    echo "preferences:"
+    doctor_link "$HOME/.claude/CLAUDE.md" "$prefs"
+    doctor_link "$HOME/.codex/AGENTS.md" "$prefs"
+
+    echo "style:"
+    doctor_link "$HOME/.claude/output-styles/ajilty.md" "$style"
+
+    echo "opencode:"
+    for want in "~/.agents/preferences.md" "~/.agents/style.md"; do
+        if jq -e --arg w "$want" '[.instructions[]?] | index($w)' \
+             "$HOME/.config/opencode/opencode.json" >/dev/null 2>&1; then
+            printf '  ok      instructions[] lists %s\n' "$want"
+        else
+            printf '  BROKEN  instructions[] missing %s\n' "$want"
+            fail=1
+        fi
+    done
+    if [ -e "$HOME/.config/opencode/AGENTS.md" ]; then
+        echo "  BROKEN  ~/.config/opencode/AGENTS.md shadows the canonical file"
+        fail=1
+    fi
+
+    echo "codex:"
+    if jq -e '[.hooks.SessionStart[]?.hooks[]?.command] | map(select(test("style\\.md"))) | length > 0' \
+         "$HOME/.codex/hooks.json" >/dev/null 2>&1; then
+        echo "  ok      SessionStart hook emits style.md"
+    else
+        echo "  BROKEN  no SessionStart hook emits style.md"
+        fail=1
+    fi
+
+    echo "claude:"
+    sel=$(jq -r '.outputStyle // "unset"' "$HOME/.claude/settings.json" 2>/dev/null)
+    if [ "$sel" = "ajilty" ]; then
+        echo "  ok      settings.json outputStyle=$sel"
+    else
+        echo "  BROKEN  settings.json outputStyle=$sel"
+        fail=1
+    fi
+
+    echo "hook portability:"
+    doctor_hooks "$HOME/.claude/settings.json" "$HOME/.codex/hooks.json"
+
+    [ $fail -eq 0 ] && echo "all harness wiring intact"
+    exit $fail
+}
+
 case "${1:-help}" in
     help|-h|--help)
         print_help
@@ -679,6 +796,10 @@ EOF
         ;;
     hook)
         run_hook
+        ;;
+    doctor)
+        shift
+        run_doctor "$@"
         ;;
     *)
         # In-process (not exec) so the nudge cache refreshes after any

@@ -9,7 +9,7 @@
 > ~/.agents/style.md, which all three harnesses also load: Claude Code as its
 > output style, opencode as a listed instruction file, Codex through a
 > SessionStart hook. A rule that changes how work is done, verified, or decided
-> belongs here. `agents-doctor` verifies all of that wiring is still intact.
+> belongs here. `dotfiles doctor` verifies all of that wiring is still intact.
 
 ## This machine
 
