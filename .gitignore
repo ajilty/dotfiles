@@ -13,3 +13,4 @@
 # ~/.config/git/ignore for files under .agents/.)
 .agents/**/.DS_Store
 .agents/**/__pycache__/
+.agents/runs/
