@@ -33,6 +33,49 @@ check "Author"    "$(git var GIT_AUTHOR_IDENT)"
 check "Committer" "$(git var GIT_COMMITTER_IDENT)"
 
 # ---------------------------------------------------------------------------
+# Hook portability guard: moshi-hook and herdr regenerate our harness configs
+# on install and bake in the path the tool lived at that release. Catch that
+# here, at the last point before it becomes tracked truth. We vet the STAGED
+# content, not the worktree. Rules live once, in agents-doctor --hooks.
+# Missing agents-doctor -> skip (bootstrap-safe on fresh machines).
+# ---------------------------------------------------------------------------
+
+DOCTOR="$HOME/bin/agents-doctor"
+
+staged_hooks=()
+while IFS= read -r path; do
+    [[ -n "$path" ]] && staged_hooks+=("$path")
+done < <(git diff --cached --name-only --diff-filter=ACM \
+           -- .claude/settings.json .codex/hooks.json)
+
+if [[ ${#staged_hooks[@]} -gt 0 && -x "$DOCTOR" ]]; then
+    hook_tmp=$(mktemp -d)
+    trap 'rm -rf "$hook_tmp"' EXIT
+
+    staged_copies=()
+    for path in "${staged_hooks[@]}"; do
+        mkdir -p "$hook_tmp/$(dirname "$path")"
+        git show ":$path" > "$hook_tmp/$path"
+        staged_copies+=("$hook_tmp/$path")
+    done
+
+    if ! report=$("$DOCTOR" --hooks "${staged_copies[@]}" 2>&1); then
+        echo "ERROR: dotfiles hook portability guard tripped — commit blocked." >&2
+        echo "" >&2
+        echo "${report//$hook_tmp\//}" >&2
+        echo "" >&2
+        echo "An installer re-pinned these. Rewrite each command to resolve at" >&2
+        echo "run time, keeping whatever matcher/async/timeout fields it set:" >&2
+        echo "  third-party bin:  h=\"\$(command -v TOOL 2>/dev/null)\"; [ -n \"\$h\" ] && \"\$h\" ARGS || true" >&2
+        echo "  our own script:   s=\"\$HOME/path/to.sh\"; [ -f \"\$s\" ] && bash \"\$s\" ARGS || true" >&2
+        echo "" >&2
+        echo "Details: the dotfiles skill, \"When a vendor installer rewrites our" >&2
+        echo "hook configs\". Re-check with: agents-doctor" >&2
+        exit 1
+    fi
+fi
+
+# ---------------------------------------------------------------------------
 # Content guard: scan staged diff against a local, never-tracked blocklist.
 # Blocklist is fetched from a private gist via `dotfiles-blocklist-sync`.
 # Missing file -> warn, don't block (bootstrap-safe on fresh machines).

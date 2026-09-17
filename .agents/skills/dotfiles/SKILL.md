@@ -1,7 +1,7 @@
 ---
 name: dotfiles
 description: >-
-  Use BEFORE changing any user-level config on this machine and when working in the ajilty dotfiles bare git repo at ~/.dotfiles (worktree $HOME, `dotfiles` command). Intent triggers: editing shell config or anything under ~/.config, ~/.claude, ~/bin, or ~/.agents; creating new user config files; installing or removing Homebrew packages (brew-sync flow); tracking new dotfiles. Symptom triggers: `dotfiles add` warning paths-are-ignored on tracked files, the pre-commit hook rejecting commits whose author is not ajilty (github@ajilty.com), `dotfiles pull` leaving UU/DU paths or mid-rebase --autostash state with `.dotfiles/rebase-merge/`, "WARN dotfiles blocklist not initialized" on a fresh machine, or confusion at the inverse-allowlist .gitignore pattern (`*` plus `!` rules). Also covers committing the tracked Neovim config at ~/.config/nvim.
+  Use BEFORE changing any user-level config on this machine and when working in the ajilty dotfiles bare git repo at ~/.dotfiles (worktree $HOME, `dotfiles` command). Intent triggers: editing shell config or anything under ~/.config, ~/.claude, ~/bin, or ~/.agents; creating new user config files; installing or removing Homebrew packages (brew-sync flow); tracking new dotfiles. Symptom triggers: `dotfiles add` warning paths-are-ignored on tracked files, the pre-commit hook rejecting commits whose author is not ajilty (github@ajilty.com), `dotfiles pull` leaving UU/DU paths or mid-rebase --autostash state with `.dotfiles/rebase-merge/`, "WARN dotfiles blocklist not initialized" on a fresh machine, `agents-doctor` reporting BROKEN under hook portability or an agent tool (moshi, herdr) claiming its hooks are out of date, or confusion at the inverse-allowlist .gitignore pattern (`*` plus `!` rules). Also covers committing the tracked Neovim config at ~/.config/nvim.
 ---
 
 # dotfiles
@@ -84,6 +84,41 @@ Gotchas:
 - NOT tracked, never should be: `~/.local/share/nvim/`, `~/.local/state/nvim/`, `~/.cache/nvim/`. Regenerates from `lazy-lock.json` (`nvim --headless "+Lazy! sync" +qa`).
 - `lazy-lock.json` is a lockfile: stage with `add -u` and commit so machines pin identical plugin versions.
 - Brew deps in `Brewfile.dev`: `neovim`, `tree-sitter-cli` (the `tree-sitter` formula is only the C library, no binary), `fd` (Snacks explorer hardcodes it), `lazygit`. `:checkhealth config` verifies.
+
+## When a vendor installer rewrites our hook configs
+
+moshi-hook and herdr regenerate `~/.claude/settings.json` and `~/.codex/hooks.json`
+on install and bake in the path the tool lived at that release. We take their
+updates (they add new events we'd otherwise have to track by hand) and
+re-normalize afterwards.
+
+Two things catch the drift, neither of which fixes it. `agents-doctor` reports
+it under "hook portability" whenever you run it. The pre-commit hook blocks the
+commit outright if a re-pinned config is staged, which is the backstop that
+matters: a brew upgrade happens outside any agent session, so nothing would
+otherwise prompt you to look until the clobbered file was already tracked.
+
+The drill either way: rewrite each command the check names to resolve at run
+time, keeping whatever `matcher`, `async`, and `timeout` fields the installer
+set. Two canonical forms, and everything in these files should be one of them:
+
+```sh
+# third-party binary: resolve from PATH, no-op when not installed
+h="$(command -v moshi-hook 2>/dev/null)"; [ -n "$h" ] && "$h" claude-hook || true
+# our own script: $HOME-relative, no-op when the file is absent
+s="$HOME/.claude/hooks/herdr-agent-state.sh"; [ -f "$s" ] && bash "$s" session || true
+```
+
+Both fail open on purpose: a machine without the tool runs the hook as a no-op
+rather than erroring every event. Note that herdr's state script is *not*
+tracked here, so on a fresh machine that second form is load-bearing.
+
+An installer-written `"$HOME/.local/bin/<tool>"` looks portable and isn't: it
+survives a new machine but breaks the next time the tool moves. Use `command -v`.
+
+Known exception: the `runlayer` entries are pinned to its uv tools directory.
+Left as-is deliberately, since it's $HOME-relative and guarded, and `command -v`
+would assume the shim is on PATH. Revisit if it ever breaks.
 
 ## What lives where
 

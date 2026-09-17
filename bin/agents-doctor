@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 # agents-doctor: verify every agent harness still reads the canonical
-# preference and style files. Exits non-zero if any wiring has drifted.
+# preference and style files, and that no vendor installer has re-pinned
+# our hook commands. Exits non-zero if any wiring has drifted.
+#
+#   agents-doctor                 check everything
+#   agents-doctor --hooks FILE... check hook portability in FILE(s) only,
+#                                 so the pre-commit guard can vet staged
+#                                 content without touching $HOME
 #
 # Canonical sources:
 #   ~/.agents/preferences.md  working agreements (how work is done)
@@ -21,6 +27,42 @@ check() { # path, expected target
         fail=1
     fi
 }
+
+# Vendor installers (moshi-hook, herdr) regenerate our harness configs and bake
+# in the path the tool lived at that release. Those break on a new machine and
+# go stale on every upgrade. Hook commands must resolve at run time:
+# `command -v <bin>` for third-party tools, "$HOME/..." for our own scripts.
+# These rules live here only; the pre-commit guard shells out to `--hooks`.
+check_hooks() {
+    local f label cmds pinned
+    for f in "$@"; do
+        [[ -f "$f" ]] || continue
+        label="${f/#$HOME/\~}"
+        cmds=$(jq -r '[.hooks[]?[]?.hooks[]?.command // empty] | .[]' "$f" 2>/dev/null)
+        pinned=$( { # an absolute path into anyone's home, or a versioned Cellar dir
+                    grep -E '/Users/|/home/|/var/home/|/Cellar/' <<<"$cmds"
+                    # ...and moshi-hook by path at all: even "$HOME/.local/bin"
+                    # clears the rule above and still breaks when the tool moves.
+                    grep -F 'moshi-hook' <<<"$cmds" | grep -vF 'command -v'
+                  } | sort -u )
+        if [[ -z "$pinned" ]]; then
+            printf '  ok      %s hooks resolve at run time\n' "$label"
+        else
+            printf '  BROKEN  %s pins tool paths (an installer rewrote it):\n' "$label"
+            cut -c1-96 <<<"$pinned" | sed 's/^/            /'
+            fail=1
+        fi
+    done
+}
+
+# Guard entry point: vet the named files and nothing else. Deliberately ahead
+# of the canonical-file check below, so a fresh machine can still commit.
+if [[ "${1:-}" == "--hooks" ]]; then
+    shift
+    echo "hook portability:"
+    check_hooks "$@"
+    exit $fail
+fi
 
 for f in "$prefs" "$style"; do
     [[ -f "$f" ]] || { printf 'BROKEN  canonical file missing: %s\n' "$f"; exit 1; }
@@ -67,28 +109,7 @@ else
 fi
 
 echo "hook portability:"
-# Vendor installers (moshi-hook, herdr) regenerate these files and bake in the
-# path the tool happened to live at that release. Those break on a new machine
-# and go stale on every upgrade. Hook commands must resolve at run time:
-# `command -v <bin>` for third-party tools, "$HOME/..." for our own scripts.
-for f in "$HOME/.claude/settings.json" "$HOME/.codex/hooks.json"; do
-    [[ -f "$f" ]] || continue
-    label="${f/#$HOME/\~}"
-    cmds=$(jq -r '[.hooks[]?[]?.hooks[]?.command // empty] | .[]' "$f" 2>/dev/null)
-    pinned=$( { # an absolute path to anyone's home or a versioned Cellar dir
-                grep -E '/Users/|/home/|/var/home/|/Cellar/' <<<"$cmds"
-                # ...and moshi-hook by path at all: even "$HOME/.local/bin"
-                # clears the rule above and still goes stale on reinstall.
-                grep -F 'moshi-hook' <<<"$cmds" | grep -vF 'command -v'
-              } | sort -u )
-    if [[ -z "$pinned" ]]; then
-        printf '  ok      %s hooks resolve at run time\n' "$label"
-    else
-        printf '  BROKEN  %s pins tool paths (an installer rewrote it):\n' "$label"
-        cut -c1-96 <<<"$pinned" | sed 's/^/            /'
-        fail=1
-    fi
-done
+check_hooks "$HOME/.claude/settings.json" "$HOME/.codex/hooks.json"
 
 [[ $fail -eq 0 ]] && echo "all harness wiring intact"
 exit $fail
