@@ -1,7 +1,7 @@
 ---
 name: dotfiles
 description: >-
-  Use BEFORE changing any user-level config on this machine and when working in the ajilty dotfiles bare git repo at ~/.dotfiles (worktree $HOME, `dotfiles` command). Intent triggers: editing shell config or anything under ~/.config, ~/.claude, ~/bin, or ~/.agents; creating new user config files; installing or removing Homebrew packages (brew-sync flow); tracking new dotfiles. Symptom triggers: `dotfiles add` warning paths-are-ignored on tracked files, the pre-commit hook rejecting commits whose author is not ajilty (github@ajilty.com), `dotfiles pull` leaving UU/DU paths or mid-rebase --autostash state with `.dotfiles/rebase-merge/`, "WARN dotfiles blocklist not initialized" on a fresh machine, `agents-doctor` reporting BROKEN under hook portability or an agent tool (moshi, herdr) claiming its hooks are out of date, or confusion at the inverse-allowlist .gitignore pattern (`*` plus `!` rules). Also covers committing the tracked Neovim config at ~/.config/nvim.
+  Use BEFORE changing any user-level config on this machine and when working in the ajilty dotfiles bare git repo at ~/.dotfiles (worktree $HOME, `dotfiles` command). Intent triggers: editing shell config or anything under ~/.config, ~/.claude, ~/bin, or ~/.agents; creating new user config files; installing or removing Homebrew packages (brew-sync flow); tracking new dotfiles. Symptom triggers: `dotfiles add` warning paths-are-ignored on tracked files, the pre-commit hook rejecting commits whose author is not ajilty (github@ajilty.com), `dotfiles pull` leaving UU/DU paths or mid-rebase --autostash state with `.dotfiles/rebase-merge/`, "WARN dotfiles blocklist not initialized" on a fresh machine, `dotfiles doctor` reporting BROKEN under hook portability or an agent tool (moshi, herdr) claiming its hooks are out of date, or confusion at the inverse-allowlist .gitignore pattern (`*` plus `!` rules). Also covers committing the tracked Neovim config at ~/.config/nvim.
 ---
 
 # dotfiles
@@ -101,7 +101,7 @@ hand-edit in its own entries is lost.
 Run it only when you actually want a changed event set, typically after the
 daemon logs `agent hooks missing or stale; rerun install`. Then re-normalize.
 
-Two things catch the drift, neither of which fixes it. `agents-doctor` reports
+Two things catch the drift, neither of which fixes it. `dotfiles doctor` reports
 it under "hook portability" whenever you run it. The pre-commit hook blocks the
 commit outright if a re-pinned config is staged, which is the backstop that
 matters: nothing prompts you to run the doctor at the moment a config gets
