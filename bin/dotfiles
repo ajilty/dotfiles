@@ -20,6 +20,26 @@ df_git() {
 SYNC_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/sync-nudge"
 SYNC_FETCH_MAX_AGE_MIN=240
 
+# Wording helpers for the drift message: correct plurals and a sentence-style
+# list ("a, b and c") so the nudge reads as English rather than git shorthand.
+plural() {
+    # plural <count> <singular> [<plural>]; defaults to appending an "s".
+    if [ "$1" -eq 1 ]; then printf '%s' "$2"; else printf '%s' "${3:-$2s}"; fi
+}
+
+join_clauses() {
+    local out="" n=$#
+    while [ "$#" -gt 0 ]; do
+        case "$#" in
+            "$n") out="$1" ;;
+            1)    out="$out and $1" ;;
+            *)    out="$out, $1" ;;
+        esac
+        shift
+    done
+    printf '%s' "$out"
+}
+
 refresh_sync_status() {
     [ -d "$GIT_DIR_PATH" ] || return 0
     mkdir -p "$(dirname "$SYNC_CACHE")"
@@ -49,28 +69,36 @@ refresh_sync_status() {
     # -uno: skip untracked enumeration; the inverse-allowlist makes it huge.
     dirty="$(df_git status --porcelain -uno 2>/dev/null | wc -l | tr -d ' ')"
 
+    # Message is plain English, one line: what is out of step, then the
+    # command to fix it. Counts read as sentence clauses ("2 commits to
+    # pull"), not git's ahead/behind shorthand.
     local -a parts=()
-    [ "$behind" -gt 0 ] && parts+=("$behind behind")
-    [ "$ahead" -gt 0 ] && parts+=("$ahead ahead")
-    [ "$dirty" -gt 0 ] && parts+=("$dirty uncommitted")
+    [ "$behind" -gt 0 ] && parts+=("$behind $(plural "$behind" commit) to pull")
+    if [ "$ahead" -gt 0 ]; then
+        # After a "to pull" clause the noun is already established.
+        if [ "$behind" -gt 0 ]; then
+            parts+=("$ahead to push")
+        else
+            parts+=("$ahead $(plural "$ahead" commit) to push")
+        fi
+    fi
+    [ "$dirty" -gt 0 ] && parts+=("$dirty uncommitted $(plural "$dirty" change)")
 
     local tmp="${SYNC_CACHE}.tmp.$$"
     if [ "${#parts[@]}" -eq 0 ]; then
         : > "$tmp"
     else
-        local hint="dotfiles status"
+        local action
         if [ "$behind" -gt 0 ] && [ "$ahead" -gt 0 ]; then
-            hint="dotfiles pull, then dotfiles push"
+            action='Run "dotfiles pull", then "dotfiles push".'
         elif [ "$behind" -gt 0 ]; then
-            hint="dotfiles pull"
+            action='Run "dotfiles pull" to catch up.'
         elif [ "$ahead" -gt 0 ]; then
-            hint="dotfiles push"
+            action="Run \"dotfiles push\" to publish $(plural "$ahead" it them)."
+        else
+            action="Run \"dotfiles status\" to see $(plural "$dirty" it them)."
         fi
-        local part summary=""
-        for part in "${parts[@]}"; do
-            summary="${summary:+$summary, }$part"
-        done
-        printf 'dotfiles out of sync: %s (%s)\n' "$summary" "$hint" > "$tmp"
+        printf 'Your dotfiles have %s. %s\n' "$(join_clauses "${parts[@]}")" "$action" > "$tmp"
     fi
     mv "$tmp" "$SYNC_CACHE"
 }
@@ -111,8 +139,9 @@ SUBCOMMANDS
                     The same prediction without pulling; exits 1 on a
                     predicted conflict. Pass revisions to replay a past case.
   update            `pull` (same preflight), then `zinit update --all`.
-  sync-status       Recompute drift vs the remote (behind/ahead/uncommitted)
-                    and print one line, or "in sync". Backs the new-shell
+  sync-status       Recompute drift vs the remote (commits to pull/push,
+                    uncommitted changes) and print it as one plain-English
+                    line, or confirm you are up to date. Backs the new-shell
                     nudge: results cache at ~/.cache/dotfiles/sync-nudge,
                     interactive shells print the cache at the first prompt
                     and refresh it in a background job. Fetches origin at
@@ -468,7 +497,7 @@ case "${1:-help}" in
         if [ -s "$SYNC_CACHE" ]; then
             cat "$SYNC_CACHE"
         else
-            echo "dotfiles in sync with remote"
+            echo "Your dotfiles are up to date with the remote."
         fi
         ;;
     update)

@@ -48,14 +48,14 @@ cache="$fake_home/.cache/dotfiles/sync-nudge"
 
 HOME="$fake_home" bash "$DOTFILES_BIN" sync-status >/dev/null
 [ -s "$cache" ] || die "cache empty despite being behind remote"
-grep -q "1 behind" "$cache" || die "cache missing '1 behind': $(cat "$cache")"
+grep -q "1 commit to pull" "$cache" || die "cache missing '1 commit to pull': $(cat "$cache")"
 grep -q "dotfiles pull" "$cache" || die "cache missing pull hint: $(cat "$cache")"
 info "behind state detected: $(cat "$cache")"
 
 # Dirty worktree should surface as uncommitted.
 echo local-change > "$fake_home/file"
 HOME="$fake_home" bash "$DOTFILES_BIN" sync-status >/dev/null
-grep -q "1 uncommitted" "$cache" || die "cache missing '1 uncommitted': $(cat "$cache")"
+grep -q "1 uncommitted change" "$cache" || die "cache missing '1 uncommitted change': $(cat "$cache")"
 info "dirty state detected: $(cat "$cache")"
 
 # Catch up fully: cache must go empty and the command must say in sync.
@@ -63,7 +63,7 @@ git --git-dir="$fake_home/.dotfiles" --work-tree="$fake_home" checkout -q -- fil
 git --git-dir="$fake_home/.dotfiles" --work-tree="$fake_home" -c rebase.autoStash=true pull -q --rebase origin master
 out="$(HOME="$fake_home" bash "$DOTFILES_BIN" sync-status)"
 [ ! -s "$cache" ] || die "cache not cleared after catching up: $(cat "$cache")"
-case "$out" in *"in sync"*) ;; *) die "expected in-sync output, got: $out" ;; esac
+case "$out" in *"up to date"*) ;; *) die "expected up-to-date output, got: $out" ;; esac
 info "in-sync state clears the cache"
 
 # An unpushed local commit should surface as ahead with a push hint.
@@ -72,9 +72,18 @@ git --git-dir="$fake_home/.dotfiles" --work-tree="$fake_home" add file
 git --git-dir="$fake_home/.dotfiles" --work-tree="$fake_home" \
   -c user.name=test -c user.email=test@example.com commit -qm "local"
 HOME="$fake_home" bash "$DOTFILES_BIN" sync-status >/dev/null
-grep -q "1 ahead" "$cache" || die "cache missing '1 ahead': $(cat "$cache")"
+grep -q "1 commit to push" "$cache" || die "cache missing '1 commit to push': $(cat "$cache")"
 grep -q "dotfiles push" "$cache" || die "cache missing push hint: $(cat "$cache")"
 info "ahead state detected: $(cat "$cache")"
+
+# Counts pluralize: a second unpushed commit must read "2 commits to push".
+echo four > "$fake_home/file"
+git --git-dir="$fake_home/.dotfiles" --work-tree="$fake_home" add file
+git --git-dir="$fake_home/.dotfiles" --work-tree="$fake_home" \
+  -c user.name=test -c user.email=test@example.com commit -qm "local two"
+HOME="$fake_home" bash "$DOTFILES_BIN" sync-status >/dev/null
+grep -q "2 commits to push" "$cache" || die "cache missing '2 commits to push': $(cat "$cache")"
+info "plural form correct: $(cat "$cache")"
 
 # The nudge module must produce no output when sourced non-interactively.
 nudge_out="$(HOME="$fake_home" bash -c '. "$0"' "$ROOT_DIR/.config/shell/functions.d/dotfiles-nudge.sh" 2>&1)"
