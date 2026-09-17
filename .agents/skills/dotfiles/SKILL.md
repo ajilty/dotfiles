@@ -90,6 +90,15 @@ Gotchas:
 moshi-hook and herdr both regenerate `~/.claude/settings.json` and
 `~/.codex/hooks.json` and bake in the path the tool lived at that release.
 
+**Updating moshi-hook is two steps and neither of them is `install`.** Upgrade
+the binary, restart the daemon. `moshi-hook update` for the script install in
+`~/.local/bin` (`--version vX.Y.Z` pins), or `brew upgrade moshi-hook` where
+Homebrew owns it. Then restart the daemon however this machine runs it:
+`brew services restart moshi-hook` on macOS, the systemd user unit that
+`moshi-hook service install` registered on Linux. Hooks survive both, so there
+is nothing to re-normalize and nothing to commit afterwards. The rest of this
+section is why, and what to do on the rare occasion that is not enough.
+
 **Upgrading is safe; `moshi-hook install` is what clobbers.** Moshi's docs are
 explicit: "Pairing and installed agent hooks survive an upgrade, so there is no
 need to re-pair or re-run `moshi-hook install`." The Homebrew formula has no
