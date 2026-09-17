@@ -22,3 +22,4 @@ brew "playwright-mcp"
 
 ## tui
 brew "herdr"
+brew "rjyo/moshi/moshi-hook"

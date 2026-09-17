@@ -87,16 +87,25 @@ Gotchas:
 
 ## When a vendor installer rewrites our hook configs
 
-moshi-hook and herdr regenerate `~/.claude/settings.json` and `~/.codex/hooks.json`
-on install and bake in the path the tool lived at that release. We take their
-updates (they add new events we'd otherwise have to track by hand) and
-re-normalize afterwards.
+moshi-hook and herdr both regenerate `~/.claude/settings.json` and
+`~/.codex/hooks.json` and bake in the path the tool lived at that release.
+
+**Upgrading is safe; `moshi-hook install` is what clobbers.** Moshi's docs are
+explicit: "Pairing and installed agent hooks survive an upgrade, so there is no
+need to re-pair or re-run `moshi-hook install`." The Homebrew formula has no
+`post_install`, so `brew upgrade` never touches the configs either. Only an
+explicit `moshi-hook install` rewrites them, and when it does it "rewrites the
+current hook set, removes retired events" rather than merging, so every
+hand-edit in its own entries is lost.
+
+Run it only when you actually want a changed event set, typically after the
+daemon logs `agent hooks missing or stale; rerun install`. Then re-normalize.
 
 Two things catch the drift, neither of which fixes it. `agents-doctor` reports
 it under "hook portability" whenever you run it. The pre-commit hook blocks the
 commit outright if a re-pinned config is staged, which is the backstop that
-matters: a brew upgrade happens outside any agent session, so nothing would
-otherwise prompt you to look until the clobbered file was already tracked.
+matters: nothing prompts you to run the doctor at the moment a config gets
+rewritten.
 
 The drill either way: rewrite each command the check names to resolve at run
 time, keeping whatever `matcher`, `async`, and `timeout` fields the installer
@@ -114,7 +123,11 @@ rather than erroring every event. Note that herdr's state script is *not*
 tracked here, so on a fresh machine that second form is load-bearing.
 
 An installer-written `"$HOME/.local/bin/<tool>"` looks portable and isn't: it
-survives a new machine but breaks the next time the tool moves. Use `command -v`.
+survives a new machine but breaks the next time the tool moves. `command -v`
+also makes the install method a non-issue, which matters for moshi-hook
+specifically: it ships both as a Homebrew formula (`rjyo/moshi/moshi-hook`,
+tracked in `Brewfile.ai`) and as a `curl | sh` installer that drops it in
+`~/.local/bin`. Same hook entry works for either.
 
 Known exception: the `runlayer` entries are pinned to its uv tools directory.
 Left as-is deliberately, since it's $HOME-relative and guarded, and `command -v`
