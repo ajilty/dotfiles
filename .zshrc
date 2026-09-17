@@ -180,3 +180,6 @@ add-zsh-hook precmd _ajilty_keybindings
 # MANUALLY FORCE HOME
 # If we are stuck in the zinit repo (which happens after first-run compiles), go home.
 [[ "$PWD" == *"zinit.git"* ]] && cd "$HOME"
+
+# Homebrew added by Self Service Fri Sep  4 07:24:35 EDT 2026
+eval $(/opt/homebrew/bin/brew shellenv)
