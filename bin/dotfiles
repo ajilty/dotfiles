@@ -15,6 +15,228 @@ df_git() {
     git --git-dir="$GIT_DIR_PATH" --work-tree="$HOME" "$@"
 }
 
+# Sync-status cache: one line of drift vs the remote, empty when in sync.
+# Read cheaply by the new-shell nudge (functions.d/dotfiles-nudge.sh).
+SYNC_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/sync-nudge"
+SYNC_FETCH_MAX_AGE_MIN=240
+
+# Wording helpers for the drift message: correct plurals and a sentence-style
+# list ("a, b and c") so the nudge reads as English rather than git shorthand.
+plural() {
+    # plural <count> <singular> [<plural>]; defaults to appending an "s".
+    if [ "$1" -eq 1 ]; then printf '%s' "$2"; else printf '%s' "${3:-$2s}"; fi
+}
+
+join_clauses() {
+    local out="" n=$#
+    while [ "$#" -gt 0 ]; do
+        case "$#" in
+            "$n") out="$1" ;;
+            1)    out="$out and $1" ;;
+            *)    out="$out, $1" ;;
+        esac
+        shift
+    done
+    printf '%s' "$out"
+}
+
+refresh_sync_status() {
+    [ -d "$GIT_DIR_PATH" ] || return 0
+    mkdir -p "$(dirname "$SYNC_CACHE")"
+
+    local branch=""
+    branch="$(df_git symbolic-ref --short -q HEAD 2>/dev/null || true)"
+
+    # Fetch at most every SYNC_FETCH_MAX_AGE_MIN minutes (FETCH_HEAD mtime
+    # is the stamp). The explicit refspec matters: the live repo is a plain
+    # `clone --bare` with no upstream config, so a bare `fetch origin`
+    # would update FETCH_HEAD only; this populates the origin/<branch> ref
+    # the comparison below needs. Counts recompute from local refs on
+    # every run, so the nudge clears right after a pull/push/commit.
+    local fetch_head="$GIT_DIR_PATH/FETCH_HEAD"
+    if [ -n "$branch" ]; then
+        if [ ! -e "$fetch_head" ] || [ -n "$(find "$fetch_head" -mmin +"$SYNC_FETCH_MAX_AGE_MIN" 2>/dev/null)" ]; then
+            GIT_TERMINAL_PROMPT=0 df_git fetch -q origin \
+                "+refs/heads/$branch:refs/remotes/origin/$branch" >/dev/null 2>&1 </dev/null || true
+        fi
+    fi
+
+    local remote_ref behind=0 ahead=0 dirty
+    remote_ref="refs/remotes/origin/$branch"
+    if [ -n "$branch" ] && df_git rev-parse --verify -q "$remote_ref" >/dev/null 2>&1; then
+        read -r behind ahead <<<"$(df_git rev-list --left-right --count "$remote_ref...HEAD" 2>/dev/null || echo '0 0')"
+    fi
+    # -uno: skip untracked enumeration; the inverse-allowlist makes it huge.
+    dirty="$(df_git status --porcelain -uno 2>/dev/null | wc -l | tr -d ' ')"
+
+    # Message is plain English, one line: what is out of step, then the
+    # command to fix it. Counts read as sentence clauses ("2 commits to
+    # pull"), not git's ahead/behind shorthand.
+    local -a parts=()
+    [ "$behind" -gt 0 ] && parts+=("$behind $(plural "$behind" commit) to pull")
+    if [ "$ahead" -gt 0 ]; then
+        # After a "to pull" clause the noun is already established.
+        if [ "$behind" -gt 0 ]; then
+            parts+=("$ahead to push")
+        else
+            parts+=("$ahead $(plural "$ahead" commit) to push")
+        fi
+    fi
+    [ "$dirty" -gt 0 ] && parts+=("$dirty uncommitted $(plural "$dirty" change)")
+
+    local tmp="${SYNC_CACHE}.tmp.$$"
+    if [ "${#parts[@]}" -eq 0 ]; then
+        : > "$tmp"
+    else
+        local action
+        if [ "$behind" -gt 0 ] && [ "$ahead" -gt 0 ]; then
+            action='Run "dotfiles pull", then "dotfiles push".'
+        elif [ "$behind" -gt 0 ]; then
+            action='Run "dotfiles pull" to catch up.'
+        elif [ "$ahead" -gt 0 ]; then
+            action="Run \"dotfiles push\" to publish $(plural "$ahead" it them)."
+        else
+            action="Run \"dotfiles status\" to see $(plural "$dirty" it them)."
+        fi
+        printf 'Your dotfiles have %s. %s\n' "$(join_clauses "${parts[@]}")" "$action" > "$tmp"
+    fi
+    mv "$tmp" "$SYNC_CACHE"
+}
+
+# Detached refresh after commands that change sync state; never blocks or
+# fails the foreground command.
+refresh_sync_status_bg() {
+    ( refresh_sync_status >/dev/null 2>&1 </dev/null & )
+}
+
+# --- content blocklist -----------------------------------------------
+# The pre-commit hook scans staged diffs against ~/.local/config/dotfiles/
+# blocklist (names, emails, host paths) so private strings never reach the
+# public remote. These two verbs keep that list fetched and audit history
+# the hook never re-checks. Previously the shell functions
+# `dotfiles-blocklist-sync` / `-scan`; folded in so `dotfiles help` lists
+# the whole typed surface.
+BLOCKLIST_DIR="$HOME/.local/config/dotfiles"
+BLOCKLIST_FILE="$BLOCKLIST_DIR/blocklist"
+
+blocklist_sync() {
+    local gist_id_file="$BLOCKLIST_DIR/gist-id"
+    local out_file="$BLOCKLIST_FILE"
+    local tmp_file="${out_file}.tmp.$$"
+
+    if [ ! -f "$gist_id_file" ]; then
+        echo "dotfiles blocklist sync: gist id file missing." >&2
+        echo "  Create $gist_id_file containing just the private gist ID," >&2
+        echo "  then re-run. The gist must contain a file named dotfiles-blocklist.txt." >&2
+        return 1
+    fi
+
+    local gist_id
+    gist_id=$(tr -d '[:space:]' < "$gist_id_file")
+    if [ -z "$gist_id" ]; then
+        echo "dotfiles blocklist sync: $gist_id_file is empty." >&2
+        return 1
+    fi
+
+    if ! command -v gh >/dev/null 2>&1; then
+        echo "dotfiles blocklist sync: gh CLI not installed." >&2
+        return 1
+    fi
+
+    if ! gh auth status --hostname github.com >/dev/null 2>&1; then
+        echo "dotfiles blocklist sync: gh not authenticated. Run: gh auth login --hostname github.com" >&2
+        return 1
+    fi
+
+    mkdir -p "$BLOCKLIST_DIR"
+
+    if ! gh api "gists/$gist_id" --jq '.files["dotfiles-blocklist.txt"].content' > "$tmp_file" 2>/dev/null; then
+        rm -f "$tmp_file"
+        echo "dotfiles blocklist sync: gh api fetch failed for gist $gist_id." >&2
+        echo "  Check the gist ID and that it contains a file named dotfiles-blocklist.txt." >&2
+        return 1
+    fi
+
+    if [ ! -s "$tmp_file" ]; then
+        rm -f "$tmp_file"
+        echo "dotfiles blocklist sync: fetched blocklist is empty. Refusing to overwrite." >&2
+        return 1
+    fi
+
+    mv "$tmp_file" "$out_file"
+
+    local pattern_count
+    pattern_count=$(grep -cv -E '^\s*(#|$)' "$out_file" || true)
+    echo "blocklist synced ($pattern_count patterns) -> $out_file"
+
+    blocklist_scan
+}
+
+blocklist_scan() {
+    # Optional arg: git dir to scan (default: the live dotfiles repo).
+    local git_dir="${1:-$GIT_DIR_PATH}"
+
+    if [ ! -f "$BLOCKLIST_FILE" ]; then
+        echo "dotfiles blocklist scan: no blocklist at $BLOCKLIST_FILE. Run 'dotfiles blocklist sync' first." >&2
+        return 1
+    fi
+
+    local patterns_tmp="${TMPDIR:-/tmp}/blocklist-scan.$$"
+    local fixed_tmp="${patterns_tmp}.fixed"
+    local regex_tmp="${patterns_tmp}.regex"
+    grep -v -E '^[[:space:]]*(#|$)' "$BLOCKLIST_FILE" > "$patterns_tmp" || true
+    if [ ! -s "$patterns_tmp" ]; then
+        rm -f "$patterns_tmp"
+        echo "dotfiles blocklist scan: blocklist has no patterns; nothing to scan."
+        return 0
+    fi
+    grep -v '^re:' "$patterns_tmp" > "$fixed_tmp" || true
+    sed -n 's/^re://p' "$patterns_tmp" > "$regex_tmp" || true
+
+    local -a revs
+    revs=($(git --git-dir="$git_dir" rev-list --all))
+
+    # Match semantics mirror the pre-commit hook (case-insensitive; fixed
+    # strings by default, `re:` entries as extended regexes), but binaries
+    # are scanned too: .pyc and friends embed paths. git grep exits 1 on a
+    # clean scan, which is the good case here, hence the `|| true`.
+    local hits=""
+    if [ -s "$fixed_tmp" ]; then
+        hits=$(git --git-dir="$git_dir" grep -l -i -F -f "$fixed_tmp" "${revs[@]}" 2>/dev/null || true)
+    fi
+    if [ -s "$regex_tmp" ]; then
+        hits=$(printf '%s\n%s' "$hits" \
+            "$(git --git-dir="$git_dir" grep -l -i -E -f "$regex_tmp" "${revs[@]}" 2>/dev/null || true)" \
+            | grep -v '^$' | sort -u || true)
+    fi
+
+    if [ -z "$hits" ]; then
+        rm -f "$patterns_tmp" "$fixed_tmp" "$regex_tmp"
+        echo "blocklist history scan clean (${#revs[@]} $(plural "${#revs[@]}" commit))"
+        return 0
+    fi
+
+    local n_commits
+    n_commits=$(echo "$hits" | cut -d: -f1 | sort -u | wc -l | tr -d ' ')
+    echo "ERROR: blocklist patterns found in committed history ($n_commits of ${#revs[@]} $(plural "${#revs[@]}" commit)):" >&2
+    echo "  files:" >&2
+    echo "$hits" | sed 's/^[^:]*://' | sort -u | sed 's/^/    /' >&2
+    echo "  patterns:" >&2
+    local pattern
+    while IFS= read -r pattern; do
+        if [ "${pattern#re:}" != "$pattern" ]; then
+            if git --git-dir="$git_dir" grep -q -i -E -e "${pattern#re:}" "${revs[@]}" 2>/dev/null; then
+                echo "    - $pattern" >&2
+            fi
+        elif git --git-dir="$git_dir" grep -q -i -F -e "$pattern" "${revs[@]}" 2>/dev/null; then
+            echo "    - $pattern" >&2
+        fi
+    done < "$patterns_tmp"
+    rm -f "$patterns_tmp" "$fixed_tmp" "$regex_tmp"
+    echo "  History already public? Scrub with git-filter-repo + force push (see dotfiles skill)." >&2
+    return 1
+}
+
 print_help() {
     cat <<'EOF'
 dotfiles - opinionated bare-repo management of your user config
@@ -45,6 +267,21 @@ SUBCOMMANDS
                     The same prediction without pulling; exits 1 on a
                     predicted conflict. Pass revisions to replay a past case.
   update            `pull` (same preflight), then `zinit update --all`.
+  sync-status       Recompute drift vs the remote (commits to pull/push,
+                    uncommitted changes) and print it as one plain-English
+                    line, or confirm you are up to date. Backs the new-shell
+                    nudge: results cache at ~/.cache/dotfiles/sync-nudge,
+                    interactive shells print the cache at the first prompt
+                    and refresh it in a background job. Fetches origin at
+                    most every 4h; local counts recompute every run.
+  blocklist <verb>  Private-string guard for this public repo. The
+                    pre-commit hook scans staged diffs against
+                    ~/.local/config/dotfiles/blocklist.
+                    sync  Fetch that list from the private gist, then scan.
+                    scan  Grep the FULL history (all refs) against it: the
+                          hook only ever sees staged diffs, so a pattern
+                          added after a string was committed is otherwise
+                          never re-checked.
   hook              Agent-harness guard: reads a PreToolUse JSON payload on
                     stdin and emits a once-per-session reminder when a tool
                     call touches dotfiles-managed config, edits the shared
@@ -374,6 +611,7 @@ case "${1:-help}" in
             exit 1
         fi
         df_git add -f -- "$@"
+        refresh_sync_status_bg
         echo "tracked and staged: $*"
         echo "next: dotfiles commit (multi-line: -F <file>)"
         ;;
@@ -388,10 +626,20 @@ case "${1:-help}" in
         shift
         preflight_pull
         df_git pull "$@"
+        refresh_sync_status_bg
+        ;;
+    sync-status)
+        refresh_sync_status
+        if [ -s "$SYNC_CACHE" ]; then
+            cat "$SYNC_CACHE"
+        else
+            echo "Your dotfiles are up to date with the remote."
+        fi
         ;;
     update)
         preflight_pull
         df_git pull
+        refresh_sync_status_bg
         if command -v zsh >/dev/null 2>&1; then
             zsh -ic 'zinit update --all' || echo "zinit update failed; run 'zinit update --all' in an interactive shell" >&2
         else
@@ -402,11 +650,41 @@ case "${1:-help}" in
         shift
         guard_add "$@"
         df_git add "$@"
+        refresh_sync_status_bg
+        ;;
+    blocklist)
+        shift
+        case "${1:-help}" in
+            sync)
+                blocklist_sync
+                ;;
+            scan)
+                shift
+                blocklist_scan "$@"
+                ;;
+            help|-h|--help)
+                cat <<'EOF'
+usage: dotfiles blocklist <verb>
+
+  sync            Fetch the private blocklist gist into
+                  ~/.local/config/dotfiles/blocklist, then scan history.
+  scan [<dir>]    Grep the full committed history against the blocklist.
+EOF
+                ;;
+            *)
+                echo "dotfiles blocklist: unknown verb '$1' (try: sync, scan)" >&2
+                exit 1
+                ;;
+        esac
         ;;
     hook)
         run_hook
         ;;
     *)
-        exec git --git-dir="$GIT_DIR_PATH" --work-tree="$HOME" "$@"
+        # In-process (not exec) so the nudge cache refreshes after any
+        # passthrough command; read-only commands just cost one throttled
+        # background job. set -e preserves git's exit code on failure.
+        df_git "$@"
+        refresh_sync_status_bg
         ;;
 esac

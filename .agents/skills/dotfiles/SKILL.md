@@ -8,7 +8,7 @@ description: >-
 
 Operational notes for LLM agents working with the ajilty dotfiles system: a bare git repo at `~/.dotfiles/` with `$HOME` as the work tree, managed through the `dotfiles` command. The conventions are non-obvious and a few will look like bugs if you don't know them.
 
-**First stop: run `dotfiles help`.** The command (a script at `~/bin/dotfiles`, works in non-interactive shells, bash and zsh alike) documents day-to-day usage itself: staging rules (`add -u` vs `track`), identity rules, commit mechanics, the pull-recovery quickstart, and subcommands (`tracked`, `track`, `update`). Unrecognized subcommands pass through to git with the right `--git-dir`/`--work-tree`. Never use plain `git` against `$HOME`. This file only covers what the help screen can't: recovery depth, skill management, and system layout.
+**First stop: run `dotfiles help`.** The command (a script at `~/bin/dotfiles`, works in non-interactive shells, bash and zsh alike) documents day-to-day usage itself: staging rules (`add -u` vs `track`), identity rules, commit mechanics, the pull-recovery quickstart, and the current subcommand list (run it; the list grows). Unrecognized subcommands pass through to git with the right `--git-dir`/`--work-tree`. Never use plain `git` against `$HOME`. This file only covers what the help screen can't: recovery depth, skill management, and system layout.
 
 ## Improve this system when it fails you
 
@@ -48,12 +48,12 @@ The pre-commit hook scans staged diffs against a private blocklist fetched from 
 mkdir -p ~/.local/config/dotfiles
 echo "<private-gist-id>" > ~/.local/config/dotfiles/gist-id
 chmod 600 ~/.local/config/dotfiles/gist-id
-dotfiles-blocklist-sync
+dotfiles blocklist sync
 ```
 
-The gist must contain a file literally named `dotfiles-blocklist.txt`. After 30 days the local copy goes stale (warns, still scans); re-run `dotfiles-blocklist-sync`.
+The gist must contain a file literally named `dotfiles-blocklist.txt`. After 30 days the local copy goes stale (warns, still scans); re-run `dotfiles blocklist sync`.
 
-**History scan.** The hook only checks staged added lines, so a pattern added to the blocklist *after* a matching string was committed is never re-checked. `dotfiles-blocklist-scan` (run automatically after every `dotfiles-blocklist-sync`; both in `~/.config/shell/functions.d/dotfiles.sh`) greps the entire history, all refs, against the blocklist and fails loudly on a hit. On a hit: fix the worktree file first (or the string re-enters history on the next commit), then scrub with `git filter-repo --replace-text` on a fresh mirror clone, verify (`git log --all -S <pattern>` and `git grep -iF <pattern> $(git rev-list --all)` both empty), and force-push only with explicit user confirmation. GitHub keeps old SHAs and read-only `refs/pull/*` fetchable until a support purge; note that residual in the wrap-up.
+**History scan.** The hook only checks staged added lines, so a pattern added to the blocklist *after* a matching string was committed is never re-checked. `dotfiles blocklist scan` (run automatically after every `dotfiles blocklist sync`) greps the entire history, all refs, against the blocklist and fails loudly on a hit. On a hit: fix the worktree file first (or the string re-enters history on the next commit), then scrub with `git filter-repo --replace-text` on a fresh mirror clone, verify (`git log --all -S <pattern>` and `git grep -iF <pattern> $(git rev-list --all)` both empty), and force-push only with explicit user confirmation. GitHub keeps old SHAs and read-only `refs/pull/*` fetchable until a support purge; note that residual in the wrap-up.
 
 ## Installing agent skills
 

@@ -34,7 +34,7 @@ check "Committer" "$(git var GIT_COMMITTER_IDENT)"
 
 # ---------------------------------------------------------------------------
 # Content guard: scan staged diff against a local, never-tracked blocklist.
-# Blocklist is fetched from a private gist via `dotfiles-blocklist-sync`.
+# Blocklist is fetched from a private gist via `dotfiles blocklist sync`.
 # Missing file -> warn, don't block (bootstrap-safe on fresh machines).
 # Stale file   -> warn, scan anyway.
 # Pattern hit  -> block.
@@ -47,13 +47,13 @@ warn() { echo "WARN: $*" >&2; }
 
 if [[ ! -f "$BLOCKLIST_FILE" ]]; then
     warn "dotfiles blocklist not initialized on this machine."
-    warn "  Run \`dotfiles-blocklist-sync\` to fetch it. Skipping content scan."
+    warn "  Run \`dotfiles blocklist sync\` to fetch it. Skipping content scan."
     exit 0
 fi
 
 if [[ -n "$(find "$BLOCKLIST_FILE" -mtime +"$STALE_DAYS" -print 2>/dev/null)" ]]; then
     warn "dotfiles blocklist is more than $STALE_DAYS days old."
-    warn "  Run \`dotfiles-blocklist-sync\` to refresh. Scanning with stale list."
+    warn "  Run \`dotfiles blocklist sync\` to refresh. Scanning with stale list."
 fi
 
 # Read non-blank, non-comment patterns into an array.
