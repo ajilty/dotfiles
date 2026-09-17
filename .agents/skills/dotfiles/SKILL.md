@@ -106,13 +106,35 @@ evidence that anything changed. Running install to silence it re-pins every
 path, which is the exact loop this section exists to break. Never run
 `moshi-hook install` just to clear that warning.
 
-Which leaves no signal for a genuinely changed event set, so treat it as
-deliberate maintenance rather than something to react to: after a moshi
-release that mentions new agent events, run `moshi-hook install`, read
-`dotfiles diff` to see every entry it rewrote, re-normalize each one to the
-canonical forms below, and let `dotfiles doctor` confirm. The guards make this
-safe to do on the live config: the commit is blocked until the re-pinning is
-undone, so a half-finished pass cannot reach the repo.
+**The signal is still recoverable, without running install.** `moshi-hook
+status --json` lists a `missing[]` per target, and the entries read
+"<Event> entries outdated". Today every event it names is one we already have
+a moshi entry for, and it names nothing we lack, which is the string mismatch
+talking. So an event it names that we have *no* entry for is the real thing:
+
+```sh
+for pair in "claude:$HOME/.claude/settings.json" "codex:$HOME/.codex/hooks.json"; do
+    target="${pair%%:*}"; cfg="${pair#*:}"
+    comm -13 \
+      <(jq -r '.hooks | to_entries[]
+               | select(any(.value[]?.hooks[]?.command // ""; test("moshi-hook")))
+               | .key' "$cfg" | sort) \
+      <(moshi-hook status --json \
+          | jq -r --arg t "$target" '.hooks[] | select(.target==$t) | .missing[]' \
+          | sed 's/ entries .*//' | sort) \
+      | sed "s/^/$target: new event /"
+done
+```
+
+Silence means the nag is only about our rewrite and there is nothing to do.
+A named event is worth adding by hand, in the canonical form below, which
+costs one entry and avoids the rewrite-and-revert cycle entirely.
+
+If you would rather let the installer do it, that is still safe on the live
+config: run `moshi-hook install`, read `dotfiles diff` to see every entry it
+rewrote, re-normalize each one, and let `dotfiles doctor` confirm. The
+pre-commit guard blocks the commit until they resolve at run time again, so a
+half-finished pass cannot reach the repo.
 
 Two things catch the drift, neither of which fixes it. `dotfiles doctor` reports
 it under "hook portability" whenever you run it. The pre-commit hook blocks the
