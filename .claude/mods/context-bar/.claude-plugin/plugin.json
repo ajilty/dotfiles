@@ -1,0 +1,7 @@
+{
+  "name": "context-bar",
+  "version": "0.1.0",
+  "description": "Stacked context-window bar above the prompt, one color per /context category, with headroom to auto-compact. Toggle with /context-bar.",
+  "author": { "name": "ajilty" },
+  "types": "./types/index.d.ts"
+}
