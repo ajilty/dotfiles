@@ -90,6 +90,15 @@ Gotchas:
 moshi-hook and herdr both regenerate `~/.claude/settings.json` and
 `~/.codex/hooks.json` and bake in the path the tool lived at that release.
 
+**Updating moshi-hook is two steps and neither of them is `install`.** Upgrade
+the binary, restart the daemon. `moshi-hook update` for the script install in
+`~/.local/bin` (`--version vX.Y.Z` pins), or `brew upgrade moshi-hook` where
+Homebrew owns it. Then restart the daemon however this machine runs it:
+`brew services restart moshi-hook` on macOS, the systemd user unit that
+`moshi-hook service install` registered on Linux. Hooks survive both, so there
+is nothing to re-normalize and nothing to commit afterwards. The rest of this
+section is why, and what to do on the rare occasion that is not enough.
+
 **Upgrading is safe; `moshi-hook install` is what clobbers.** Moshi's docs are
 explicit: "Pairing and installed agent hooks survive an upgrade, so there is no
 need to re-pair or re-run `moshi-hook install`." The Homebrew formula has no
@@ -98,8 +107,43 @@ explicit `moshi-hook install` rewrites them, and when it does it "rewrites the
 current hook set, removes retired events" rather than merging, so every
 hand-edit in its own entries is lost.
 
-Run it only when you actually want a changed event set, typically after the
-daemon logs `agent hooks missing or stale; rerun install`. Then re-normalize.
+**Ignore the stale-hooks nag. It is permanent and it is about us.** The daemon
+logs `agent hooks missing or stale; rerun install` by comparing the command
+*strings* it wrote against what is in the config, not the set of events. Our
+`command -v` rewrite will never match, so the warning fires forever and is not
+evidence that anything changed. Running install to silence it re-pins every
+path, which is the exact loop this section exists to break. Never run
+`moshi-hook install` just to clear that warning.
+
+**The signal is still recoverable, without running install.** `moshi-hook
+status --json` lists a `missing[]` per target, and the entries read
+"<Event> entries outdated". Today every event it names is one we already have
+a moshi entry for, and it names nothing we lack, which is the string mismatch
+talking. So an event it names that we have *no* entry for is the real thing:
+
+```sh
+for pair in "claude:$HOME/.claude/settings.json" "codex:$HOME/.codex/hooks.json"; do
+    target="${pair%%:*}"; cfg="${pair#*:}"
+    comm -13 \
+      <(jq -r '.hooks | to_entries[]
+               | select(any(.value[]?.hooks[]?.command // ""; test("moshi-hook")))
+               | .key' "$cfg" | sort) \
+      <(moshi-hook status --json \
+          | jq -r --arg t "$target" '.hooks[] | select(.target==$t) | .missing[]' \
+          | sed 's/ entries .*//' | sort) \
+      | sed "s/^/$target: new event /"
+done
+```
+
+Silence means the nag is only about our rewrite and there is nothing to do.
+A named event is worth adding by hand, in the canonical form below, which
+costs one entry and avoids the rewrite-and-revert cycle entirely.
+
+If you would rather let the installer do it, that is still safe on the live
+config: run `moshi-hook install`, read `dotfiles diff` to see every entry it
+rewrote, re-normalize each one, and let `dotfiles doctor` confirm. The
+pre-commit guard blocks the commit until they resolve at run time again, so a
+half-finished pass cannot reach the repo.
 
 Two things catch the drift, neither of which fixes it. `dotfiles doctor` reports
 it under "hook portability" whenever you run it. The pre-commit hook blocks the
