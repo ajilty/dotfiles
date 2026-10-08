@@ -1,0 +1,43 @@
+name: claude-config
+
+# Validates the tracked Claude Code config with Claude Code's own checks:
+# settings.json against the CLI's settings schema, skill frontmatter, and
+# each mod's manifest, tests and types. Installs the latest CLI on purpose,
+# so a release that breaks a mod or retires a setting fails here before the
+# next `dotfiles pull` instead of silently at load time.
+#
+# Offline: no sign-in, no secrets, nothing sent to the API.
+#
+# To reproduce locally:
+#
+#   bash test/claude-config.sh
+
+on:
+  pull_request:
+    paths:
+      - '.claude/**'
+      - '.agents/skills/**'
+      - 'test/claude-config.sh'
+      - '.github/workflows/claude-config.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  claude-config:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Claude Code and TypeScript
+        run: npm install -g @anthropic-ai/claude-code typescript@5
+
+      - name: Check Claude Code config
+        run: bash test/claude-config.sh
