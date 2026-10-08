@@ -8,11 +8,12 @@
 #             "Invalid settings" section, and prove that reading still works by
 #             feeding it a known-bad file first.
 #   skills    `claude plugin validate --strict` on the skills tree.
-#   mods      per mod: validate, run its tests, and type-check it against the
-#             API types the engine lays beside the mod when it loads one (a
-#             warning, not a failure, when this build does not lay them).
+#   mods      per mod: `claude plugin validate` and `claude plugin test`, the
+#             pair the mods docs recommend for CI. Type-checking stays a local
+#             step: Claude Code writes a mod's type files only in a session
+#             where the mod is being developed (2.1.295 and later).
 #
-# Needs `claude` and `tsc` on PATH. No sign-in or network: every run uses a
+# Needs `claude` on PATH. No sign-in or network: every run uses a
 # throwaway HOME and an unreachable API endpoint, so nothing is sent anywhere.
 #
 #   bash test/claude-config.sh
@@ -66,19 +67,6 @@ for mod in "$ROOT"/.claude/mods/*/; do
   echo "== mod: $name"
   claude plugin validate --strict "$mod" || { fail "mod $name does not validate"; continue; }
   claude plugin test "$mod" || fail "mod $name tests fail"
-
-  # Loading the mod once lays its API types and tsconfig; the model call
-  # after that cannot connect and is cut short.
-  home="$WORK/types-$name"
-  mkdir -p "$home"
-  timeout 30 bash -c "$(declare -f offline_claude); offline_claude '$home' --plugin-dir '$mod' -p ok" >/dev/null 2>&1 || true
-  # Laying them is not a documented contract: some builds and sessions skip
-  # it. Validate and the tests above still gate; only the type check waits.
-  if [ ! -f "$mod/.claude-plugin/types/claude-code/index.d.ts" ]; then
-    echo "::warning::mod $name: this Claude Code did not lay its API types; type check skipped (validate and tests still ran)"
-    continue
-  fi
-  tsc -p "$mod" || fail "mod $name does not type-check against this Claude Code's API"
 done
 
 if [ "$failed" -ne 0 ]; then

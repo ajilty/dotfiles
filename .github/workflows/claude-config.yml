@@ -2,7 +2,7 @@ name: claude-config
 
 # Validates the tracked Claude Code config with Claude Code's own checks:
 # settings.json against the CLI's settings schema, skill frontmatter, and
-# each mod's manifest, tests and types. Installs the latest CLI on purpose,
+# each mod's manifest and tests. Installs the latest CLI on purpose,
 # so a release that breaks a mod or retires a setting fails here before the
 # next `dotfiles pull` instead of silently at load time.
 #
@@ -36,8 +36,8 @@ jobs:
         with:
           node-version: 22
 
-      - name: Install Claude Code and TypeScript
-        run: npm install -g @anthropic-ai/claude-code typescript@5
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
 
       - name: Check Claude Code config
         run: bash test/claude-config.sh
