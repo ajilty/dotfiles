@@ -140,6 +140,7 @@ would assume the shim is on PATH. Revisit if it ever breaks.
 - `~/.config/git/dotfiles.config` — hooksPath + identity, included via `[includeIf "gitdir:~/.dotfiles/"]`; hooks live in `~/.dotfiles-hooks/`.
 - `~/.agents/skills/` — canonical skills tree (tracked); `~/.claude/skills` symlinks to it; `~/.agents/.skill-lock.json` — CLI-install manifest (tracked).
 - `~/.config/homebrew/Brewfile.*` — categorized package manifests, maintained via `brew-sync`.
+- `~/.claude/mods/<name>/` — homegrown Claude Code mods (tracked), loaded live from the folder via `CLAUDE_CODE_PLUGIN_DIRS` in `~/.claude/settings.json` (`:`-separated; append new mods there). Check with `claude plugin validate` and `claude plugin test` on the folder before committing.
 - `~/.claude/settings.json` — tracked; `~/.claude/settings.local.json` — local-only (globally ignored).
 - `~/.local/config/` — work/local-only config (env presets, dotfiles gist-id); part of the system but intentionally untracked.
 - `dotfiles-shell` alias — exports `GIT_DIR`/`GIT_WORK_TREE` for a whole shell when that's more convenient than the wrapper.
