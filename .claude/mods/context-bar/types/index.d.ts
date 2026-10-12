@@ -7,8 +7,10 @@ export type Reading = {
   compactAt: number | null
 }
 
+export type AgentReading = { tokens: number; description: string }
+
 declare module 'claude-code' {
   interface PluginState {
-    'context-bar': { reading: Reading | null; isOn: boolean }
+    'context-bar': { reading: Reading | null; isOn: boolean; agents: Record<string, AgentReading> }
   }
 }

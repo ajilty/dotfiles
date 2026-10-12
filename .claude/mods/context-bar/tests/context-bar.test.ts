@@ -85,4 +85,35 @@ for (const surface of ['terminal', 'desktop'] as const) {
     expect(await ui.find({ type: 'Text', text: 'to compact' })).toBeUndefined()
     expect(await ui.find({ type: 'Text', text: 'engine band' })).toBeDefined()
   })
+
+  test(`shows the viewed subagent's context on ${surface}`, async ($, on) => {
+    on('session.usage', () => ({ value: { context: { tokens: 10_000, window: 200_000, percent: 5 } } }) as never)
+    on('session.measure', () => ({ changed: [] }) as never)
+    on('agent.list', () => ({ value: [{ id: 'a1', description: 'Survey the repo', type: 'Explore', status: 'running' }] }) as never)
+    on('turn.step', async function* ($, e) {
+      yield { kind: 'text', index: 0, text: 'ok' } as never
+      return {
+        turnId: e.turnId, index: e.index, answer: 'ok', toolUses: [], stopReason: 'end_turn',
+        usage: { input_tokens: 1_000, output_tokens: 50, cache_read_input_tokens: 150_000, cache_creation_input_tokens: 9_000, model: 'test' },
+      } as never
+    })
+    mock.store(on)
+    await $.session.measure({ context: { window: 200_000 }, rateLimits: [] } as never)
+
+    const stream = $.turn.step({ turnId: 't', index: 0, model: 'test', messageCount: 1, agentId: 'a1' } as never)
+    let step = await stream.next()
+    while (step.done !== true) step = await stream.next()
+
+    const props = { hasSurvey: false, isWorking: false, maxRows: 10, bodyColumns: 100 }
+    const agentView = await $.ui.mount({ plugin: 'context-bar', surface, component: 'AbovePrompt', props: { ...props, view: { agentId: 'a1' } } as never })
+    expect(await agentView.find({ type: 'Text', text: 'Explore: Survey the repo · 160k/200k 80%' })).toBeDefined()
+    await agentView.unmount()
+
+    const unknown = await $.ui.mount({ plugin: 'context-bar', surface, component: 'AbovePrompt', props: { ...props, view: { agentId: 'nobody' } } as never })
+    expect(await unknown.find({ type: 'Text', text: 'no response yet' })).toBeDefined()
+    await unknown.unmount()
+
+    const main = await $.ui.mount({ plugin: 'context-bar', surface, component: 'AbovePrompt', props: { ...props, view: {} } as never })
+    expect(await main.find({ type: 'Text', text: '10k/200k 5%' })).toBeDefined()
+  })
 }
