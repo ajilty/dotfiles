@@ -68,8 +68,22 @@ for (const surface of ['terminal', 'desktop'] as const) {
     // The engine's own band, drawn when the mod hands the render on.
     on('ui.render', ($, e) => $.ui.resolve(e).Text({ children: 'engine band' }) as never)
     on('command.run', () => ({ text: '' }) as never)
+    on('prompt.submit', ($, e) => ({ text: e.text }) as never)
     mock.store(on)
     await $.session.measure({ context: { window: 200_000 }, rateLimits: [] } as never)
+
+    // Hidden by default: the engine's own band shows.
+    const hidden = await $.ui.mount({
+      plugin: 'context-bar',
+      surface,
+      component: 'AbovePrompt',
+      props: { hasSurvey: false, isWorking: false, maxRows: 10, bodyColumns: 100 } as never,
+    })
+    expect(await hidden.find({ type: 'Text', text: 'engine band' })).toBeDefined()
+    await hidden.unmount()
+
+    const pinned = await $.command.run({ command: 'context-bar', args: 'on' } as never)
+    expect(pinned).toMatchObject({ text: 'Context bar pinned. /context-bar off hides it.' })
 
     const ui = await $.ui.mount({
       plugin: 'context-bar',
@@ -81,7 +95,15 @@ for (const surface of ['terminal', 'desktop'] as const) {
     expect(await ui.find({ type: 'Text', text: 'Messages 40k' })).toBeDefined()
 
     const off = await $.command.run({ command: 'context-bar', args: '' } as never)
-    expect(off).toMatchObject({ text: 'Context bar off.' })
+    expect(off).toMatchObject({ text: 'Context bar hidden.' })
+    expect(await ui.find({ type: 'Text', text: 'to compact' })).toBeUndefined()
+    expect(await ui.find({ type: 'Text', text: 'engine band' })).toBeDefined()
+
+    // A bare /context-bar peeks: shown now, gone once a prompt goes out.
+    const peek = await $.command.run({ command: 'context-bar', args: '' } as never)
+    expect(peek).toMatchObject({ text: 'Context bar shown until your next prompt. /context-bar on pins it.' })
+    expect(await ui.find({ type: 'Text', text: 'to compact' })).toBeDefined()
+    await $.prompt.submit({ text: 'next thing', origin: { kind: 'composer' } } as never)
     expect(await ui.find({ type: 'Text', text: 'to compact' })).toBeUndefined()
     expect(await ui.find({ type: 'Text', text: 'engine band' })).toBeDefined()
   })
@@ -90,6 +112,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
     on('session.usage', () => ({ value: { context: { tokens: 10_000, window: 200_000, percent: 5 } } }) as never)
     on('session.measure', () => ({ changed: [] }) as never)
     on('agent.list', () => ({ value: [{ id: 'a1', description: 'Survey the repo', type: 'Explore', status: 'running' }] }) as never)
+    on('command.run', () => ({ text: '' }) as never)
     on('turn.step', async function* ($, e) {
       yield { kind: 'text', index: 0, text: 'ok' } as never
       return {
@@ -99,6 +122,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
     })
     mock.store(on)
     await $.session.measure({ context: { window: 200_000 }, rateLimits: [] } as never)
+    await $.command.run({ command: 'context-bar', args: 'on' } as never)
 
     const stream = $.turn.step({ turnId: 't', index: 0, model: 'test', messageCount: 1, agentId: 'a1' } as never)
     let step = await stream.next()
