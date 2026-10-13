@@ -7,8 +7,13 @@ export type Reading = {
   compactAt: number | null
 }
 
+export type AgentReading = { tokens: number; description: string }
+
+// off: hidden; peek: shown until the next prompt is sent; on: pinned.
+export type Mode = 'off' | 'peek' | 'on'
+
 declare module 'claude-code' {
   interface PluginState {
-    'context-bar': { reading: Reading | null; isOn: boolean }
+    'context-bar': { reading: Reading | null; mode: Mode; agents: Record<string, AgentReading> }
   }
 }

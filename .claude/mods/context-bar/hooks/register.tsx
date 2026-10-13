@@ -3,20 +3,28 @@
 // auto-compact (the number that actually matters with
 // CLAUDE_AUTOCOMPACT_PCT_OVERRIDE set below 100).
 //
-// session.start: register /context-bar, restore the on/off choice, read once.
+// Hidden by default. /context-bar shows the band until the next prompt is
+// sent; /context-bar on pins it, /context-bar off hides it (both remembered).
+//
+// session.start: register /context-bar, restore the pinned choice, read once.
 // session.measure: the engine pushes this after each main-thread turn; take a
 //   `summary` breakdown, which is estimated locally and sends no API request.
-// ui.render (AbovePrompt): draw the bar and a legend sized to the band.
+// turn.step: after each subagent model response, keep that agent's context
+//   size (the response's input tokens), so the band can show it when that
+//   agent's transcript is on screen (down arrow from the main conversation).
+// ui.render (AbovePrompt): the main bar with a legend, or the viewed agent's
+//   one-color bar, sized to the band.
 
 import { atom, read, update } from 'claude-code'
-import type { EngineInterface, Register } from 'claude-code'
+import type { EngineInterface, ModelUsage, Register } from 'claude-code'
 
-import type { Reading, Segment } from '../types'
+import type { AgentReading, Mode, Reading, Segment } from '../types'
 
 const reading = atom({ plugin: 'context-bar', key: 'reading' } as const, null)
-const isOn = atom({ plugin: 'context-bar', key: 'isOn' } as const, true)
+const mode = atom({ plugin: 'context-bar', key: 'mode' } as const, 'off')
+const agents = atom({ plugin: 'context-bar', key: 'agents' } as const, {})
 
-const STORE_KEY = 'isOn'
+const STORE_KEY = 'mode'
 const MIN_BAR = 10
 const MAX_BAR = 48
 
@@ -25,10 +33,10 @@ export const register: Register = on => {
     const result = await next(e)
     await $.command.register({
       name: 'context-bar',
-      description: 'Toggle the stacked context-window bar above the prompt',
+      description: 'Show the context bar until your next prompt; `on` pins it, `off` hides it',
     })
     const stored = await $.store.get(STORE_KEY)
-    await update($, isOn, () => stored !== false)
+    await update($, mode, () => (stored === 'on' ? 'on' : 'off'))
     await takeReading($)
 
     return result
@@ -41,22 +49,74 @@ export const register: Register = on => {
     return result
   })
 
-  on('command.run', { command: 'context-bar' }, async $ => {
-    const now = !(await read($, isOn))
-    await update($, isOn, () => now)
-    await $.store.set(STORE_KEY, now)
+  on('turn.step', async function* ($, e, next) {
+    const result = yield* next(e)
+    if (e.agentId && result.usage) {
+      await noteAgent($, e.agentId, result.usage)
+    }
 
-    return { text: now ? 'Context bar on.' : 'Context bar off.' }
+    return result
+  })
+
+  on('command.run', { command: 'context-bar' }, async ($, e) => {
+    const arg = e.args.trim()
+    let next: Mode
+    if (arg === 'on' || arg === 'off') {
+      next = arg
+      await $.store.set(STORE_KEY, next)
+    } else {
+      next = (await read($, mode)) === 'off' ? 'peek' : 'off'
+    }
+    await update($, mode, () => next)
+
+    return {
+      text:
+        next === 'on' ? 'Context bar pinned. /context-bar off hides it.'
+        : next === 'peek' ? 'Context bar shown until your next prompt. /context-bar on pins it.'
+        : 'Context bar hidden.',
+    }
+  })
+
+  // A peek lasts until the next prompt goes out.
+  on('prompt.submit', async ($, e, next) => {
+    if ((await read($, mode)) === 'peek') {
+      await update($, mode, () => 'off')
+    }
+
+    return next(e)
   })
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     const r = await read($, reading)
-    if (e.props.hasSurvey || r === null || !(await read($, isOn))) {
+    if (e.props.hasSurvey || r === null || (await read($, mode)) === 'off') {
       return next(e)
     }
 
     const { Box, Text } = $.ui.resolve(e)
     const columns = e.props.bodyColumns
+
+    const agentId = e.props.view?.agentId
+    if (agentId) {
+      const a = (await read($, agents))[agentId]
+      if (!a) {
+        return (
+          <Box paddingX={1}>
+            <Text dimColor>subagent · no response yet</Text>
+          </Box>
+        )
+      }
+      const label = `${a.description} · ${short(a.tokens)}/${short(r.window)} ${pctOf(a.tokens, r.window)}%`
+      const width = Math.max(MIN_BAR, Math.min(MAX_BAR, columns - label.length - 3))
+      const filled = Math.min(width, Math.round((a.tokens / r.window) * width))
+      return (
+        <Box flexDirection="row" paddingX={1}>
+          <Text color="claude">{'█'.repeat(filled)}</Text>
+          <Text color="subtle" dimColor>{'·'.repeat(width - filled)}</Text>
+          <Text color={levelColor(a.tokens / r.window)}> {label}</Text>
+        </Box>
+      )
+    }
+
     const headline = headlineFor(r)
     const width = Math.max(MIN_BAR, Math.min(MAX_BAR, columns - headline.text.length - 3))
     const cells = allocate(r.segments, width)
@@ -125,6 +185,32 @@ async function takeReading($: EngineInterface) {
   } catch {
     // Keep the last reading; the next measure tries again.
   }
+}
+
+// A subagent's context is the input side of its last response: uncached,
+// cache-written and cache-read together, as the status line counts it.
+async function noteAgent($: EngineInterface, agentId: string, usage: ModelUsage) {
+  try {
+    const tokens = usage.input_tokens + usage.cache_read_input_tokens + usage.cache_creation_input_tokens
+    const known = (await read($, agents))[agentId]
+    let description = known?.description
+    if (description === undefined) {
+      const info = (await $.agent.list()).find(a => a.id === agentId)
+      description = info ? `${info.type}: ${info.description}` : 'subagent'
+    }
+    const entry: AgentReading = { tokens, description }
+    await update($, agents, all => ({ ...all, [agentId]: entry }))
+  } catch {
+    // Keep the last reading for this agent.
+  }
+}
+
+export function pctOf(part: number, whole: number): number {
+  return whole > 0 ? Math.round((part / whole) * 100) : 0
+}
+
+export function levelColor(share: number): string {
+  return share >= 0.9 ? 'error' : share >= 0.7 ? 'warning' : 'text'
 }
 
 // Split `width` cells across segments by largest remainder, so the bar is
