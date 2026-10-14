@@ -301,6 +301,19 @@ SUBCOMMANDS
                     `doctor --hooks <file>...` checks hook portability in
                     the named files only; the pre-commit guard uses it to
                     vet staged content without reading $HOME.
+  try <rev> [-- <command>...]
+                    Try a branch without touching $HOME or any open shell.
+                    Builds a scratch home under $TMPDIR: tracked files come
+                    from <rev>, everything else is a symlink to your real
+                    home (logins, caches, history, installed tools carry
+                    over), then runs your shell, or <command>, with HOME
+                    pointed there. Writes to tracked paths stay in the
+                    scratch copy; writes through a link land in the real
+                    file. <rev> is a local branch, a remote branch (fetched
+                    when missing locally) or a PR number. Rebuilt from
+                    scratch on every run. The repo itself is not linked
+                    in, so nothing done there can reach it: `dotfiles`
+                    is unavailable until you exit.
 
 STAGING RULES
   Tracked file changed   -> dotfiles add -u <path>   (avoids the bogus
@@ -725,6 +738,132 @@ run_doctor() {
     exit $fail
 }
 
+# --- try: a branch in a scratch home ---------------------------------------
+# A branch of user config can't be checked out to test it: $HOME is the
+# worktree, so a checkout changes every open shell and agent session at once.
+# `try` builds a second home instead. Tracked paths are real files extracted
+# from the branch; every other entry in the real home is a symlink, filled in
+# directory by directory down to the deepest tracked file, so ~/.claude.json
+# (sign-in) and ~/.claude/projects (history) sit beside the branch's
+# ~/.claude/settings.json. A path the branch deleted stays deleted: entries
+# tracked at HEAD are never linked back in. Neither is ~/.dotfiles: with the
+# scratch copy as worktree, a commit through that link would record the
+# branch's files onto master, and the branch's own copy of this script runs
+# in there, so no guard in this file could be relied on. No repo, no risk.
+
+# Resolves a user-supplied revision to something rev-parse accepts, fetching
+# from origin when the name only exists there. Prints the ref; fails if none.
+try_resolve_rev() {
+    local rev="$1"
+    case "$rev" in
+        "") return 1 ;;
+        *[!0-9]*) ;;
+        *)  # a PR number: GitHub serves its head under refs/pull
+            GIT_TERMINAL_PROMPT=0 df_git fetch -q origin \
+                "+refs/pull/$rev/head:refs/remotes/origin/pr/$rev" </dev/null 2>/dev/null \
+                || { echo "dotfiles try: no pull request #$rev on origin" >&2; return 1; }
+            printf 'origin/pr/%s' "$rev"
+            return 0 ;;
+    esac
+    if df_git rev-parse --verify -q "refs/heads/$rev" >/dev/null 2>&1; then
+        printf '%s' "$rev"
+        return 0
+    fi
+    # Not a local branch: refresh the remote copy (a PR branch moves), then
+    # fall back to whatever the name already means (a sha, a tag, origin/x).
+    GIT_TERMINAL_PROMPT=0 df_git fetch -q origin \
+        "+refs/heads/$rev:refs/remotes/origin/$rev" </dev/null 2>/dev/null || true
+    if df_git rev-parse --verify -q "refs/remotes/origin/$rev" >/dev/null 2>&1; then
+        printf 'origin/%s' "$rev"
+        return 0
+    fi
+    if df_git rev-parse --verify -q "$rev^{commit}" >/dev/null 2>&1; then
+        printf '%s' "$rev"
+        return 0
+    fi
+    echo "dotfiles try: '$rev' is not a branch here or on origin, a PR number, or a commit" >&2
+    return 1
+}
+
+# Links real-home entries into the scratch home, recursing only into
+# directories the branch (or a tracked path) made real. $TRY_TRACKED lists
+# what HEAD tracks, one path per line.
+try_fill() { # rel ("" for the home itself)
+    local rel="$1" src="$HOME$1" dst="$TRY_HOME$1" entry name path
+    for entry in "$src"/.[!.]* "$src"/..?* "$src"/*; do
+        { [ -e "$entry" ] || [ -L "$entry" ]; } || continue   # unmatched glob
+        name="${entry##*/}"
+        path="${rel#/}${rel:+/}$name"
+        [ "$path" = ".dotfiles" ] && continue
+        if [ -e "$dst/$name" ] || [ -L "$dst/$name" ]; then
+            # Already there from the branch; only a real directory needs
+            # its untracked neighbours filled in.
+            if [ -d "$dst/$name" ] && [ ! -L "$dst/$name" ]; then
+                try_fill "$rel/$name"
+            fi
+        elif grep -qxF -- "$path" "$TRY_TRACKED"; then
+            :   # tracked at HEAD, absent on the branch: the branch deleted it
+        elif grep -q -- "^$(printf '%s' "$path" | sed 's/[][\.*^$]/\\&/g')/" "$TRY_TRACKED"; then
+            # Holds tracked paths the branch dropped: keep its untracked
+            # contents reachable without resurrecting the tracked ones.
+            mkdir "$dst/$name"
+            try_fill "$rel/$name"
+        else
+            ln -s "$entry" "$dst/$name"
+        fi
+    done
+}
+
+try_build() { # rev
+    rm -rf "$TRY_HOME" "$TRY_TRACKED"
+    mkdir -p "$TRY_HOME"
+    df_git archive --format=tar "$1" | tar -x -C "$TRY_HOME"
+    df_git ls-tree -r --name-only HEAD > "$TRY_TRACKED"
+    try_fill ""
+}
+
+run_try() {
+    local rev ref name
+    if [ "$#" -eq 0 ] || [ "$1" = "--" ]; then
+        echo "usage: dotfiles try <rev> [-- <command>...]" >&2
+        exit 1
+    fi
+    rev="$1"; shift
+    [ "${1:-}" = "--" ] && shift
+
+    ref="$(try_resolve_rev "$rev")" || exit 1
+    name="$(printf '%s' "$ref" | tr -c 'A-Za-z0-9._-' '-')"
+    TRY_HOME="${TMPDIR:-/tmp}"
+    TRY_HOME="${TRY_HOME%/}/dotfiles-try-$(id -u)/$name"
+    TRY_TRACKED="$TRY_HOME.tracked"
+    try_build "$ref"
+
+    {
+        printf 'dotfiles try: %s (%s)\n' "$ref" "$(df_git log -1 --format='%h %s' "$ref")"
+        printf '  HOME=%s for this %s only. Tracked files come from the\n' \
+            "$TRY_HOME" "$([ "$#" -gt 0 ] && echo command || echo shell)"
+        printf '  branch; everything else links to your real home. The repo is not linked in.\n'
+    } >&2
+
+    cd "$TRY_HOME"
+    if [ "$#" -gt 0 ]; then
+        exec env HOME="$TRY_HOME" DOTFILES_TRY="$ref" "$@"
+    fi
+    exec env HOME="$TRY_HOME" DOTFILES_TRY="$ref" "${SHELL:-/bin/sh}"
+}
+
+# Inside a try home there is no repo to act on (see run_try). Say so,
+# instead of letting git report a missing directory.
+if [ -n "${DOTFILES_TRY:-}" ]; then
+    case "${1:-help}" in
+        help|-h|--help|hook) ;;
+        *)
+            echo "dotfiles $1: unavailable inside 'dotfiles try $DOTFILES_TRY';" >&2
+            echo "this scratch home has no repo. Exit it to run dotfiles." >&2
+            exit 1 ;;
+    esac
+fi
+
 case "${1:-help}" in
     help|-h|--help)
         print_help
@@ -811,6 +950,10 @@ EOF
     doctor)
         shift
         run_doctor "$@"
+        ;;
+    try)
+        shift
+        run_try "$@"
         ;;
     *)
         # In-process (not exec) so the nudge cache refreshes after any
