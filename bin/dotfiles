@@ -301,6 +301,21 @@ SUBCOMMANDS
                     `doctor --hooks <file>...` checks hook portability in
                     the named files only; the pre-commit guard uses it to
                     vet staged content without reading $HOME.
+  try <branch|PR> [-- <command>...]
+                    Use a branch's config without checking it out: open
+                    shells and agent sessions stay on master. The branch
+                    gets its own git worktree under ~/.cache/dotfiles/try/,
+                    your untracked state (sign-in, history, caches, tools)
+                    is linked in from the real home, and your shell, or
+                    <command>, runs with HOME pointed there. Works for
+                    anything that reads config from home: zsh, git, nvim,
+                    Claude Code, Codex. Fix things in place with plain git:
+                    commits land on the branch with the usual identity and
+                    pre-commit checks; push to update the PR. Reruns reuse
+                    the folder and fast-forward to origin when that loses
+                    nothing. A PR number needs gh. `dotfiles` itself is
+                    unavailable inside: it would pair master with the
+                    folder. Done: `dotfiles worktree remove <folder>`.
 
 STAGING RULES
   Tracked file changed   -> dotfiles add -u <path>   (avoids the bogus
@@ -725,6 +740,99 @@ run_doctor() {
     exit $fail
 }
 
+# --- try: a branch as a home of its own ------------------------------------
+# $HOME is the worktree, so checking a branch out to test it would change
+# every open shell and agent session at once. `try` gives the branch its own
+# git worktree instead and runs a shell or command with HOME pointed at it.
+# Untracked state is linked in from the real home, directory by directory
+# down to the deepest tracked file, so the branch's ~/.claude/settings.json
+# sits beside the real ~/.claude/projects. The inverse-allowlist .gitignore
+# keeps those links invisible to git. Two things are never linked:
+# ~/.dotfiles, because this wrapper would pair the repo (on master) with the
+# folder and could commit the branch's files onto master; and paths master
+# tracks that the branch deleted, so a deletion is tested as a deletion.
+TRY_ROOT="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/try"
+
+try_link() { # dir relative to home: "" for the top, "/.claude" below it
+    local rel="$1" entry name dst path
+    for entry in "$HOME$rel"/.[!.]* "$HOME$rel"/..?* "$HOME$rel"/*; do
+        { [ -e "$entry" ] || [ -L "$entry" ]; } || continue   # unmatched glob
+        name="${entry##*/}"
+        dst="$TRY_DIR$rel/$name"
+        path="${rel#/}${rel:+/}$name"
+        if [ "$path" = .dotfiles ] || [ -L "$dst" ] ||
+           { [ -e "$dst" ] && [ ! -d "$dst" ]; } ||
+           [[ "$TRY_TRACKED" == *$'\n'"$path"$'\n'* ]]; then
+            continue                    # the repo, done, or deleted on the branch
+        elif [ -d "$dst" ] || [[ "$TRY_TRACKED" == *$'\n'"$path/"* ]]; then
+            mkdir -p "$dst"             # holds tracked paths: fill it, don't link it
+            try_link "$rel/$name"
+        else
+            ln -s "$entry" "$dst"
+        fi
+    done
+}
+
+# Prints the local branch for a branch name or PR number, creating it from
+# origin when it only exists there.
+try_branch() {
+    local b="$1"
+    case "$b" in
+        ''|*[!0-9]*) ;;
+        *)  b="$(gh pr view "$b" -R "$(df_git remote get-url origin)" \
+                    --json headRefName -q .headRefName 2>/dev/null)" \
+                || { echo "dotfiles try: could not look up PR #$1 (needs gh, signed in)" >&2; return 1; } ;;
+    esac
+    GIT_TERMINAL_PROMPT=0 df_git fetch -q origin \
+        "+refs/heads/$b:refs/remotes/origin/$b" </dev/null 2>/dev/null || true
+    df_git rev-parse -q --verify "refs/heads/$b" >/dev/null \
+        || df_git branch -q --no-track "$b" "refs/remotes/origin/$b" 2>/dev/null \
+        || { echo "dotfiles try: no branch '$b' here or on origin" >&2; return 1; }
+    printf '%s' "$b"
+}
+
+run_try() {
+    local branch
+    if [ "$#" -eq 0 ] || [ "$1" = "--" ]; then
+        echo "usage: dotfiles try <branch|PR> [-- <command>...]" >&2
+        exit 1
+    fi
+    branch="$(try_branch "$1")" || exit 1
+    shift
+    [ "${1:-}" = "--" ] && shift
+    TRY_DIR="$TRY_ROOT/$(printf '%s' "$branch" | tr -c 'A-Za-z0-9._-' '-')"
+
+    if [ -d "$TRY_DIR" ]; then
+        # Keep whatever was done here; take new pushes only when that is a
+        # fast-forward (git refuses anything that would overwrite edits).
+        if df_git rev-parse -q --verify "refs/remotes/origin/$branch" >/dev/null &&
+           ! git -C "$TRY_DIR" merge -q --ff-only "origin/$branch" >/dev/null 2>&1; then
+            echo "dotfiles try: kept your local changes; origin/$branch not merged in" >&2
+        fi
+    else
+        df_git worktree prune
+        mkdir -p "$TRY_ROOT"
+        df_git worktree add -q "$TRY_DIR" "$branch"
+    fi
+    TRY_TRACKED=$'\n'"$(df_git ls-tree -r --name-only --full-tree HEAD)"$'\n'
+    try_link ""
+
+    printf 'dotfiles try: %s in %s\n' "$branch" "$TRY_DIR" >&2
+    printf '  HOME points here for this %s only. Commit with git, push to update the branch.\n' \
+        "$([ "$#" -gt 0 ] && echo command || echo shell)" >&2
+
+    # The safety checks hang off an include matched on ~/.dotfiles, and ~ is
+    # this folder in here, so pass the same include with the real path. It
+    # matches this repo's worktrees and nothing else. GIT_DIR from
+    # `dotfiles-shell` would aim git at the real home, so it goes.
+    cd "$TRY_DIR"
+    exec env -u GIT_DIR -u GIT_WORK_TREE HOME="$TRY_DIR" \
+        GIT_CONFIG_COUNT=1 \
+        GIT_CONFIG_KEY_0="includeIf.gitdir:$GIT_DIR_PATH/worktrees/.path" \
+        GIT_CONFIG_VALUE_0="$TRY_DIR/.config/git/dotfiles.config" \
+        "${@:-${SHELL:-/bin/sh}}"
+}
+
 case "${1:-help}" in
     help|-h|--help)
         print_help
@@ -811,6 +919,10 @@ EOF
     doctor)
         shift
         run_doctor "$@"
+        ;;
+    try)
+        shift
+        run_try "$@"
         ;;
     *)
         # In-process (not exec) so the nudge cache refreshes after any

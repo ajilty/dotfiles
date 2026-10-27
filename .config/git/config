@@ -23,6 +23,11 @@
 # point hooks at the tracked ~/.dotfiles-hooks/ directory.
 [includeIf "gitdir:~/.dotfiles"]
     path = ~/.config/git/dotfiles.config
+# ...and its `dotfiles try` worktrees, when committed to from a normal shell.
+# Inside a try shell ~ is the worktree, so `dotfiles try` passes this include
+# itself with the real path.
+[includeIf "gitdir:~/.dotfiles/worktrees/"]
+    path = ~/.config/git/dotfiles.config
 	
 [init]
 	defaultBranch = master
