@@ -7,7 +7,7 @@ export type Reading = {
   compactAt: number | null
 }
 
-export type AgentReading = { tokens: number; description: string }
+export type AgentReading = { tokens: number; description: string; model: string; effort?: string }
 
 // off: hidden; peek: shown until the next prompt is sent; on: pinned.
 export type Mode = 'off' | 'peek' | 'on'
