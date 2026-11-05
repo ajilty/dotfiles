@@ -1,14 +1,15 @@
 {
   "env": {
-    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "50",
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "60",
     "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-8[1m]",
-    "CLAUDE_CODE_PLUGIN_DIRS": "~/.claude/mods/context-bar"
+    "CLAUDE_CODE_PLUGIN_DIRS": "~/.claude/mods/context-bar",
+    "CLAUDE_CODE_PLUGIN_PREFER_HTTPS": "1"
   },
   "permissions": {
     "allow": [],
     "defaultMode": "auto"
   },
-  "model": "fable",
+  "model": "claude-opus-5-5[1m]",
   "hooks": {
     "ConfigChange": [
       {
@@ -271,14 +272,6 @@
         "hooks": [
           {
             "type": "command",
-            "command": "r=\"$HOME/.local/share/uv/tools/runlayer/bin/runlayer\"; [ -x \"$r\" ] && \"$r\" hook --client claude_code --no-enforcement || true"
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
             "command": "h=\"$(command -v moshi-hook 2>/dev/null)\"; [ -n \"$h\" ] && \"$h\" claude-hook || true",
             "async": true
           }
@@ -377,9 +370,11 @@
     },
     "claude-sonnet-5": {
       "effortLevel": "high"
+    },
+    "claude-opus-5-5": {
+      "effortLevel": "high"
     }
   },
-  "fastMode": true,
   "tui": "fullscreen",
   "voice": {
     "enabled": true,
