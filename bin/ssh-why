@@ -123,8 +123,11 @@ body=$(clean "${trigger:-ssh}" 60)
 
 dev=${term_tty:+/dev/${term_tty#/dev/}}
 if [ -z "${TMUX:-}" ] && [ -n "$dev" ] && [ -w "$dev" ] \
-    && { printf '\033]777;notify;%s;%s\007' "$title" "$body" >"$dev"; } 2>/dev/null; then
-    :   # delivered through the terminal tab that owns this ssh, natively
+    && { printf '\033]777;notify;%s;%s\007\007' "$title" "$body" >"$dev"; } 2>/dev/null; then
+    :   # delivered through the terminal tab that owns this ssh, natively.
+        # The trailing BEL marks that tab until visited (Ghostty
+        # bell-features = title adds a 🔔 to its title), which outlasts the
+        # banner: Ghostty clears its banners once the app is active.
 elif command -v osascript >/dev/null 2>&1; then
     (osascript -e "display notification \"$body\" with title \"$title\"" >/dev/null 2>&1 &)
 elif command -v notify-send >/dev/null 2>&1; then
