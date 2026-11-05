@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# tab-notify <title> <body>: raise a desktop notification through the terminal
+# tab that owns the calling process, so a 1Password prompt (or anything else
+# that needs attention) arrives with a banner naming what asked.
+#
+# The tab is the nearest process at or above the caller with a terminal.
+# Agent tool shells and MCP servers have none of their own, but the agent
+# (claude, codex) runs in a tab, so the banner still lands there. Sent as an
+# OSC 777 escape: Ghostty (desktop-notifications = true), WezTerm, and foot
+# post it natively. Ghostty shows it while another app or tab is in front.
+#
+# Best-effort: no terminal above the caller, or one without OSC 777, means no
+# banner. Never prints, never fails: always exits 0, so callers need no guard.
+#
+#   TAB_NOTIFY=0           silence it
+#   TAB_NOTIFY_FROM=<pid>  start the search at <pid> instead of the caller
+#                          (for callers that have already detached)
+#
+# Used by: ssh-why (SSH-key prompts), with-secrets (1Password CLI prompts).
+
+[ "${TAB_NOTIFY:-1}" = 0 ] && exit 0
+
+# Strip control characters and the bytes that would end or split the escape.
+clean() { printf '%s' "$1" | LC_ALL=C tr -d '\000-\037\177;\\' | cut -c1-"$2"; }
+title=$(clean "${1:-}" 60)
+body=$(clean "${2:-}" 120)
+
+pid=${TAB_NOTIFY_FROM:-$PPID} depth=0
+while [ "${pid:-0}" -gt 1 ] 2>/dev/null && [ "$depth" -lt 15 ]; do
+    tty=$(ps -o tty= -p "$pid" 2>/dev/null | tr -d ' ')
+    case "$tty" in
+        ''|'?'|'??') ;;
+        *)
+            dev=/dev/${tty#/dev/}
+            [ -w "$dev" ] && printf '\033]777;notify;%s;%s\007' "$title" "$body" >"$dev" 2>/dev/null
+            exit 0 ;;
+    esac
+    pid=$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ')
+    depth=$((depth + 1))
+done
+exit 0

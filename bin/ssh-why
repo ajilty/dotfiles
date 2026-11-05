@@ -1,0 +1,126 @@
+#!/usr/bin/env bash
+# ssh-why: answer "where did that SSH-key prompt come from". Records what
+# launched each outgoing ssh connection, so an agent approval prompt
+# (1Password, Secretive, any agent that asks per use) can be traced to the
+# command, app, folder, and terminal tab that asked for it.
+#
+# Wired in via ~/.ssh/config.d/ssh-why:
+#   Match final exec "test -x ~/bin/ssh-why && ~/bin/ssh-why '%h' '%r' '%p'"
+# `final` runs it once, after the config is resolved, so it sees the real
+# host, user, and port. It always exits 1, so the Match block never applies.
+# The only synchronous work is finding the ssh process (a ps call or two);
+# tracing, logging, and the banner run detached, so ssh does not wait.
+#
+# Same pattern as `with-secrets log`: one line per connection, best-effort
+# (a failure never changes ssh's behavior), rotates at ~1 MB, and
+# `ssh-why log [n]` tails it. The log is private (umask 077) and records
+# program names only, never arguments, so passwords or tokens on a command
+# line cannot leak into it or into a banner.
+#
+# Log fields
+#   dest     user@host:port as ssh resolved them
+#   tty      the terminal tab: ssh's own, or the nearest one above it (an
+#            agent's tool shell has none, but the agent runs in a tab)
+#   cwd      ssh's working directory
+#   trigger  `ssh` when typed at a shell prompt; otherwise the first program
+#            above ssh that is not a shell, with its subcommand (`git fetch`,
+#            `claude`, `rsync`)
+#   chain    program names from ssh up to the top (ssh < git < zsh < ghostty)
+#
+# Banner: "SSH key: user@host" plus trigger, app, and folder, posted in the
+# requesting tab by tab-notify. At most one per tab and destination every
+# 10 minutes: after the first approval, most connections never prompt.
+# SSH_WHY_NOTIFY=0 turns banners off; the log still records.
+#
+# Portable: macOS and Linux, bash 3.2+, standard tools (ps, lsof or /proc,
+# sed, tr, cut, find, date).
+#
+# Usage
+#   ssh-why log [n]     last n (default 20) connections
+
+umask 077
+state_dir="${XDG_CACHE_HOME:-$HOME/.cache}/ssh-why"
+log_file="$state_dir/events.log"
+
+if [ "${1:-}" = log ] && [ $# -le 2 ]; then
+    tail -n "${2:-20}" "$log_file" 2>/dev/null || echo "ssh-why: no connections logged yet"
+    exit 0
+fi
+[ $# -eq 3 ] || exit 1            # hook mode: never print into ssh's stderr
+host=$1 user=$2 port=$3
+
+# One ps call per process: ppid, tty, and the short program name.
+proc() {   # sets p_ppid p_tty p_name for pid $1; fails if it is gone
+    p_ppid="" p_tty="" p_name=""
+    read -r p_ppid p_tty p_name <<EOF
+$(ps -o ppid=,tty=,comm= -p "$1" 2>/dev/null)
+EOF
+    [ -n "$p_ppid" ] || return 1
+    p_name=${p_name##*/}
+    p_name=${p_name#-}            # login shells show as -zsh
+    case "$p_tty" in '?'|'??') p_tty="" ;; esac
+}
+is_shell() { case "$1" in sh|bash|zsh|fish|dash|ksh|tcsh|csh) return 0 ;; esac; return 1; }
+ascii() { printf '%s' "$1" | LC_ALL=C tr -cd ' -~' | cut -c1-"$2"; }
+
+# Synchronous part: find ssh (our parent is the shell ssh spawned, or ssh
+# itself when that shell exec'd us). The rest is traced after we exit.
+ssh_pid="" pid=$PPID
+for _ in 1 2 3; do
+    proc "$pid" || break
+    [ "$p_name" = ssh ] && { ssh_pid=$pid; break; }
+    pid=$p_ppid
+done
+[ -n "$ssh_pid" ] || exit 1
+
+(
+    set -f                # no globbing when splitting command lines
+    proc "$ssh_pid" || exit 0
+    tty=$p_tty chain=ssh trigger="" app="" first=1 pid=$p_ppid
+    depth=0
+    while [ "${pid:-0}" -gt 1 ] 2>/dev/null && [ "$depth" -lt 15 ]; do
+        proc "$pid" || break
+        chain="$chain < $p_name"
+        [ -z "$tty" ] && tty=$p_tty
+        if [ -z "$trigger" ]; then
+            if [ "$first" = 1 ] && is_shell "$p_name" && [ -n "$tty" ]; then
+                trigger=ssh       # ssh's parent is a shell in a terminal: typed
+            elif ! is_shell "$p_name"; then
+                # program plus its subcommand word, never other arguments
+                set -- $(ps -o command= -p "$pid" 2>/dev/null)
+                trigger=${1##*/}
+                case "${2:-}" in [a-z]*) case "$2" in *[!a-z0-9-]*) ;; *) trigger="$trigger $2" ;; esac ;; esac
+            fi
+        fi
+        case "$p_name" in login|launchd|systemd) ;; *) is_shell "$p_name" || app=$p_name ;; esac
+        first=0 pid=$p_ppid depth=$((depth + 1))
+    done
+
+    if [ -r "/proc/$ssh_pid/cwd" ]; then cwd=$(readlink "/proc/$ssh_pid/cwd")
+    else cwd=$(lsof -a -p "$ssh_pid" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p'); fi
+    cwd=${cwd/#$HOME/\~}
+
+    dest=$(ascii "$user@$host:$port" 120)
+    trigger=$(ascii "${trigger:-?}" 60) app=$(ascii "$app" 30) chain=$(ascii "$chain" 200)
+    cwd=$(ascii "$cwd" 160) tty=$(ascii "$tty" 20)
+
+    mkdir -p "$state_dir" || exit 0
+    if [ -f "$log_file" ] && [ "$(wc -c <"$log_file")" -gt 1048576 ]; then
+        mv -f "$log_file" "$log_file.1"
+    fi
+    printf '%s dest=%s tty=%s cwd=%s trigger=[%s] chain=[%s]\n' \
+        "$(date '+%Y-%m-%dT%H:%M:%S%z')" "$dest" "${tty:-?}" "${cwd:-?}" \
+        "$trigger" "$chain" >>"$log_file"
+
+    [ "${SSH_WHY_NOTIFY:-1}" = 0 ] && exit 0
+    command -v tab-notify >/dev/null 2>&1 || exit 0
+    stamp="$state_dir/banner-$(printf '%s-%s' "${tty:-none}" "$dest" | tr -c 'A-Za-z0-9._@-' '_')"
+    [ -n "$(find "$stamp" -mmin -10 2>/dev/null)" ] && exit 0
+    : >"$stamp"
+    body=$trigger
+    [ -n "$app" ] && body="$body · $app"
+    [ -n "$cwd" ] && body="$body · ${cwd##*/}"
+    TAB_NOTIFY_FROM=$ssh_pid tab-notify "SSH key: $(ascii "$user@$host" 50)" "$body"
+) </dev/null >/dev/null 2>&1 &
+
+exit 1
