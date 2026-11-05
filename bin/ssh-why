@@ -1,0 +1,123 @@
+#!/usr/bin/env bash
+# ssh-why: answer "where did that SSH-key prompt come from". Records what
+# launched each outgoing ssh connection, so an agent approval prompt
+# (1Password, Secretive, any agent that asks per use) can be traced to the
+# exact command, app, directory, and terminal that asked for it.
+#
+# Same pattern as `with-secrets log`: one line per event, never a secret,
+# best-effort (a logging failure never changes ssh's behavior), rotates at
+# ~1 MB, and `ssh-why log [n]` tails it.
+#
+# Wired in via ~/.ssh/config.d/ssh-why (`Match exec`). Runs once per ssh
+# connection, before authentication, so the line exists while the approval
+# prompt is still on screen. Always exits 1, so the Match block never applies.
+#
+# Portable: macOS and Linux, bash 3.2+. Needs only ps; uses /proc or lsof for
+# the working directory when available.
+#
+# Usage
+#   ssh-why log [n]     last n (default 20) connections
+#   (from ssh config)   ssh-why <host> <user> <port>
+#
+# Log fields: dest, tty, cwd, trigger (the command that caused the
+# connection: your own `ssh ...`, or the tool that ran ssh, e.g. `git fetch`),
+# chain (process names from ssh up to the app at the top).
+#
+# Banner: a short notification beside the prompt: what asked, from which
+# app, in which folder. First channel that works: the terminal that ran ssh
+# (OSC 777: Ghostty with desktop-notifications = true, WezTerm, foot), else
+# osascript (macOS) or notify-send (Linux). SSH_WHY_NOTIFY=0 turns banners
+# off; the log still records. How long a banner stays is an OS setting
+# (macOS: Notifications > <terminal app> > Alerts keeps it until dismissed).
+
+state_dir="${XDG_CACHE_HOME:-$HOME/.cache}/ssh-why"
+log_file="$state_dir/events.log"
+
+if [ "${1:-}" = log ] && [ $# -le 2 ]; then
+    tail -n "${2:-20}" "$log_file" 2>/dev/null || echo "ssh-why: no connections logged yet"
+    exit 0
+fi
+if [ $# -ne 3 ]; then
+    echo "usage: ssh-why log [n]   (tracing runs from ssh config: ssh-why <host> <user> <port>)" >&2
+    exit 64
+fi
+host="$1" user="$2" port="$3"
+
+cwd_of() {
+    if [ -r "/proc/$1/cwd" ]; then readlink "/proc/$1/cwd"
+    elif command -v lsof >/dev/null 2>&1; then
+        lsof -a -p "$1" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p'
+    fi
+}
+name_of() {   # short process name: "-/bin/zsh" -> "zsh"
+    n=$(ps -o comm= -p "$1" 2>/dev/null)
+    n=${n##*/}
+    printf '%s' "${n#-}"
+}
+is_shell() { case "$1" in sh|bash|zsh|fish|dash|ksh|tcsh|csh) return 0 ;; esac; return 1; }
+
+# Walk up from ssh (this script's parent is the shell ssh spawned for
+# Match exec) to the app at the top.
+ssh_pid="" ssh_cmd="" trigger="" app="" chain="" depth=0
+pid=$PPID
+while [ -n "$pid" ] && [ "$pid" -gt 1 ] && [ "$depth" -lt 12 ]; do
+    name=$(name_of "$pid")
+    [ -z "$name" ] && break
+    if [ -z "$ssh_pid" ]; then
+        if [ "$name" = ssh ]; then
+            ssh_pid=$pid
+            ssh_cmd=$(ps -o command= -p "$pid" 2>/dev/null)
+            chain=ssh
+        fi
+    else
+        chain="$chain < $name"
+        # Trigger: the first non-shell process above ssh (git, rsync, an
+        # agent), unless that is already the session itself (login, the
+        # terminal), in which case you typed the ssh command yourself.
+        if [ -z "$trigger" ] && ! is_shell "$name"; then
+            case "$name" in
+                login|sshd|tmux|screen) trigger=$ssh_cmd ;;
+                *) [ "$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ')" -le 1 ] \
+                       && trigger=$ssh_cmd \
+                       || trigger=$(ps -o command= -p "$pid" 2>/dev/null) ;;
+            esac
+        fi
+        app=$name
+    fi
+    pid=$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ')
+    depth=$((depth + 1))
+done
+trigger=$(printf '%s' "${trigger:-$ssh_cmd}" | cut -c1-160)
+
+ref=${ssh_pid:-$PPID}
+tty=$(ps -o tty= -p "$ref" 2>/dev/null | tr -d ' ')
+cwd=$(cwd_of "$ref")
+cwd=${cwd/#$HOME/\~}
+
+{
+    mkdir -p "$state_dir" || exit 1
+    if [ -f "$log_file" ] && [ "$(wc -c <"$log_file")" -gt 1048576 ]; then
+        mv -f "$log_file" "$log_file.1"
+    fi
+    printf '%s dest=%s@%s:%s tty=%s cwd=%s trigger=[%s] chain=[%s]\n' \
+        "$(date '+%Y-%m-%dT%H:%M:%S%z')" "$user" "$host" "$port" \
+        "${tty:-?}" "${cwd:-?}" "${trigger:-?}" "$chain" >>"$log_file"
+} 2>/dev/null
+
+[ "${SSH_WHY_NOTIFY:-1}" = 0 ] && exit 1
+
+clean() { printf '%s' "$1" | tr -d '"\\;\007\033' | cut -c1-"$2"; }
+title=$(clean "SSH key: $user@${host%%.*}" 60)
+body=$(clean "${trigger:-ssh}" 60)
+[ -n "$app" ] && body="$body · $(clean "$app" 20)"
+[ -n "$cwd" ] && body="$body · $(clean "${cwd##*/}" 30)"
+
+if [ -z "${TMUX:-}" ] && { printf '\033]777;notify;%s;%s\007' "$title" "$body" >/dev/tty; } 2>/dev/null; then
+    :   # delivered through the terminal that ran ssh
+elif command -v osascript >/dev/null 2>&1; then
+    (osascript -e "display notification \"$body\" with title \"$title\"" >/dev/null 2>&1 &)
+elif command -v notify-send >/dev/null 2>&1; then
+    (notify-send --urgency=low "$title" "$body" >/dev/null 2>&1 &)
+fi
+
+exit 1
