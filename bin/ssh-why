@@ -24,9 +24,11 @@
 # chain (process names from ssh up to the app at the top).
 #
 # Banner: a short notification beside the prompt: what asked, from which
-# app, in which folder. First channel that works: the terminal that ran ssh
-# (OSC 777: Ghostty with desktop-notifications = true, WezTerm, foot), else
-# osascript (macOS) or notify-send (Linux). SSH_WHY_NOTIFY=0 turns banners
+# app, in which folder. First channel that works: the nearest terminal tab
+# above ssh (OSC 777: Ghostty with desktop-notifications = true, WezTerm,
+# foot), which also covers agents whose tool shells have no terminal of
+# their own; else osascript (macOS, legacy and often silently dropped on
+# current macOS) or notify-send (Linux). SSH_WHY_NOTIFY=0 turns banners
 # off; the log still records. How long a banner stays is an OS setting
 # (macOS: Notifications > <terminal app> > Alerts keeps it until dismissed).
 
@@ -58,7 +60,7 @@ is_shell() { case "$1" in sh|bash|zsh|fish|dash|ksh|tcsh|csh) return 0 ;; esac; 
 
 # Walk up from ssh (this script's parent is the shell ssh spawned for
 # Match exec) to the app at the top.
-ssh_pid="" ssh_cmd="" trigger="" app="" chain="" depth=0
+ssh_pid="" ssh_cmd="" trigger="" app="" chain="" term_tty="" depth=0
 pid=$PPID
 while [ -n "$pid" ] && [ "$pid" -gt 1 ] && [ "$depth" -lt 12 ]; do
     name=$(name_of "$pid")
@@ -84,13 +86,20 @@ while [ -n "$pid" ] && [ "$pid" -gt 1 ] && [ "$depth" -lt 12 ]; do
         fi
         app=$name
     fi
+    # Nearest terminal at or above ssh: an agent's tool shell has none, but
+    # the agent itself (claude, codex) runs in a terminal tab, so the banner
+    # can still go to that tab.
+    if [ -n "$ssh_pid" ] && [ -z "$term_tty" ]; then
+        t=$(ps -o tty= -p "$pid" 2>/dev/null | tr -d ' ')
+        case "$t" in ''|'?'|'??') ;; *) term_tty=$t ;; esac
+    fi
     pid=$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ')
     depth=$((depth + 1))
 done
 trigger=$(printf '%s' "${trigger:-$ssh_cmd}" | cut -c1-160)
 
 ref=${ssh_pid:-$PPID}
-tty=$(ps -o tty= -p "$ref" 2>/dev/null | tr -d ' ')
+tty=$term_tty
 cwd=$(cwd_of "$ref")
 cwd=${cwd/#$HOME/\~}
 
@@ -112,8 +121,10 @@ body=$(clean "${trigger:-ssh}" 60)
 [ -n "$app" ] && body="$body · $(clean "$app" 20)"
 [ -n "$cwd" ] && body="$body · $(clean "${cwd##*/}" 30)"
 
-if [ -z "${TMUX:-}" ] && { printf '\033]777;notify;%s;%s\007' "$title" "$body" >/dev/tty; } 2>/dev/null; then
-    :   # delivered through the terminal that ran ssh
+dev=${term_tty:+/dev/${term_tty#/dev/}}
+if [ -z "${TMUX:-}" ] && [ -n "$dev" ] && [ -w "$dev" ] \
+    && { printf '\033]777;notify;%s;%s\007' "$title" "$body" >"$dev"; } 2>/dev/null; then
+    :   # delivered through the terminal tab that owns this ssh, natively
 elif command -v osascript >/dev/null 2>&1; then
     (osascript -e "display notification \"$body\" with title \"$title\"" >/dev/null 2>&1 &)
 elif command -v notify-send >/dev/null 2>&1; then
