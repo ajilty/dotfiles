@@ -23,14 +23,14 @@
 # connection: your own `ssh ...`, or the tool that ran ssh, e.g. `git fetch`),
 # chain (process names from ssh up to the app at the top).
 #
-# Banner: a short notification beside the prompt: what asked, from which
-# app, in which folder. First channel that works: the nearest terminal tab
-# above ssh (OSC 777: Ghostty with desktop-notifications = true, WezTerm,
-# foot), which also covers agents whose tool shells have no terminal of
-# their own; else osascript (macOS, legacy and often silently dropped on
-# current macOS) or notify-send (Linux). SSH_WHY_NOTIFY=0 turns banners
-# off; the log still records. How long a banner stays is an OS setting
-# (macOS: Notifications > <terminal app> > Alerts keeps it until dismissed).
+# Banner: a short notification beside the prompt (what asked, from which
+# app, in which folder), sent as an OSC 777 escape to the nearest terminal
+# tab above ssh. That tab is found even for agents whose tool shells have no
+# terminal of their own. The terminal posts it natively (Ghostty with
+# desktop-notifications = true, WezTerm, foot); Ghostty shows it while
+# another app or tab is in front and clears it once Ghostty is active.
+# No terminal above ssh, or a terminal without OSC 777: log only.
+# SSH_WHY_NOTIFY=0 turns banners off; the log still records.
 
 state_dir="${XDG_CACHE_HOME:-$HOME/.cache}/ssh-why"
 log_file="$state_dir/events.log"
@@ -122,16 +122,7 @@ body=$(clean "${trigger:-ssh}" 60)
 [ -n "$cwd" ] && body="$body · $(clean "${cwd##*/}" 30)"
 
 dev=${term_tty:+/dev/${term_tty#/dev/}}
-if [ -z "${TMUX:-}" ] && [ -n "$dev" ] && [ -w "$dev" ] \
-    && { printf '\033]777;notify;%s;%s\007\007' "$title" "$body" >"$dev"; } 2>/dev/null; then
-    :   # delivered through the terminal tab that owns this ssh, natively.
-        # The trailing BEL marks that tab until visited (Ghostty
-        # bell-features = title adds a 🔔 to its title), which outlasts the
-        # banner: Ghostty clears its banners once the app is active.
-elif command -v osascript >/dev/null 2>&1; then
-    (osascript -e "display notification \"$body\" with title \"$title\"" >/dev/null 2>&1 &)
-elif command -v notify-send >/dev/null 2>&1; then
-    (notify-send --urgency=low "$title" "$body" >/dev/null 2>&1 &)
-fi
+[ -n "$dev" ] && [ -w "$dev" ] \
+    && printf '\033]777;notify;%s;%s\007' "$title" "$body" >"$dev" 2>/dev/null
 
 exit 1
