@@ -23,6 +23,7 @@
 - **Match my real environment and the minimum viable control.** Anchor to my actual stack (Homebrew/pyenv, Okta FastPass, Ghostty, OneDrive-safe paths, multi-entity shared-services identity). Prefer coexistence over lockdown; pick the simplest control that mitigates the real threat.
 - **Keep outputs implementation-agnostic, portable, reusable.** State capabilities and outcomes with thresholds in a separate layer. Difficulty is no excuse to weaken a requirement. Keep skills portable across harnesses (Claude Code, opencode, Codex) and convention-compliant; strip vendor-specific jargon and paths.
 - **Escalate to the concrete, runnable deliverable grounded in real data.** Real scripts, Terraform, redlines, downloadable artifacts populated with my actual data. Name gaps instead of filling them with generics.
+- **Fresh-eyes review before a PR is called ready.** Give a reviewer with no session context the diff and the goal, never my conclusions; it stays read-only, tests in isolation, ranks findings with a concrete failure scenario each, and checks the PR description against the code. Fix or answer every finding before calling the PR ready.
 
 ## Design partnership
 
