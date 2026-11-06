@@ -74,7 +74,22 @@ case "$out" in *skipped*) die "full run should stay quiet about absent tools: $o
 bash "$SKILL_SYNC" check >/dev/null || die "missing tool should not count as drift"
 info "missing tool skipped, quietly on a full run"
 
-# 5. brew wrapper: `brew upgrade` passes args through, runs skill-sync, keeps brew's exit code.
+# 5. A copy that is not tracked in the dotfiles repo is its own nudge, cleared by tracking it.
+export DOTFILES_DIR="$fake_home/.dotfiles"
+git init -q --bare "$DOTFILES_DIR"; git --git-dir="$DOTFILES_DIR" config core.bare false
+sg() { git -C "$fake_home" --git-dir="$DOTFILES_DIR" --work-tree="$fake_home" -c user.name=t -c user.email=t@example.com "$@"; }
+sg add -f .agents/skills/herdr >/dev/null && sg commit -qm "track herdr"
+if bash "$SKILL_SYNC" check >/dev/null; then die "untracked terminal-browser copy not flagged"; fi
+grep -q 'not tracked: terminal-browser' "$cache" || die "cache does not name the untracked copy: $(cat "$cache")"
+grep -q 'dotfiles track' "$cache" || die "cache does not say how to track: $(cat "$cache")"
+grep -q 'herdr' "$cache" && die "tracked herdr wrongly listed: $(cat "$cache")"
+info "untracked copy nudged: $(cat "$cache")"
+sg add -f .agents/skills/terminal-browser >/dev/null && sg commit -qm "track terminal-browser"
+bash "$SKILL_SYNC" check >/dev/null || die "still flagged after tracking: $(cat "$cache")"
+(cd "$fake_home/bin" && bash "$SKILL_SYNC" check >/dev/null) || die "check from a subdirectory of HOME mis-flags tracked copies: $(cat "$cache")"
+info "tracking clears the nudge, from HOME and from a subdirectory"
+
+# 5b. brew wrapper: `brew upgrade` passes args through, runs skill-sync, keeps brew's exit code.
 cat > "$fake_home/bin/brew" <<'FAKE'
 #!/bin/sh
 printf '%s\n' "$@" > "$BREW_ARGS_FILE"; exit 3
