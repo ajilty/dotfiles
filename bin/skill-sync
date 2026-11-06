@@ -26,7 +26,8 @@
 # the `check` cache so upgrades done any other way still surface.
 #
 # Add a tool: one line in sources() below, then `skill-sync <name>` and
-# `dotfiles track .agents/skills/<name>`.
+# `dotfiles track .agents/skills/<name>`. The copy is republished through the
+# public dotfiles remote, so glance at the tool's license first.
 
 set -u
 
@@ -35,6 +36,7 @@ CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/skill-nudge"
 CASKROOM="${HOMEBREW_PREFIX:-/opt/homebrew}/Caskroom"
 
 # name  kind  locator
+#   name  the directory the skill lands in: ~/.agents/skills/<name>
 #   cmd   <command and args that print SKILL.md on stdout>
 #   cask  <cask>:<path inside the cask's version folder holding the skill dir>
 sources() {
