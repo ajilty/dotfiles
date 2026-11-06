@@ -7,4 +7,7 @@
 
 [global]
 # Line length: prose wraps in the editor, not the file.
-disable = ["MD013"]
+# MD032 (blank line before a list) and MD034 (bare URL): cosmetic, two thirds of
+# all lint nags in a 30-day transcript sample and ignored nine times in ten
+# (guards review, 2026-11-06). Re-measure after a month.
+disable = ["MD013", "MD032", "MD034"]
