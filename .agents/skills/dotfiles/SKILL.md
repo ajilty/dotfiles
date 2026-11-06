@@ -75,8 +75,8 @@ Gotchas:
 
 - **Reinstall to register an existing skill**: if a skill is on disk but missing from the lockfile, `rm -rf` both `~/.agents/skills/<name>` and `~/.claude/skills/<name>` first, then `npx skills add`.
 - **Stale lockfile entries** (in lockfile, not on disk) don't auto-clean; edit `.skill-lock.json` directly.
-- **Authored skills have two lanes.** Portable skills are authored in the agentic repo (`~/gits/github.com/ajilty/agentic/skills/`) and distributed as plugins via the ajilty marketplace; that repo's guards plugin lints frontmatter on write. Machine-specific skills (like this one) live directly in the live store at `~/.agents/skills/<name>/SKILL.md`, tracked in the dotfiles repo: edit in place (Claude Code hot-loads it), `dotfiles add -u`, commit. There is no separate source copy and no sync step; local hand-authored skills never appear in the CLI lockfile.
-- **New machine-specific skill**: create `~/.agents/skills/<name>/SKILL.md`, then `dotfiles track .agents/skills/<name>/`. Portable skills go to the agentic repo instead.
+- **Authored skills have two lanes.** Portable skills are authored in the agentic repo (`~/gits/github.com/ajilty/agentic/skills/`) and distributed as plugins via the ajilty marketplace; that repo's guards plugin lints frontmatter on write. Machine-specific skills (like this one) live directly in the live store at `~/.agents/skills/<name>/SKILL.md`, tracked in the dotfiles repo: draft outside the live store (everything in it is loaded live), get it reviewed and approved, copy it in, `dotfiles add -u <path>`, commit. There is no separate source copy and no sync step; local hand-authored skills never appear in the CLI lockfile.
+- **New machine-specific skill**: draft it outside the store like any skill edit, copy it to `~/.agents/skills/<name>/SKILL.md`, then `dotfiles track .agents/skills/<name>/`. Portable skills go to the agentic repo instead.
 - **Authoring scratch stays out of the store**: eval artifacts, drafts, and snapshots don't belong under `~/.agents/skills/` (everything there is tracked); keep them anywhere else in `$HOME`, which the inverse-allowlist ignores by default.
 - **Heavy skills** (multi-MB doc bundles) bloat the repo; confirm with the user before installing. Security scanner ratings in the install summary vary; treat "High Risk" as a prompt to skim the SKILL.md, not an automatic block.
 
@@ -86,7 +86,7 @@ Gotchas:
 
 - Tracked: `init.lua`, `lua/**`, `stylua.toml`, `lazy-lock.json`, `CHEATSHEET.md`. New plugin specs under `lua/plugins/` need `dotfiles track` like any new file.
 - NOT tracked, never should be: `~/.local/share/nvim/`, `~/.local/state/nvim/`, `~/.cache/nvim/`. Regenerates from `lazy-lock.json` (`nvim --headless "+Lazy! sync" +qa`).
-- `lazy-lock.json` is a lockfile: stage with `add -u` and commit so machines pin identical plugin versions.
+- `lazy-lock.json` is a lockfile: stage with `add -u <path>` and commit so machines pin identical plugin versions.
 - Brew deps in `Brewfile.dev`: `neovim`, `tree-sitter-cli` (the `tree-sitter` formula is only the C library, no binary), `fd` (Snacks explorer hardcodes it), `lazygit`. `:checkhealth config` verifies.
 
 ## When a vendor installer rewrites our hook configs

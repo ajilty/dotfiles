@@ -4,14 +4,14 @@
 
 Deeper operational notes live in the `dotfiles` skill at [`.agents/skills/dotfiles/SKILL.md`](.agents/skills/dotfiles/SKILL.md). Agents with skill auto-discovery (Claude Code, Codex, Gemini CLI, Copilot CLI) load it on demand; the description triggers on intent cues (editing user config, installing packages, tracking new dotfiles) and symptom cues (paths-are-ignored warnings, the `ajilty <github@ajilty.com>` pre-commit identity hook, `dotfiles pull` rebase/autostash conflicts). In Claude Code, a PreToolUse hook (`dotfiles hook`, a subcommand of the same script) additionally reminds agents once per session when they touch managed config, run brew installs, or handle credentials outside `with-secrets`.
 
-**Homegrown skills, two lanes.** Portable skills are authored in the `ajilty/agentic` repo (`skills/`) and distributed as plugins via the ajilty marketplace. Machine-specific skills (e.g. `dotfiles`) live directly in the live store at `~/.agents/skills/<name>/SKILL.md`, tracked here: edit in place, `dotfiles add -u`, commit. No sync step; agents (Claude Code via the `~/.claude/skills` symlink) load the same files git tracks.
+**Homegrown skills, two lanes.** Portable skills are authored in the `ajilty/agentic` repo (`skills/`) and distributed as plugins via the ajilty marketplace. Machine-specific skills (e.g. `dotfiles`) live directly in the live store at `~/.agents/skills/<name>/SKILL.md`, tracked here: draft outside the store, get it reviewed and approved, copy it in, `dotfiles add -u <path>`, commit. No sync step; agents (Claude Code via the `~/.claude/skills` symlink) load the same files git tracks.
 
 **Secrets and env presets.** Never hardcode secrets or `op run --env-file=...` invocations. Use `with-secrets <preset> [--] <command>` (`~/bin/with-secrets`, on `PATH`): it resolves `<preset>.env` from `~/.local/config/shell/env.d/` (work, untracked) then `~/.config/shell/env.d/` (personal, tracked) and execs the command through 1Password `op run`, so `op://` references never land in configs. This is the standard for anything that spawns a command with credentials: MCP server entries (`"command": "with-secrets", "args": ["<preset>", ...]`), cron jobs, one-off runs. Interactive shells use the `env <preset>` function to source the same files. To add a credential: create/extend a preset file with `export VAR="op://vault/item/field"`.
 
 Quick digest for tools that auto-load `AGENTS.md` but don't read skills (`dotfiles help` has the full contract):
 
 - Bare repo at `~/.dotfiles`, worktree `$HOME`. Use the `dotfiles` command, never plain `git`.
-- `.gitignore` is inverse-allowlist (`*` + `!` rules): `dotfiles add -u` for tracked files, `dotfiles track <path>` for new ones.
+- `.gitignore` is inverse-allowlist (`*` + `!` rules): `dotfiles add -u <path>` for tracked files (always with paths: other sessions share this checkout), `dotfiles track <path>` for new ones.
 - Pre-commit hook enforces author `ajilty <github@ajilty.com>`; never `--no-verify` or `--author=`.
 - `dotfiles pull` is `git pull --rebase --autostash`; see the skill for conflict recovery (autostash-pop vs replay, the `update-index --refresh` gotcha).
 - Multi-line commit messages: `dotfiles commit -F <file>`. Public remote: don't push without user confirmation; `dotfiles help` says when a change needs a PR instead of a direct push.
