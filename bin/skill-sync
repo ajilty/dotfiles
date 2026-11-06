@@ -4,8 +4,9 @@
 #   skill-sync [name...]        copy each tool's skill into ~/.agents/skills/<name>
 #                               when it differs from the store; prints what to stage
 #   skill-sync check [name...]  report tools whose shipped skill differs from the
-#                               store copy; writes the one-line nudge cache; exit 1
-#                               when anything is behind
+#                               store copy, or whose copy is not yet tracked in the
+#                               dotfiles repo; writes the one-line nudge cache; exit 1
+#                               when anything needs you
 #   skill-sync list             show the tools this script knows about
 #
 # Some CLI tools ship their own agent skill (a binary that prints it, or a
@@ -34,6 +35,7 @@ set -u
 STORE="${SKILL_SYNC_STORE:-$HOME/.agents/skills}"
 CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/skill-nudge"
 CASKROOM="${HOMEBREW_PREFIX:-/opt/homebrew}/Caskroom"
+DOTFILES_DIR="${DOTFILES_DIR:-$HOME/.dotfiles}"
 
 # name  kind  locator
 #   name  the directory the skill lands in: ~/.agents/skills/<name>
@@ -123,8 +125,22 @@ sync_one() {
 
 names() { sources | awk 'NF {print $1}'; }
 
+# 0 when the store copy is tracked in the dotfiles repo, 1 when a copy exists
+# but is not (a freshly added tool: the sync-status nudge skips untracked
+# paths, so this is the only reminder), 2 when there is no copy or no repo.
+tracked_state() {
+    local name="$1"
+    [ -d "$STORE/$name" ] && [ ! -L "$STORE/$name" ] || return 2
+    [ -d "$DOTFILES_DIR" ] || return 2
+    # The repo can only track paths under $HOME; anchor at $HOME so the
+    # pathspec is not read relative to whatever directory the shell is in.
+    case "$STORE" in "$HOME"/*) ;; *) return 2 ;; esac
+    git -C "$HOME" --git-dir="$DOTFILES_DIR" --work-tree="$HOME" ls-files --error-unmatch -- "${STORE#"$HOME"/}/$name" >/dev/null 2>&1 && return 0
+    return 1
+}
+
 main() {
-    local verb="" n rc behind="" failed=0 all=0
+    local verb="" n rc behind="" untracked="" line="" failed=0 all=0
     case "${1:-}" in check|list) verb="$1"; shift ;; esac
     # With no names, walk the whole table and keep quiet about absent tools
     # (every `brew upgrade` runs this; a fresh machine has none installed yet).
@@ -139,11 +155,13 @@ main() {
                     1) behind="${behind:+$behind, }$n" ;;
                     3) warn "$n: could not read its shipped skill." ;;
                 esac
+                tracked_state "$n"; [ $? -eq 1 ] && untracked="${untracked:+$untracked, }$n"
             done
             mkdir -p "$(dirname "$CACHE")"
-            if [ -n "$behind" ]; then
-                printf 'Agent skills behind the installed tools: %s. Run "skill-sync", then stage.\n' "$behind" > "$CACHE"
-                cat "$CACHE"; return 1
+            [ -n "$behind" ] && line="Agent skills behind the installed tools: $behind. Run \"skill-sync\", then stage."
+            [ -n "$untracked" ] && line="${line:+$line }Agent skills copied but not tracked: $untracked. Run \"dotfiles track ${STORE#"$HOME"/}/<name>\"."
+            if [ -n "$line" ]; then
+                printf '%s\n' "$line" > "$CACHE"; cat "$CACHE"; return 1
             fi
             : > "$CACHE"; return 0
             ;;
