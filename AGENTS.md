@@ -14,5 +14,5 @@ Quick digest for tools that auto-load `AGENTS.md` but don't read skills (`dotfil
 - `.gitignore` is inverse-allowlist (`*` + `!` rules): `dotfiles add -u` for tracked files, `dotfiles track <path>` for new ones.
 - Pre-commit hook enforces author `ajilty <github@ajilty.com>`; never `--no-verify` or `--author=`.
 - `dotfiles pull` is `git pull --rebase --autostash`; see the skill for conflict recovery (autostash-pop vs replay, the `update-index --refresh` gotcha).
-- Multi-line commit messages: `dotfiles commit -F <file>`. Public remote: don't push without user confirmation.
+- Multi-line commit messages: `dotfiles commit -F <file>`. Public remote: don't push without user confirmation; `dotfiles help` says when a change needs a PR instead of a direct push.
 - Package installs: record with `brew-sync save <category> <pkg>` into `~/.config/homebrew/Brewfile.*`.
