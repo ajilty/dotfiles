@@ -5,30 +5,17 @@
 #   herdr-update - Homebrew-upgrade herdr, then live-handoff the running server
 #                  onto the new binary so agent panes keep running (no pause).
 #                  Also refreshes the herdr agent skill (see herdr-skill-sync).
-#   herdr-skill-sync - Write `herdr --skill` into the shared skill store at
-#                  ~/.agents/skills/herdr/SKILL.md so every harness loads the
-#                  skill matching the installed herdr version. Idempotent.
+#   herdr-skill-sync - `skill-sync herdr`: copy `herdr --skill` into the shared
+#                  skill store so every harness loads the skill matching the
+#                  installed herdr version. See ~/bin/skill-sync.
 #                  Homebrew installs can't use `herdr update --handoff`, so this
 #                  chains `brew upgrade` with a manual `herdr server live-handoff`.
 
 function herdr-skill-sync() {
-    local store="${HOME}/.agents/skills/herdr" tmp
-    command -v herdr >/dev/null 2>&1 || { echo "herdr-skill-sync: herdr not installed." >&2; return 1; }
-    tmp="$(mktemp)" || return 1
-    if ! herdr --skill > "$tmp" 2>/dev/null || ! grep -q '^name: herdr' "$tmp"; then
-        echo "herdr-skill-sync: 'herdr --skill' produced no skill; leaving ${store}/SKILL.md untouched." >&2
-        rm -f "$tmp"; return 1
-    fi
-    mkdir -p "$store"
-    if cmp -s "$tmp" "$store/SKILL.md"; then
-        echo "herdr-skill-sync: skill already matches herdr $(herdr --version 2>/dev/null | awk '{print $NF}')."
-    else
-        mv "$tmp" "$store/SKILL.md"
-        echo "herdr-skill-sync: updated ${store}/SKILL.md from herdr $(herdr --version 2>/dev/null | awk '{print $NF}')."
-        echo "  (tracked in dotfiles: dotfiles add -u .agents/skills/herdr && dotfiles commit)"
-        return 0
-    fi
-    rm -f "$tmp"
+    # Kept for muscle memory; the copy-and-compare logic lives in ~/bin/skill-sync,
+    # which also knows the other tools that ship a skill.
+    command -v skill-sync >/dev/null 2>&1 || { echo "herdr-skill-sync: skill-sync not on PATH." >&2; return 1; }
+    skill-sync herdr
 }
 
 function herdr-update() {
