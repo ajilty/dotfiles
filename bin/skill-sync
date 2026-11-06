@@ -1,0 +1,158 @@
+#!/usr/bin/env bash
+# skill-sync — keep vendor-shipped agent skills in the shared skill store.
+#
+#   skill-sync [name...]        copy each tool's skill into ~/.agents/skills/<name>
+#                               when it differs from the store; prints what to stage
+#   skill-sync check [name...]  report tools whose shipped skill differs from the
+#                               store copy; writes the one-line nudge cache; exit 1
+#                               when anything is behind
+#   skill-sync list             show the tools this script knows about
+#
+# Some CLI tools ship their own agent skill (a binary that prints it, or a
+# Homebrew cask with a skills folder). Their installers plant a symlink into the
+# agent's skills folder that points at a versioned install path, so the first
+# upgrade leaves a dangling link and no agent loads the skill again. This script
+# copies instead: the store holds a real tracked file per tool, versioned with
+# the dotfiles like a lockfile. A fresh clone has every skill before the tool is
+# installed; an upgrade can only make a copy stale, never make it vanish.
+#
+# Never run a listed tool's own skill installer (`terminal-browser setup`, etc.):
+# it replaces the tracked copy with the versioned symlink this script exists to
+# avoid. `skill-sync` repairs that too: a symlink in the store is treated as
+# "behind" and replaced by a copy.
+#
+# Wiring: the `brew` wrapper (functions.d/brew-sync.sh) runs `skill-sync` after
+# any `brew upgrade`; the new-shell nudge (functions.d/dotfiles-nudge.sh) prints
+# the `check` cache so upgrades done any other way still surface.
+#
+# Add a tool: one line in sources() below, then `skill-sync <name>` and
+# `dotfiles track .agents/skills/<name>`.
+
+set -u
+
+STORE="${SKILL_SYNC_STORE:-$HOME/.agents/skills}"
+CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/skill-nudge"
+CASKROOM="${HOMEBREW_PREFIX:-/opt/homebrew}/Caskroom"
+
+# name  kind  locator
+#   cmd   <command and args that print SKILL.md on stdout>
+#   cask  <cask>:<path inside the cask's version folder holding the skill dir>
+sources() {
+    cat <<'EOF'
+herdr             cmd   herdr --skill
+terminal-browser  cask  terminal-browser:terminal-browser/skills/default/terminal-browser
+EOF
+}
+
+say()  { printf 'skill-sync: %s\n' "$*"; }
+warn() { printf 'skill-sync: %s\n' "$*" >&2; }
+
+# Highest installed version folder of a cask, without spawning brew.
+cask_dir() {
+    local cask="$1" ver
+    [ -d "$CASKROOM/$cask" ] || return 1
+    ver="$(ls -1 "$CASKROOM/$cask" 2>/dev/null | grep -v '^\.' | sort -V | tail -1)"
+    [ -n "$ver" ] || return 1
+    printf '%s\n' "$CASKROOM/$cask/$ver"
+}
+
+# Fetch <name>'s shipped skill into directory $2. Returns 1 when the tool is
+# not installed (caller skips), 2 when it is installed but produced no skill.
+fetch() {
+    local name="$1" dest="$2" kind locator src
+    read -r _ kind locator <<<"$(sources | awk -v n="$name" '$1==n {k=$2; sub(/^[ \t]*[^ \t]+[ \t]+[^ \t]+[ \t]+/, ""); print n, k, $0}')"
+    [ -n "${kind:-}" ] || { warn "unknown tool '$name' (see: skill-sync list)"; return 2; }
+    case "$kind" in
+        cmd)
+            command -v "${locator%% *}" >/dev/null 2>&1 || return 1
+            mkdir -p "$dest"
+            # shellcheck disable=SC2086
+            $locator > "$dest/SKILL.md" 2>/dev/null && grep -q '^name:' "$dest/SKILL.md" || return 2
+            ;;
+        cask)
+            src="$(cask_dir "${locator%%:*}")" || return 1
+            src="$src/${locator#*:}"
+            [ -f "$src/SKILL.md" ] || return 2
+            cp -R "$src/." "$dest/" || return 2
+            ;;
+        *) warn "unknown kind '$kind' for $name"; return 2 ;;
+    esac
+}
+
+# 0 when the store copy matches the shipped skill, 1 when it differs or is a
+# symlink, 2 when the tool is not installed, 3 when fetch failed.
+status_of() {
+    local name="$1" tmp rc
+    tmp="$(mktemp -d)" || return 3
+    fetch "$name" "$tmp"; rc=$?
+    if [ $rc -ne 0 ]; then rm -rf "$tmp"; [ $rc -eq 1 ] && return 2; return 3; fi
+    if [ -L "$STORE/$name" ] || [ ! -d "$STORE/$name" ] || ! diff -rq -x .DS_Store "$tmp" "$STORE/$name" >/dev/null 2>&1; then
+        rm -rf "$tmp"; return 1
+    fi
+    rm -rf "$tmp"; return 0
+}
+
+sync_one() {
+    local name="$1" quiet_skip="${2:-0}" tmp rc
+    tmp="$(mktemp -d)" || return 1
+    fetch "$name" "$tmp"; rc=$?
+    case $rc in
+        1) rm -rf "$tmp"; [ "$quiet_skip" -eq 1 ] || say "$name: not installed, skipped."; return 0 ;;
+        2) rm -rf "$tmp"; warn "$name: installed but produced no skill; store left untouched."; return 1 ;;
+    esac
+    if [ ! -L "$STORE/$name" ] && [ -d "$STORE/$name" ] && diff -rq -x .DS_Store "$tmp" "$STORE/$name" >/dev/null 2>&1; then
+        rm -rf "$tmp"; say "$name: already current."; return 0
+    fi
+    [ -L "$STORE/$name" ] && say "$name: replacing vendor symlink with a tracked copy."
+    # Stage the new copy beside the old one, then swap, so a failed fetch or
+    # copy leaves the old skill in place (git holds the copy if the swap
+    # itself dies halfway).
+    if ! { chmod 755 "$tmp" && mkdir -p "$STORE" && rm -rf "$STORE/$name.new" \
+           && mv "$tmp" "$STORE/$name.new" && rm -rf "$STORE/$name" \
+           && mv "$STORE/$name.new" "$STORE/$name"; }; then
+        rm -rf "$tmp" "$STORE/$name.new"; warn "$name: could not write $STORE/$name"; return 1
+    fi
+    say "$name: updated $STORE/$name."
+    # Always `track` (add -f): it stages new, changed and deleted files alike,
+    # where `add -u` would miss a file the upgrade added, and after replacing
+    # a symlink would stage only the link's deletion.
+    say "  stage with: dotfiles track .agents/skills/$name"
+}
+
+names() { sources | awk 'NF {print $1}'; }
+
+main() {
+    local verb="" n rc behind="" failed=0 all=0
+    case "${1:-}" in check|list) verb="$1"; shift ;; esac
+    # With no names, walk the whole table and keep quiet about absent tools
+    # (every `brew upgrade` runs this; a fresh machine has none installed yet).
+    [ $# -gt 0 ] || { all=1; set -- $(names); }
+
+    case "$verb" in
+        list) sources; return 0 ;;
+        check)
+            for n in "$@"; do
+                status_of "$n"; rc=$?
+                case $rc in
+                    1) behind="${behind:+$behind, }$n" ;;
+                    3) warn "$n: could not read its shipped skill." ;;
+                esac
+            done
+            mkdir -p "$(dirname "$CACHE")"
+            if [ -n "$behind" ]; then
+                printf 'Agent skills behind the installed tools: %s. Run "skill-sync", then stage.\n' "$behind" > "$CACHE"
+                cat "$CACHE"; return 1
+            fi
+            : > "$CACHE"; return 0
+            ;;
+        *)
+            for n in "$@"; do sync_one "$n" "$all" || failed=1; done
+            # Refresh the nudge for every tool, so a named sync never hides
+            # another tool's drift until the next shell recomputes it.
+            main check >/dev/null 2>&1 || true
+            return $failed
+            ;;
+    esac
+}
+
+main "$@"

@@ -1,6 +1,8 @@
 #!/bin/bash
 # dotfiles-nudge: one-line drift warning at the first prompt of a new
-# interactive shell when the dotfiles repo is out of sync with its remote.
+# interactive shell when the dotfiles repo is out of sync with its remote,
+# plus a second line when a vendor-shipped agent skill in the store is behind
+# the installed tool (cache written by `skill-sync check`, ~/bin/skill-sync).
 #
 # Startup cost is a single cache-file read: the real work (throttled fetch
 # plus ahead/behind/uncommitted counts) happens in `dotfiles sync-status`,
@@ -19,11 +21,15 @@ command -v dotfiles >/dev/null 2>&1 || return
 
 _dotfiles_nudge() {
   local cache="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/sync-nudge"
+  local skills="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/skill-nudge"
   # stderr so a nudge can never leak into captured stdout.
   [ -s "$cache" ] && printf '\033[33m%s\033[0m\n' "$(cat "$cache")" >&2
-  # Refresh for the next shell; subshell backgrounding detaches without
-  # job-control noise in either bash or zsh.
+  [ -s "$skills" ] && printf '\033[33m%s\033[0m\n' "$(cat "$skills")" >&2
+  # Refresh both for the next shell; subshell backgrounding detaches without
+  # job-control noise in either bash or zsh. skill-sync check is a few file
+  # compares plus one `herdr --skill`; it writes an empty cache when current.
   ( dotfiles sync-status >/dev/null 2>&1 </dev/null & )
+  ( command -v skill-sync >/dev/null 2>&1 && skill-sync check >/dev/null 2>&1 </dev/null & )
   return 0
 }
 

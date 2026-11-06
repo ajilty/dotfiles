@@ -3,7 +3,9 @@
 #
 # Public:
 #   brew         - wraps `brew install`/`brew reinstall` to offer saving
-#                  each package into a modular ~/.config/homebrew/Brewfile.*
+#                  each package into a modular ~/.config/homebrew/Brewfile.*,
+#                  and `brew upgrade` to run `skill-sync` afterwards so
+#                  vendor-shipped agent skills follow the installed version
 #   brew-sync    - lists installed packages not in any Brewfile; at the
 #                  prompt type package names to address just those (unique
 #                  substring ok), 'all' to walk everything, Enter to skip.
@@ -341,6 +343,13 @@ _brew_sync_save_direct() {
 brew() {
     case "$1" in
         install|reinstall) ;;
+        upgrade)
+            # Tools that ship their own agent skill get their store copy
+            # refreshed right after the upgrade that could have changed it.
+            command brew "$@"; local rc=$?
+            command -v skill-sync >/dev/null 2>&1 && skill-sync
+            return $rc
+            ;;
         *) command brew "$@"; return $? ;;
     esac
 
