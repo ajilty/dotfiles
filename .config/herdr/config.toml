@@ -17,6 +17,7 @@ window_title = "{hostname}: {workspace}"
 status_indicators = "symbols"
 
 [experimental]
+kitty_graphics = true
 pane_history = true
 
 [update]
