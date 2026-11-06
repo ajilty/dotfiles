@@ -398,11 +398,14 @@ PR VS DIRECT PUSH
   no workflow watches, like a Brewfile package add. Either way the commit
   message carries the why: merged PRs keep commit messages, not the PR
   description, under every merge method this repo allows.
-  Cut the branch without a checkout, which would rewrite live config in
-  $HOME: `dotfiles branch <name> origin/<default>`, then with
+  Cut the branch without a checkout (it would rewrite live config in
+  $HOME) and without moving HEAD (other sessions commit against it). With
   GIT_INDEX_FILE=<scratch file>: `read-tree origin/<default>`,
-  `add -f <files>`, `symbolic-ref HEAD refs/heads/<name>`, `commit`,
-  `symbolic-ref HEAD refs/heads/<default>`. Push it, `gh pr create`.
+  `add -f <files>`, `tree=$(dotfiles write-tree)`,
+  `sha=$(dotfiles commit-tree $tree -p origin/<default> -F <msg>)`,
+  `update-ref refs/heads/<name> $sha`. Push it, `gh pr create`. The
+  pre-push hook runs the identity and blocklist checks that commit-tree
+  skips.
 
 PULL / CONFLICT QUICKSTART
   `dotfiles pull` = pull --rebase --autostash, gated by the preflight above,
@@ -424,7 +427,7 @@ RELATED TOOLING
   Packages: `brew` is wrapped; installs are recorded per-category in
             ~/.config/homebrew/Brewfile.* via brew-sync
             (`brew-sync save <category> <pkg>`, `brew-sync help`).
-  Skills:   machine-specific skills live tracked in ~/.agents/skills/<name>/; edit in place, add -u, commit.
+  Skills:   machine-specific skills live tracked in ~/.agents/skills/<name>/; draft outside the store, review, copy in, add -u <path>, commit.
   Secrets:  never inline; `with-secrets <preset> -- <cmd>`.
   Shell-wide git env: `dotfiles-shell` exports GIT_DIR/GIT_WORK_TREE.
 EOF
