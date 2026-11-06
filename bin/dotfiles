@@ -383,6 +383,19 @@ COMMITTING
   LLM-assisted commits end with a Co-Authored-By: trailer.
   Remote is public: never push without the owner's confirmation.
 
+PR VS DIRECT PUSH
+  Open a PR against the default branch when any of these hold:
+  - A workflow in .github/workflows/ watches a path the change touches.
+    Those checks run only on pull requests; a direct push skips them.
+  - The diff alone won't tell a later reader why: a tradeoff, a reversed
+    decision, or a side effect someone should weigh before it lands.
+  - It changes the dotfiles system itself: this command, the git hooks
+    and guards, or setup scripts.
+  Otherwise push straight to the default branch: a self-explanatory change
+  no workflow watches, like a Brewfile package add. Either way the commit
+  message carries the why: merged PRs keep commit messages, not the PR
+  description.
+
 PULL / CONFLICT QUICKSTART
   `dotfiles pull` = pull --rebase --autostash, gated by the preflight above,
   so a predicted collision stops before it strands anything. If you pull past
