@@ -1,4 +1,4 @@
 #!/bin/bash
-# Terraform's plugin_cache_dir (~/.terraformrc) must already exist; Terraform won't create it.
+# Folder for plugin_cache_dir in ~/.terraformrc. Terraform's docs require it to exist first.
 
-mkdir -p "$HOME/.cache/terraform-plugins"
+mkdir -p "$HOME/.cache/terraform-plugins" 2>/dev/null || true
