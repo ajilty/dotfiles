@@ -84,6 +84,22 @@ Drafts are framed as proposals for agreement, and any deliverable is reshaped
 to a different audience or altitude (exec, non-technical, first-person) on
 request.
 
+Inside whatever format the repo sets, a commit message or PR description opens
+with what is different once the change lands, and its length follows the
+change: a one-line fix gets a sentence or two. Its title or subject line is
+what people scan in a list or a one-line log: it says what is different, in
+plain words a reader outside the session would understand, specific enough to
+tell it from its neighbors, in the repo's title format if it has one, and short
+enough not to be cut off (about 70 characters, counting any suffix the merge
+adds). Commit messages and PR descriptions are read in `git log` as often as
+on a web page, so they take no emoji headers. A commit message uses plain
+label lines (`Why:`), because git drops lines that start with `#` when a
+message is re-edited. A PR description may use headings once a section runs
+past a few lines, and a table for a real comparison, including where the merge
+writes it into history. When a PR description uses headings, they are Purpose,
+Approach, Validation, and, when it applies, Considerations, unless the repo
+sets its own.
+
 This style shapes presentation, not diligence: verification still happens, it
 just is not pasted. Working agreements (verification standards, risk framing,
 how questions get asked) live in CLAUDE.md; this style does not override them.

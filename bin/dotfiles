@@ -262,6 +262,70 @@ blocklist_scan() {
     return 1
 }
 
+# Vet text that no hook ever sees. A PR title and description are written
+# into history by GitHub at squash-merge time, server-side, so the only
+# chance to catch a private string in them is before they are posted.
+# Reads the named files, or stdin when none are given; match semantics
+# mirror the hooks (case-insensitive; fixed strings, `re:` extended regexes).
+# Fails closed: anything short of "every pattern ran and none matched" is
+# a non-zero exit.
+blocklist_check() {
+    if [ ! -f "$BLOCKLIST_FILE" ]; then
+        echo "dotfiles blocklist check: no blocklist at $BLOCKLIST_FILE. Run 'dotfiles blocklist sync' first." >&2
+        return 1
+    fi
+    local f
+    for f in "$@"; do
+        if [ ! -f "$f" ] || [ ! -r "$f" ]; then
+            echo "dotfiles blocklist check: cannot read $f" >&2
+            return 1
+        fi
+    done
+    if [ "$#" -eq 0 ] && [ -t 0 ]; then
+        echo "dotfiles blocklist check: name a file or pipe text in" >&2
+        return 1
+    fi
+
+    local text pattern found="" rc n=0
+    text=$(cat -- "$@" | tr '\r' '\n')
+    if [ -z "$text" ]; then
+        echo "dotfiles blocklist check: nothing to check (empty input)" >&2
+        return 1
+    fi
+    # Second copy with every run of whitespace folded to one space, as
+    # `blocklist scan` folds commit metadata: catches a hit wrapped across
+    # two lines, with or without trailing spaces or indentation.
+    text="$text"$'\n'"$(printf '%s' "$text" | tr -s '[:space:]' ' ')"
+    while IFS= read -r pattern; do
+        pattern=${pattern%$'\r'}
+        n=$((n + 1)); rc=0
+        # Here-string, not a pipe: under pipefail an early `grep -q` exit
+        # breaks the writer and a hit in large text reads as a miss.
+        if [ "${pattern#re:}" != "$pattern" ]; then
+            grep -q -i -E -e "${pattern#re:}" <<<"$text" || rc=$?
+        else
+            grep -q -i -F -e "$pattern" <<<"$text" || rc=$?
+        fi
+        case $rc in
+            0) found="${found}    - ${pattern}"$'\n' ;;
+            1) ;;
+            *) echo "dotfiles blocklist check: pattern failed to run: $pattern" >&2; return 2 ;;
+        esac
+    done < <(grep -v -E '^[[:space:]]*(#|$)' "$BLOCKLIST_FILE")
+    if [ "$n" -eq 0 ]; then
+        echo "dotfiles blocklist check: blocklist has no readable patterns" >&2
+        return 1
+    fi
+
+    if [ -z "$found" ]; then
+        echo "blocklist check clean ($n $(plural "$n" pattern))"
+        return 0
+    fi
+    echo "ERROR: blocklist patterns found in the text:" >&2
+    printf '%s' "$found" >&2
+    return 1
+}
+
 # Scan what GitHub actually serves, pull request refs included: those keep a
 # PR's original commits after a squash merge or a local history rewrite, and
 # a local clone never fetches them.
@@ -326,6 +390,9 @@ SUBCOMMANDS
                           hook only ever sees staged diffs, so a pattern
                           added after a string was committed is otherwise
                           never re-checked.
+                    check [<file>...]
+                          Vet files, or stdin, against it: for text no
+                          hook sees, like a PR title and description.
   hook              Agent-harness guard: reads a PreToolUse JSON payload on
                     stdin and emits a once-per-session reminder when a tool
                     call touches dotfiles-managed config, edits the shared
@@ -395,17 +462,29 @@ PR VS DIRECT PUSH
   - The owner should weigh it before it lands: a tradeoff, a removal, or
     a side effect beyond what the diff shows.
   Otherwise push straight to the default branch: a self-explanatory change
-  no workflow watches, like a Brewfile package add. Either way the commit
-  message carries the why: merged PRs keep commit messages, not the PR
-  description, under every merge method this repo allows.
+  no workflow watches, like a Brewfile package add; its commit message is
+  what history keeps.
+  For a PR, history keeps the title and description, not the commits: this
+  repo squash-merges only, and GitHub writes them into the merged commit.
+  Write them per the rule in ~/.agents/preferences.md that begins "Every
+  commit and PR says why, what changed, and how we know". The branch
+  commit needs only a subject line and the usual trailer. End the
+  description with the Co-Authored-By: trailer and add no tool footer.
+  No hook ever sees a title or description; both are public once posted
+  and take a history rewrite to remove once merged. So keep each in a
+  file, run `dotfiles blocklist check <title-file> <body-file>`, and show
+  the owner both before posting: that text is what they approve. Post
+  from those files, repeat all of it for every `gh pr edit`, and never
+  merge a PR whose description is empty.
   Cut the branch without a checkout (it would rewrite live config in
   $HOME) and without moving HEAD (other sessions commit against it).
   `fetch origin`, then with GIT_INDEX_FILE=<scratch file>:
   `read-tree origin/<default>`, `add -f <files>`,
   `tree=$(dotfiles write-tree)`,
   `sha=$(dotfiles commit-tree $tree -p origin/<default> -F <msgfile>)`,
-  `update-ref refs/heads/<name> $sha`. Push it, `gh pr create`. The
-  pre-push hook re-runs the identity and blocklist checks commit-tree
+  `update-ref refs/heads/<name> $sha`. Push it, run the check above, then
+  `gh pr create --title "$(cat <title-file>)" --body-file <body-file>`.
+  The pre-push hook re-runs the identity and blocklist checks commit-tree
   skips, but not the hook-portability guard: run `dotfiles doctor` by
   hand if .claude/settings.json or .codex/hooks.json is in the diff.
 
@@ -974,6 +1053,10 @@ case "${1:-help}" in
                     blocklist_scan "$@"
                 fi
                 ;;
+            check)
+                shift
+                blocklist_check "$@"
+                ;;
             help|-h|--help)
                 cat <<'EOF'
 usage: dotfiles blocklist <verb>
@@ -984,10 +1067,15 @@ usage: dotfiles blocklist <verb>
                   committer and message) against the blocklist.
   scan --public   Same, against a fresh mirror of origin, pull request
                   refs included: what GitHub actually serves.
+  check [<file>...]
+                  Vet the named files, or stdin, against the blocklist:
+                  for text no hook sees, like a PR title and description.
+                  Fails on a hit, on empty input, and on a pattern that
+                  cannot run.
 EOF
                 ;;
             *)
-                echo "dotfiles blocklist: unknown verb '$1' (try: sync, scan)" >&2
+                echo "dotfiles blocklist: unknown verb '$1' (try: sync, scan, check)" >&2
                 exit 1
                 ;;
         esac
