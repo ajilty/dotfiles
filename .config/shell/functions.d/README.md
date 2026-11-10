@@ -14,6 +14,7 @@ Modular shell function library organized by domain.
 | **skills.sh** | skills | AI skills wrapper |
 | **herdr.sh** | herdr-update | brew-upgrade herdr + live-handoff (no session pause) |
 | **dotfiles-nudge.sh** | _dotfiles_nudge (internal) | New-shell drift nudge: prints the cached `dotfiles sync-status` line at the first interactive prompt, refreshes it in a detached background job |
+| **trust-me.sh** | trust-me | Install your default 1Password SSH key on a remote host (`ssh-copy-id`, password once) and confirm key-only login works |
 
 ## Small Utilities (in main functions file)
 
