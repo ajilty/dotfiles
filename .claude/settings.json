@@ -1,5 +1,6 @@
 {
   "env": {
+    "ANTHROPIC_MODEL": "opus[1m]",
     "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "60",
     "CLAUDE_CODE_PLUGIN_DIRS": "~/.claude/mods/context-bar",
     "CLAUDE_CODE_PLUGIN_PREFER_HTTPS": "1"
