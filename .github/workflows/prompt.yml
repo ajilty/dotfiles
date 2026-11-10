@@ -114,19 +114,26 @@ jobs:
           # `${VAR:-}` defaults so this works under act too (which doesn't
           # set RUNNER_WORKSPACE / GITHUB_WORKSPACE the same way GH does).
           chmod go-w "${RUNNER_WORKSPACE:-}" "${GITHUB_WORKSPACE:-}" 2>/dev/null || true
+          # The GitHub runner image ships its *system* zsh completion dirs
+          # (/usr/share/zsh, /usr/share/zsh/vendor-completions) group/world-
+          # writable. They're in the default $fpath, so compaudit (run by
+          # compinit during the prompt tests) flags them as insecure and fires
+          # the interactive "[y/n]?" prompt that aborts compinit. This is a
+          # broken-runner artifact -- a normal machine's system zsh dirs are
+          # root:root 0755 -- so remediate the perms here. (Identified via the
+          # compaudit output captured while debugging #12.) The source config's
+          # ZINIT[COMPINIT_OPTS]=-i remains the real safeguard for any
+          # genuinely-insecure dir a user might have.
+          sudo chmod -R go-w /usr/share/zsh 2>/dev/null || true
 
-          # Belt-and-suspenders: patch the sandbox's .zshrc to skip
-          # compinit's interactive insecure-dirs audit in CI. `zicompinit`
-          # is zinit's wrapper around `compinit`; replacing it inline with
-          # `compinit -u` (accept insecure dirs without prompting) sidesteps
-          # the prompt that, if it fires and goes unanswered, poisons
-          # zinit's subsequent snippet downloads with a doubled-path error
-          # (`OMZP::name/OMZP::name`). We only do this for the sandbox copy;
-          # the source-of-truth .zshrc in $HOME is unchanged.
-          sed -i 's/zicompinit;/compinit -u -d "${ZINIT[ZCOMPDUMP_PATH]:-$HOME\/.zcompdump}" 2>\/dev\/null;/g' \
-            "$SANDBOX/.zshrc" 2>/dev/null || true
+          # NOTE: we intentionally do NOT patch the sandbox .zshrc anymore.
+          # The source .zshrc handles compinit itself (ZINIT[COMPINIT_OPTS]=-i
+          # plus disabling zsh-autocomplete's own compinit module), so CI runs
+          # the real config. 34-prompt-no-warnings.sh asserts the `as ice`
+          # warning and the compinit insecure-dirs prompt never reach startup
+          # output, so a regression fails CI instead of being silently masked.
 
-          # PTY-backed warmup. With compinit patched to `-u` above, zinit's
+          # PTY-backed warmup. With compinit's -i in the real config, zinit's
           # bootstrap completes cleanly under script's PTY: deferred plugins
           # install, gitstatusd downloads, the compdump gets written, and
           # subsequent test-time zsh sessions see a quiescent sandbox.
