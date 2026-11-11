@@ -17,18 +17,36 @@ patterns=()
 if [[ -f "$BLOCKLIST_FILE" ]]; then
     while IFS= read -r line; do
         [[ "$line" =~ ^[[:space:]]*(#|$) ]] && continue
-        patterns+=("$line")
+        patterns+=("${line%$'\r'}")
     done < "$BLOCKLIST_FILE"
 fi
 
-matches() {  # matches <text> -> prints each pattern found in it
-    local text="$1" p
+scan_tmp=$(mktemp)
+trap 'rm -f "$scan_tmp"' EXIT
+trap '' XFSZ  # a file-size limit becomes a write error, so the cleanup runs
+
+# matches <text> -> prints each pattern found in it; fails if one cannot run.
+# Each pattern greps a file holding the text, never a pipe or a here-string.
+# Under pipefail an early `grep -q` exit breaks a pipe's writer, so a hit near
+# the top of a large commit read as a miss; a here-string that bash cannot
+# create returns the same status as "no match". With a file, a failed write
+# fails the function, and grep's own status is the only one left: 0 is a hit,
+# 1 is "ran and found nothing", anything else is a failure.
+matches() {
+    local text="$1" p rc
+    printf '%s\n' "$text" > "$scan_tmp" || return 2
     for p in ${patterns[@]+"${patterns[@]}"}; do
+        rc=0
         if [[ "$p" == re:* ]]; then
-            echo "$text" | grep -qiE -- "${p#re:}" && echo "$p"
+            grep -qiE -- "${p#re:}" "$scan_tmp" || rc=$?
         else
-            echo "$text" | grep -qiF -- "$p" && echo "$p"
+            grep -qiF -- "$p" "$scan_tmp" || rc=$?
         fi
+        case $rc in
+            0) echo "$p" ;;
+            1) ;;
+            *) echo "ERROR: blocklist pattern failed to run: $p" >&2; return 2 ;;
+        esac
     done
     return 0
 }
@@ -52,11 +70,18 @@ while read -r local_ref local_sha remote_ref remote_sha; do
         fi
         meta=$(git log -1 --format='%an <%ae> %cn <%ce> %B' "$c")
         added=$(git show --format= --no-color -U0 "$c" | grep -E '^\+' | grep -v '^+++' || true)
+        if ! found=$(matches "$meta"$'\n'"$added"); then
+            echo "Push blocked: dotfiles push guard could not check $short. If a pattern" >&2
+            echo "is named above, fix it in the blocklist gist, then run" >&2
+            echo "\`dotfiles blocklist sync\`." >&2
+            exit 1
+        fi
+        # The verdict is set before the listing, so it never depends on it.
+        if [[ -n "$found" ]]; then fail=1; fi
         while IFS= read -r p; do
             [[ -z "$p" ]] && continue
             echo "ERROR: $short on $remote_ref matches blocklist pattern: $p" >&2
-            fail=1
-        done < <(matches "$meta"$'\n'"$added")
+        done <<<"$found"
     done < <(git rev-list "${range[@]}")
 done
 

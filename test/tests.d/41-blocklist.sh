@@ -98,6 +98,14 @@ if out="$(run_check "$sandbox/large.md")"; then
 fi
 info "early hit in large text fails the check"
 
+# A check that cannot stage the text it scans must fail, not pass: the hit
+# is on the last line and the file-size cap stands in for a full disk.
+{ head -c 300000 /dev/zero | tr '\0' 'x' | fold -w 80; printf 'private-string@example.com\n'; } > "$sandbox/late.md"
+if out="$( (ulimit -f 8 && run_check "$sandbox/late.md") )"; then
+  die "check passed when it could not write its scan file: $out"
+fi
+info "check fails when it cannot write its scan file"
+
 # A hit wrapped across two lines, and CRLF text.
 printf 'see alpha\nbeta for details\n' > "$sandbox/wrapped.md"
 if out="$(run_check "$sandbox/wrapped.md")"; then

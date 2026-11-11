@@ -104,7 +104,7 @@ patterns=()
 while IFS= read -r line; do
     [[ "$line" =~ ^[[:space:]]*$ ]] && continue
     [[ "$line" =~ ^[[:space:]]*# ]] && continue
-    patterns+=("$line")
+    patterns+=("${line%$'\r'}")
 done < "$BLOCKLIST_FILE"
 
 if [[ ${#patterns[@]} -eq 0 ]]; then
@@ -126,15 +126,35 @@ content=$(echo "$diff_output" | grep -E '^\+' | grep -v '^+++' || true)
 # Patterns are case-insensitive fixed strings by default. A leading `re:`
 # switches that entry to an extended regex, which is how a pattern expresses a
 # word boundary: a bare name would also match it inside longer identifiers.
+#
+# Each pattern greps a file holding the text, never a pipe or a here-string.
+# Under pipefail an early `grep -q` exit breaks a pipe's writer, so a hit near
+# the top of a large diff read as a miss; a here-string that bash cannot
+# create returns the same status as "no match". With a file, writing it either
+# works or stops the hook, and grep's own status is the only one left: 0 is a
+# hit, 1 is "ran and found nothing", anything else blocks the commit.
+scan_tmp=$(mktemp)
+trap 'rm -rf "${hook_tmp:-}" "$scan_tmp"' EXIT
+trap '' XFSZ  # a file-size limit becomes a write error, so the cleanup runs
+printf '%s\n' "$content" > "$scan_tmp"
 hits=()
 for pattern in "${patterns[@]}"; do
+    rc=0
     if [[ "$pattern" == re:* ]]; then
-        if echo "$content" | grep -qiE -- "${pattern#re:}"; then
-            hits+=("$pattern")
-        fi
-    elif echo "$content" | grep -qiF -- "$pattern"; then
-        hits+=("$pattern")
+        grep -qiE -- "${pattern#re:}" "$scan_tmp" || rc=$?
+    else
+        grep -qiF -- "$pattern" "$scan_tmp" || rc=$?
     fi
+    case $rc in
+        0) hits+=("$pattern") ;;
+        1) ;;
+        *)
+            echo "ERROR: dotfiles content guard: a blocklist pattern failed to run. Commit blocked." >&2
+            echo "    - $pattern" >&2
+            echo "  Fix it in the blocklist gist, then run \`dotfiles blocklist sync\`." >&2
+            exit 1
+            ;;
+    esac
 done
 
 if [[ ${#hits[@]} -gt 0 ]]; then
