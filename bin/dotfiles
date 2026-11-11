@@ -296,15 +296,30 @@ blocklist_check() {
     # `blocklist scan` folds commit metadata: catches a hit wrapped across
     # two lines, with or without trailing spaces or indentation.
     text="$text"$'\n'"$(printf '%s' "$text" | tr -s '[:space:]' ' ')"
+    # Each pattern greps a file holding the text, never a pipe or a
+    # here-string: under pipefail an early `grep -q` exit breaks a pipe's
+    # writer and a hit in large text reads as a miss, and a here-string bash
+    # cannot create returns the same status as "no match".
+    # The scan file is removed by an EXIT trap, so no exit path leaves a
+    # copy of the text behind; a file-size limit becomes a write error.
+    if ! _blocklist_scan_tmp=$(mktemp); then
+        echo "dotfiles blocklist check: could not create a scan file" >&2
+        return 2
+    fi
+    trap 'rm -f "$_blocklist_scan_tmp"' EXIT
+    trap '' XFSZ
+    local scan_tmp="$_blocklist_scan_tmp"
+    if ! printf '%s\n' "$text" > "$scan_tmp"; then
+        echo "dotfiles blocklist check: could not stage the text to scan" >&2
+        return 2
+    fi
     while IFS= read -r pattern; do
         pattern=${pattern%$'\r'}
         n=$((n + 1)); rc=0
-        # Here-string, not a pipe: under pipefail an early `grep -q` exit
-        # breaks the writer and a hit in large text reads as a miss.
         if [ "${pattern#re:}" != "$pattern" ]; then
-            grep -q -i -E -e "${pattern#re:}" <<<"$text" || rc=$?
+            grep -q -i -E -e "${pattern#re:}" "$scan_tmp" || rc=$?
         else
-            grep -q -i -F -e "$pattern" <<<"$text" || rc=$?
+            grep -q -i -F -e "$pattern" "$scan_tmp" || rc=$?
         fi
         case $rc in
             0) found="${found}    - ${pattern}"$'\n' ;;
@@ -468,8 +483,9 @@ PR VS DIRECT PUSH
   repo squash-merges only, and GitHub writes them into the merged commit.
   Write them per the rule in ~/.agents/preferences.md that begins "Every
   commit and PR says why, what changed, and how we know". The branch
-  commit needs only a subject line and the usual trailer. End the
-  description with the Co-Authored-By: trailer and add no tool footer.
+  commit needs only a subject line and the usual trailer. Put no
+  Co-Authored-By: trailer in the description (GitHub carries the branch
+  commit's trailer onto the merged commit) and add no tool footer.
   No hook ever sees a title or description; both are public once posted
   and take a history rewrite to remove once merged. So keep each in a
   file, run `dotfiles blocklist check <title-file> <body-file>`, and show
