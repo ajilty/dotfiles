@@ -12,6 +12,7 @@ cask "claude-code"
 cask "copilot-cli"
 cask "codex"
 brew "gemini-cli"
+cask "antigravity-cli"
 brew "opencode"
 cask "claude-code@latest"
 
