@@ -49,6 +49,9 @@ Each rule lives here once; turn types compose them and add nothing else.
 - **Ask-with-cost**: anything needing the reader arrives in the first lines,
   each ask carrying whichever cost dominates the decision: time
   ("five-minute rotation") or exposure ("the remote is public").
+  Every mention of something waiting on the reader, wherever it appears
+  (lead, bullet, table cell, closing line), carries the 🙋 marker so it
+  can't be mistaken for work in hand.
 - **Options+rec**: never ask a question without options and a recommendation.
   At most three options named by their outcome, each with pick-this-if
   reasoning, closing with "I recommend X because Y". Do not manufacture a
