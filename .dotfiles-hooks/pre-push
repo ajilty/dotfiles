@@ -15,7 +15,8 @@ ZERO=0000000000000000000000000000000000000000
 
 patterns=()
 if [[ -f "$BLOCKLIST_FILE" ]]; then
-    while IFS= read -r line; do
+    # `|| [[ -n "$line" ]]` keeps a last line that has no trailing newline.
+    while IFS= read -r line || [[ -n "$line" ]]; do
         [[ "$line" =~ ^[[:space:]]*(#|$) ]] && continue
         patterns+=("${line%$'\r'}")
     done < "$BLOCKLIST_FILE"
@@ -43,7 +44,7 @@ matches() {
             grep -qiF -- "$p" "$scan_tmp" || rc=$?
         fi
         case $rc in
-            0) echo "$p" ;;
+            0) printf '%s\n' "$p" ;;  # not echo: it would swallow -e, -n or -E
             1) ;;
             *) echo "ERROR: blocklist pattern failed to run: $p" >&2; return 2 ;;
         esac
@@ -60,7 +61,19 @@ while read -r local_ref local_sha remote_ref remote_sha; do
         range=("$remote_sha..$local_sha")
     fi
 
-    while read -r c; do
+    # List the commits first and block the push if that fails. Fed straight
+    # into the loop, a failed listing (a force-push over a remote tip this
+    # clone has never fetched) looked like "no commits" and the push passed
+    # unchecked. The fetch names the remote and ref: this repo is a bare clone
+    # with no fetch refspec, so a plain fetch brings only the default branch.
+    if ! revs=$(git rev-list "${range[@]}"); then
+        echo "ERROR: could not list the commits going to $remote_ref. Most likely the" >&2
+        echo "  remote has commits this clone lacks: if so, run" >&2
+        echo "  \`dotfiles fetch ${1:-origin} $remote_ref\` and push again." >&2
+        fail=1
+        continue
+    fi
+    for c in $revs; do
         who_a=$(git log -1 --format='%an <%ae>' "$c")
         who_c=$(git log -1 --format='%cn <%ce>' "$c")
         short=$(git rev-parse --short "$c")
@@ -82,12 +95,12 @@ while read -r local_ref local_sha remote_ref remote_sha; do
             [[ -z "$p" ]] && continue
             echo "ERROR: $short on $remote_ref matches blocklist pattern: $p" >&2
         done <<<"$found"
-    done < <(git rev-list "${range[@]}")
+    done
 done
 
 if (( fail )); then
     echo "" >&2
-    echo "Push blocked: dotfiles push guard. Rewrite the named commits before pushing" >&2
+    echo "Push blocked: dotfiles push guard. Fix what is named above before pushing" >&2
     echo "(committer fix without touching the worktree: see the dotfiles skill)." >&2
     exit 1
 fi
