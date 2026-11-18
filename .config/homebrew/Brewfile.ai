@@ -27,3 +27,12 @@ brew "rjyo/moshi/moshi-hook"
 cask "terminal-browser"
 
 ## tui
+
+## sandbox
+# Anthropic's sandbox runtime (the `srt` command). Pinned to the version the
+# agentic repo's replay harness is tested with; raise it there first. On Linux
+# it also needs bubblewrap and socat (both in the Bluefin base image) and
+# ripgrep (Brewfile.dev). Homebrew cannot match a pinned name to what is
+# installed: `brew bundle` reinstalls this version on every run, and
+# `brew bundle cleanup` would remove it and every other global npm package.
+npm "@anthropic-ai/sandbox-runtime@0.0.82"
