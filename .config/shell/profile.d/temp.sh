@@ -9,6 +9,9 @@ else
     if [[ -z "$TMPDIR" ]] || [[ ! -w "$TMPDIR" ]]; then
         export TMPDIR="/tmp"
     fi
+    # /tmp is in memory here (tmpfs), so Claude Code scratch files written
+    # there count against the user memory cap. Keep them on disk instead.
+    export CLAUDE_CODE_TMPDIR="/var/tmp"
 fi
 
 if [ -d "$TMPDIR" ]; then
