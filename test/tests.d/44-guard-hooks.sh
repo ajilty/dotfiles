@@ -112,15 +112,31 @@ fi
 case "$out" in *"failed to run"*) ;; *) die "unexpected broken-pattern message: $out" ;; esac
 info "pre-commit blocks when a pattern cannot run"
 
+# A blocklist whose last line has no trailing newline still counts that line.
+set_blocklist 'string-not-here\nprivate-string@example.com'
+if commit_check "$sandbox/hit"; then
+  die "pre-commit ignored a last blocklist line with no trailing newline: $out"
+fi
+set_blocklist 'private-string@example.com'
+if commit_check "$sandbox/hit"; then
+  die "pre-commit ignored a one-line blocklist with no trailing newline: $out"
+fi
+info "pre-commit reads a blocklist with no trailing newline"
+
 # ---- pre-push -----------------------------------------------------------
 # One commit on top of the seed, checked as an update of an existing branch.
+# PUSH_REMOTE_TIP overrides the commit the remote is said to be at.
+# PUSH_FIRST_REF, when set, is another ref line fed to the hook ahead of it.
+PUSH_REMOTE_TIP=""
+PUSH_FIRST_REF=""
 push_check() {  # push_check <source-file> <commit message>
   cp "$1" "$repo/pushed"
   g add pushed
   g commit -qm "$2"
   local tip rc=0
   tip="$(g rev-parse HEAD)"
-  out="$(cd "$repo" && limit && printf 'refs/heads/master %s refs/heads/master %s\n' "$tip" "$base" \
+  out="$(cd "$repo" && limit && printf '%srefs/heads/master %s refs/heads/master %s\n' \
+          "${PUSH_FIRST_REF:+$PUSH_FIRST_REF$'\n'}" "$tip" "${PUSH_REMOTE_TIP:-$base}" \
         | HOME="$fake_home" bash "$PRE_PUSH" 2>&1)" || rc=$?
   g reset -q --hard "$base"
   return "$rc"
@@ -163,6 +179,54 @@ if push_check "$sandbox/clean" "add a file"; then
 fi
 case "$out" in *"failed to run"*"Push blocked"*) ;; *) die "unexpected broken-pattern message: $out" ;; esac
 info "pre-push blocks when a pattern cannot run"
+
+set_blocklist 'string-not-here\nprivate-string@example.com'
+if push_check "$sandbox/hit" "add a file"; then
+  die "pre-push ignored a last blocklist line with no trailing newline: $out"
+fi
+set_blocklist 'private-string@example.com'
+if push_check "$sandbox/hit" "add a file"; then
+  die "pre-push ignored a one-line blocklist with no trailing newline: $out"
+fi
+info "pre-push reads a blocklist with no trailing newline"
+
+# A pattern that looks like an echo option is still reported, so it blocks.
+set_blocklist '%s\n' '-n' '-e'
+printf 'run it with -n and then -e\n' > "$sandbox/flags"
+if push_check "$sandbox/flags" "add a file"; then
+  die "pre-push passed a hit on a pattern that looks like an echo option: $out"
+fi
+case "$out" in *"pattern: -n"*"pattern: -e"*) ;; *) die "option-like patterns not named: $out" ;; esac
+info "pre-push reports patterns that look like echo options"
+
+# A force-push over a remote tip this clone never fetched: the commits
+# cannot be listed, so the push must block instead of passing unchecked.
+set_blocklist 'private-string@example.com\n'
+PUSH_REMOTE_TIP=1111111111111111111111111111111111111111
+if push_check "$sandbox/hit" "add a file"; then
+  die "pre-push passed when it could not list the outgoing commits: $out"
+fi
+PUSH_REMOTE_TIP=""
+case "$out" in *"could not list the commits"*"dotfiles fetch origin refs/heads/master"*"Push blocked"*) ;;
+  *) die "unexpected unlisted-commits message: $out" ;;
+esac
+info "pre-push blocks when it cannot list the outgoing commits"
+
+# Several refs in one push: every ref is checked, not only the first, and a
+# ref that cannot be listed does not hide a hit on a later one.
+PUSH_FIRST_REF="refs/heads/other $base refs/heads/other $base"
+if push_check "$sandbox/hit" "add a file"; then
+  die "pre-push passed a hit on the second ref of a push: $out"
+fi
+PUSH_FIRST_REF="refs/heads/other $base refs/heads/other 1111111111111111111111111111111111111111"
+if push_check "$sandbox/hit" "add a file"; then
+  die "pre-push passed a push with an unlistable ref and a hit: $out"
+fi
+PUSH_FIRST_REF=""
+case "$out" in *"could not list the commits"*"matches blocklist pattern"*) ;;
+  *) die "a ref that could not be listed hid a hit on a later ref: $out" ;;
+esac
+info "pre-push checks every ref of a multi-ref push"
 
 # No blocklist yet (fresh machine): identity is still checked, content is not.
 rm -f "$blocklist"
