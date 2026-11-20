@@ -42,7 +42,7 @@ Resolution:
 
 ## Content guard (blocklist) bootstrap
 
-The pre-commit hook scans staged diffs against a private blocklist fetched from a gist. On a fresh machine, `WARN: dotfiles blocklist not initialized` means the scan is skipped (commits still pass). One-time setup:
+The pre-commit hook scans staged diffs against a private blocklist fetched from a gist. On a fresh machine, `WARN: dotfiles blocklist not initialized` means the commit-time scan is skipped (commits still pass); pushes to any public ajilty repo, this one included, block until the list is synced. One-time setup:
 
 ```bash
 mkdir -p ~/.local/config/dotfiles
@@ -57,7 +57,7 @@ The gist must contain a file literally named `dotfiles-blocklist.txt`. After 30 
 
 **Scan what is public, not just what is local.** A local clone never fetches `refs/pull/*`, and those keep a PR's original commits after a squash merge or an earlier scrub; run `dotfiles blocklist scan --public` (fresh mirror of origin, PR refs included) before deciding anything. When every public hit sits under `refs/pull/*`, a filter-repo plus force-push removes nothing: the fix is a GitHub Support sensitive-data request naming the PR numbers and commit SHAs. The scan covers commit metadata (author, committer, message) as well as content.
 
-**Cherry-pick, rebase and `commit-tree` skip pre-commit**, so they can carry a non-`ajilty` committer or a blocklisted string past the identity and content guards. The `pre-push` hook re-checks every outgoing commit and is the guard that catches this. A PR's title and description pass no hook at all, and this repo's squash merge writes them into history: vet both with `dotfiles blocklist check` before posting (`dotfiles help`, PR VS DIRECT PUSH). To fix a committer on a branch without touching the `$HOME` worktree (no checkout, no rebase), replay it with plumbing: for each commit, `commit-tree` its tree onto the rewritten parent with `GIT_COMMITTER_NAME`/`EMAIL` set and the author fields copied, then `update-ref` the branch; keep a `refs/backup/<branch>` ref until the push is verified.
+**Cherry-pick, rebase and `commit-tree` skip pre-commit**, so they can carry a non-`ajilty` committer or a blocklisted string past the identity and content guards. The push-time guard, `~/.config/git/public-guard`, re-checks every outgoing commit and is the guard that catches this. It runs for every public github.com/ajilty repo, not only this one: from global git config (git 2.54+) elsewhere, from `~/.dotfiles-hooks/pre-push` here. `dotfiles guard status` shows what it covers. It never looks at history a repo already has: before making a repo public, run `dotfiles blocklist scan <clone>/.git` on it. A PR's title and description pass no hook at all, and this repo's squash merge writes them into history: vet both with `dotfiles blocklist check` before posting (`dotfiles help`, PR VS DIRECT PUSH). To fix a committer on a branch without touching the `$HOME` worktree (no checkout, no rebase), replay it with plumbing: for each commit, `commit-tree` its tree onto the rewritten parent with `GIT_COMMITTER_NAME`/`EMAIL` set and the author fields copied, then `update-ref` the branch; keep a `refs/backup/<branch>` ref until the push is verified.
 
 ## Installing agent skills
 
@@ -186,6 +186,7 @@ would assume the shim is on PATH. Revisit if it ever breaks.
 - `~/bin/dotfiles` — the management command (script; `dotfiles help` for the contract). Its `hook` subcommand is the agent guard, registered as a PreToolUse hook in `~/.claude/settings.json`: reminds agents once per session when they touch managed config, run brew installs, or handle credentials outside `with-secrets`. Informational only, never blocks.
 - `~/.gitignore` — repo-level inverse allowlist. `~/.config/git/ignore` — global ignores (tracked; short-circuited inside this repo, see above).
 - `~/.config/git/dotfiles.config` — hooksPath + identity, included via `[includeIf "gitdir:~/.dotfiles/"]`; hooks live in `~/.dotfiles-hooks/`.
+- `~/.config/git/public-guard` — push-time private-string and identity check for every public ajilty repo, registered as `hook.public-guard` in `~/.config/git/config`.
 - `~/.agents/skills/` — canonical skills tree (tracked); `~/.claude/skills` symlinks to it; `~/.agents/.skill-lock.json` — CLI-install manifest (tracked).
 - `~/.config/homebrew/Brewfile.*` — categorized package manifests, maintained via `brew-sync`.
 - `~/.claude/mods/<name>/` — homegrown Claude Code mods (tracked), loaded live from the folder via `CLAUDE_CODE_PLUGIN_DIRS` in `~/.claude/settings.json` (`:`-separated; append new mods there). Check with `claude plugin validate` and `claude plugin test` on the folder before committing. To use a branch's config for real before merging, `dotfiles try <branch|PR> -- claude` (or no command for a shell): the branch gets its own git worktree under `~/.cache/dotfiles/try/` with untracked state linked in, and HOME points there for that process only, so other shells stay on master. Fixes made there are plain `git commit` + `git push` to the branch, with identity and pre-commit checks intact.

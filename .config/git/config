@@ -28,6 +28,16 @@
 # itself with the real path.
 [includeIf "gitdir:~/.dotfiles/worktrees/"]
     path = ~/.config/git/dotfiles.config
+
+# Private-string guard for public ajilty repos, in every repo on this machine
+# (config-based hooks need git 2.54 or later; older git skips them silently).
+# Before a push to github.com/ajilty/<repo> it asks GitHub whether the repo is
+# public and, if so, blocks blocklisted strings and stray identities. Runs
+# alongside a repo's own hooks. If the script is missing, every push on this
+# machine fails until it is restored. `dotfiles guard status` shows coverage.
+[hook "public-guard"]
+    event = pre-push
+    command = ~/.config/git/public-guard push
 	
 [init]
 	defaultBranch = master

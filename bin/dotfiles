@@ -195,34 +195,55 @@ blocklist_scan() {
 
     local -a revs
     revs=($(git --git-dir="$git_dir" rev-list --all))
+    if [ "${#revs[@]}" -eq 0 ]; then
+        rm -f "$patterns_tmp" "$fixed_tmp" "$regex_tmp"
+        echo "blocklist history scan clean (no commits)"
+        return 0
+    fi
 
     # Match semantics mirror the pre-commit hook (case-insensitive; fixed
     # strings by default, `re:` entries as extended regexes), but binaries
-    # are scanned too: .pyc and friends embed paths. git grep exits 1 on a
-    # clean scan, which is the good case here, hence the `|| true`.
-    local hits=""
+    # are scanned too: .pyc and friends embed paths. Each grep must exit 0
+    # (hits) or 1 (ran, found nothing); anything else, such as a malformed
+    # `re:` pattern, fails the scan instead of reading as clean.
+    local out_tmp="${patterns_tmp}.out" rc
+    _scan_grep() {  # _scan_grep <command...>: append its output to hits_all
+        rc=0
+        "$@" > "$out_tmp" 2>/dev/null || rc=$?
+        if [ "$rc" -gt 1 ]; then
+            rm -f "$patterns_tmp" "$fixed_tmp" "$regex_tmp" "$out_tmp"
+            echo "ERROR: blocklist history scan could not run (exit $rc): a pattern is malformed," >&2
+            echo "  the repository could not be read, or the history is too large for one call." >&2
+            echo "  For a bad pattern, fix it in the blocklist gist, then run 'dotfiles blocklist sync'." >&2
+            return 2
+        fi
+        cat "$out_tmp"
+    }
+    local hits="" more
     if [ -s "$fixed_tmp" ]; then
-        hits=$(git --git-dir="$git_dir" grep -l -i -F -f "$fixed_tmp" "${revs[@]}" 2>/dev/null || true)
+        hits=$(_scan_grep git --git-dir="$git_dir" grep -l -i -F -f "$fixed_tmp" "${revs[@]}") || return 2
     fi
     if [ -s "$regex_tmp" ]; then
-        hits=$(printf '%s\n%s' "$hits" \
-            "$(git --git-dir="$git_dir" grep -l -i -E -f "$regex_tmp" "${revs[@]}" 2>/dev/null || true)" \
-            | grep -v '^$' | sort -u || true)
+        more=$(_scan_grep git --git-dir="$git_dir" grep -l -i -E -f "$regex_tmp" "${revs[@]}") || return 2
+        hits=$(printf '%s\n%s' "$hits" "$more" | grep -v '^$' | sort -u || true)
     fi
 
     # Commit metadata leaks as surely as content: author and committer
     # identities and messages, one line per commit. A cherry-pick or rebase
     # skips pre-commit, so a stray committer identity only surfaces here.
-    local meta meta_hits=""
-    meta=$(git --git-dir="$git_dir" log --all \
-        --format='@@%h %an <%ae> | %cn <%ce> | %s %b' | tr '\n' ' ' | sed 's/@@/\n/g')
+    local meta_tmp="${patterns_tmp}.meta" meta_hits=""
+    git --git-dir="$git_dir" log --all \
+        --format='@@%h %an <%ae> | %cn <%ce> | %s %b' | tr '\n' ' ' | sed 's/@@/\n/g' > "$meta_tmp"
     if [ -s "$fixed_tmp" ]; then
-        meta_hits=$(echo "$meta" | grep -i -F -f "$fixed_tmp" || true)
+        meta_hits=$(_scan_grep grep -i -F -f "$fixed_tmp" "$meta_tmp") || { rm -f "$meta_tmp"; return 2; }
     fi
     if [ -s "$regex_tmp" ]; then
-        meta_hits=$(printf '%s\n%s' "$meta_hits" "$(echo "$meta" | grep -i -E -f "$regex_tmp" || true)" \
-            | grep -v '^$' | sort -u || true)
+        more=$(_scan_grep grep -i -E -f "$regex_tmp" "$meta_tmp") || { rm -f "$meta_tmp"; return 2; }
+        meta_hits=$(printf '%s\n%s' "$meta_hits" "$more" | grep -v '^$' | sort -u || true)
     fi
+    local meta
+    meta=$(cat "$meta_tmp")
+    rm -f "$meta_tmp" "$out_tmp"
 
     if [ -z "$hits" ] && [ -z "$meta_hits" ]; then
         rm -f "$patterns_tmp" "$fixed_tmp" "$regex_tmp"
@@ -360,6 +381,57 @@ blocklist_scan_public() {
     return $rc
 }
 
+# --- public-guard coverage ----------------------------------------------
+# ~/.config/git/public-guard checks pushes to public github.com/ajilty repos
+# (see its header). It runs from global git config, which only git 2.54 or
+# later honors, so coverage depends on which git a tool runs. This reports
+# what would and would not be checked; exits 1 when the guard would not run
+# for the first git on PATH or cannot check anything.
+guard_status() {
+    local problems=0 g v seen="" script="$HOME/.config/git/public-guard" n age
+    echo "public-guard: blocks private strings in pushes to public github.com/ajilty repos"
+    if [ -x "$script" ]; then echo "  ok    guard script: $script"
+    else echo "  FAIL  guard script missing or not executable: $script"; problems=1; fi
+    if git config --global --get hook.public-guard.command >/dev/null 2>&1; then
+        echo "  ok    hook registered in global git config"
+    else
+        echo "  FAIL  no hook.public-guard in global git config (~/.config/git/config)"; problems=1
+    fi
+    local first=1
+    while IFS= read -r g; do
+        [ -z "$g" ] && continue
+        case " $seen " in *" $g "*) continue ;; esac
+        seen="$seen $g"
+        v=$("$g" --version 2>/dev/null | awk '{print $3}')
+        if printf '%s\n' "$v" | awk -F. '{ exit !($1 > 2 || ($1 == 2 && $2 >= 54)) }'; then
+            echo "  ok    git $v at $g runs it"
+        elif [ "$first" = 1 ]; then
+            echo "  FAIL  git $v at $g (first on PATH) skips it silently: needs 2.54+"; problems=1
+        else
+            echo "  warn  git $v at $g skips it silently (tools that call it directly are unguarded)"
+        fi
+        first=0
+    done < <(which -a git 2>/dev/null)
+    if [ ! -r "$BLOCKLIST_FILE" ]; then
+        echo "  FAIL  no readable blocklist: pushes to public repos will block. Run: dotfiles blocklist sync"; problems=1
+    else
+        n=$(grep -cvE '^[[:space:]]*(#|$)' "$BLOCKLIST_FILE" || true)
+        age=$(( ( $(date +%s) - $(stat -c %Y "$BLOCKLIST_FILE" 2>/dev/null || stat -f %m "$BLOCKLIST_FILE") ) / 86400 ))
+        if [ "${n:-0}" -eq 0 ]; then echo "  FAIL  blocklist has no patterns"; problems=1
+        elif [ "$age" -gt 30 ]; then echo "  warn  blocklist: $n $(plural "$n" pattern), $age days old. Run: dotfiles blocklist sync"
+        else echo "  ok    blocklist: $n $(plural "$n" pattern), $age $(plural "$age" day) old"; fi
+    fi
+    local repos
+    if repos=$(gh repo list ajilty --limit 500 --json name,visibility \
+            --jq '.[] | "\(.visibility) \(.name)"' 2>/dev/null) && [ -n "$repos" ]; then
+        echo "  checked (public):     $(printf '%s\n' "$repos" | awk '$1 == "PUBLIC" { print $2 }' | sort | tr '\n' ' ')"
+        echo "  not checked (private): $(printf '%s\n' "$repos" | awk '$1 != "PUBLIC" { print $2 }' | sort | tr '\n' ' ')"
+    else
+        echo "  warn  could not list ajilty repos from GitHub (gh); each push still asks GitHub itself"
+    fi
+    return "$problems"
+}
+
 print_help() {
     cat <<'EOF'
 dotfiles - opinionated bare-repo management of your user config
@@ -397,9 +469,10 @@ SUBCOMMANDS
                     interactive shells print the cache at the first prompt
                     and refresh it in a background job. Fetches origin at
                     most every 4h; local counts recompute every run.
-  blocklist <verb>  Private-string guard for this public repo. The
+  blocklist <verb>  The private-string list behind the guards. This repo's
                     pre-commit hook scans staged diffs against
-                    ~/.local/config/dotfiles/blocklist.
+                    ~/.local/config/dotfiles/blocklist, and public-guard
+                    (see `guard`) checks pushes to every public ajilty repo.
                     sync  Fetch that list from the private gist, then scan.
                     scan  Grep the FULL history (all refs) against it: the
                           hook only ever sees staged diffs, so a pattern
@@ -408,6 +481,13 @@ SUBCOMMANDS
                     check [<file>...]
                           Vet files, or stdin, against it: for text no
                           hook sees, like a PR title and description.
+  guard status      Coverage of public-guard, the push-time check for every
+                    public github.com/ajilty repo (this one included): it
+                    asks GitHub whether the destination is public and, if
+                    so, blocks blocklisted strings and stray identities in
+                    any commit this clone does not know to be public. Shows the guard script,
+                    its global hook, which git on PATH runs it (2.54+ only),
+                    the blocklist's age, and which repos are checked.
   hook              Agent-harness guard: reads a PreToolUse JSON payload on
                     stdin and emits a once-per-session reminder when a tool
                     call touches dotfiles-managed config, edits the shared
@@ -500,9 +580,10 @@ PR VS DIRECT PUSH
   `sha=$(dotfiles commit-tree $tree -p origin/<default> -F <msgfile>)`,
   `update-ref refs/heads/<name> $sha`. Push it, run the check above, then
   `gh pr create --title "$(cat <title-file>)" --body-file <body-file>`.
-  The pre-push hook re-runs the identity and blocklist checks commit-tree
-  skips, but not the hook-portability guard: run `dotfiles doctor` by
-  hand if .claude/settings.json or .codex/hooks.json is in the diff.
+  The pre-push hook (public-guard) re-runs the identity and blocklist
+  checks commit-tree skips, but not the hook-portability guard: run
+  `dotfiles doctor` by hand if .claude/settings.json or .codex/hooks.json
+  is in the diff.
 
 PULL / CONFLICT QUICKSTART
   `dotfiles pull` = pull --rebase --autostash, gated by the preflight above,
@@ -1094,6 +1175,13 @@ EOF
                 echo "dotfiles blocklist: unknown verb '$1' (try: sync, scan, check)" >&2
                 exit 1
                 ;;
+        esac
+        ;;
+    guard)
+        shift
+        case "${1:-status}" in
+            status) guard_status ;;
+            *) echo "dotfiles guard: unknown verb '$1' (try: status)" >&2; exit 1 ;;
         esac
         ;;
     hook)

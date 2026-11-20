@@ -94,6 +94,11 @@ fi
 HOOK_LIMIT=""
 info "pre-commit blocks when it cannot write its scan file"
 
+# An added line whose own text starts with `++` is content, not a file header.
+printf '++ private-string@example.com\n' > "$sandbox/plusplus"
+if commit_check "$sandbox/plusplus"; then die "pre-commit skipped an added line starting with ++: $out"; fi
+info "pre-commit scans an added line that starts with ++"
+
 # Removing a leaked line is the fix we want, so it must not block.
 printf 'seed\n' > "$repo/file"
 g add file
@@ -207,7 +212,7 @@ if push_check "$sandbox/hit" "add a file"; then
   die "pre-push passed when it could not list the outgoing commits: $out"
 fi
 PUSH_REMOTE_TIP=""
-case "$out" in *"could not list the commits"*"dotfiles fetch origin refs/heads/master"*"Push blocked"*) ;;
+case "$out" in *"could not list the commits"*"fetch refs/heads/master from"*"Push blocked"*) ;;
   *) die "unexpected unlisted-commits message: $out" ;;
 esac
 info "pre-push blocks when it cannot list the outgoing commits"
@@ -228,9 +233,11 @@ case "$out" in *"could not list the commits"*"matches blocklist pattern"*) ;;
 esac
 info "pre-push checks every ref of a multi-ref push"
 
-# No blocklist yet (fresh machine): identity is still checked, content is not.
+# No blocklist (fresh machine, or a list the hook cannot read): this repo is
+# public, so the push cannot be checked and must block.
 rm -f "$blocklist"
-push_check "$sandbox/hit" "add a file" || die "pre-push failed with no blocklist present: $out"
-info "pre-push without a blocklist checks identity only"
+if push_check "$sandbox/clean" "add a file"; then die "pre-push passed with no blocklist present: $out"; fi
+case "$out" in *"no readable blocklist"*"dotfiles blocklist sync"*) ;; *) die "unexpected no-blocklist message: $out" ;; esac
+info "pre-push blocks when there is no blocklist"
 
 info "commit and push content guards fail closed"
