@@ -121,8 +121,14 @@ fi
 
 # Only scan ADDED lines. Removing a leak from a tracked file is the workflow
 # we want to encourage, so a `-` line matching a pattern must not block.
-# Also strip the +++ header lines so paths in file headers don't false-match.
-content=$(echo "$diff_output" | grep -E '^\+' | grep -v '^+++' || true)
+# File header lines (`+++ b/path`) are told apart by position, between
+# `diff --git` and the first `@@`, not by their text: an added line whose own
+# text starts with `++` is content and is scanned.
+content=$(printf '%s\n' "$diff_output" | LC_ALL=C awk '
+    /^diff --git / { hdr = 1; next }
+    /^@@ / { hdr = 0; next }
+    !hdr && /^\+/ { print }
+')
 
 # Patterns are case-insensitive fixed strings by default. A leading `re:`
 # switches that entry to an extended regex, which is how a pattern expresses a
